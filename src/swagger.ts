@@ -15,12 +15,16 @@ export const swaggerDocument = {
     title: 'API Backend Reta AI',
     version: '1.0.0',
     description:
-      'Documentação da API de autenticação e recursos do backend. Chat treinadora–aluna com WebSocket está documentado na tag **Conversas**.',
+      'Documentação da API de autenticação e recursos do backend. Chat treinadora–aluna com WebSocket está documentado na tag **Conversas**. **Execução containerizada:** ver `README-DOCKER.md`; em ambiente local típico via Docker Compose a API fica em **http://localhost:8080** (porta configurável). **AWS:** use a URL pública do load balancer ou API Gateway; WebSockets em `/ws/conversations` exigem LB com suporte a upgrade (e configuração compatível de sticky sessions/target group).',
   },
   servers: [
     {
       url: 'http://localhost:3000',
-      description: 'Servidor local',
+      description: 'Servidor local (npm / Node na máquina)',
+    },
+    {
+      url: 'http://localhost:8080',
+      description: 'Docker Compose (porta pública padrão HTTP_PORT_PUBLISH→3000 no container)',
     },
   ],
   components: {
@@ -59,7 +63,7 @@ export const swaggerDocument = {
       post: {
         summary: 'Registrar usuário',
         description:
-          'Cria o usuário no Cognito (atributo custom:typeUser) e persiste em trainers ou students conforme o tipo. É necessário confirmar o cadastro por e-mail.',
+          'Cria o usuário no Cognito (atributo custom:typeUser) e persiste em trainers ou students conforme o tipo. Campo **phone** opcional: formato brasileiro `(DDD) número` (ex.: (11) 99999-9999); gravado **apenas na base**, não no Cognito. É necessário confirmar o cadastro por e-mail.',
         requestBody: {
           required: true,
           content: {
@@ -77,6 +81,13 @@ export const swaggerDocument = {
                     format: 'uuid',
                     description:
                       'Obrigatório quando typeUser é student (UUID do treinador). Omitir para trainer.',
+                  },
+                  phone: {
+                    type: 'string',
+                    nullable: true,
+                    example: '(11) 99999-9999',
+                    description:
+                      'Opcional. Omitir, null ou omitir campo = sem telefone. Formato (DDD) número quando informado; salvo só no banco.',
                   },
                 },
               },
@@ -101,7 +112,7 @@ export const swaggerDocument = {
           },
           '400': {
             description:
-              'Campo(s) ausente(s) (veja `missing`), typeUser inválido ou senha fora do padrão',
+              'Campo(s) ausente(s) (veja `missing`), typeUser inválido, phone fora do formato (XX) XXXX-XXXX/(XX) XXXXX-XXXX, ou senha fora do padrão',
             content: {
               'application/json': {
                 schema: {

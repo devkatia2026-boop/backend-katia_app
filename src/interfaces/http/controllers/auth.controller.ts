@@ -69,12 +69,20 @@ export class AuthController {
 
   async register(req: Request, res: Response): Promise<void> {
     try {
-      const { email, password, name, typeUser, trainer_id: trainerId } = req.body as {
+      const {
+        email,
+        password,
+        name,
+        typeUser,
+        trainer_id: trainerId,
+        phone,
+      } = req.body as {
         email?: string;
         password?: string;
         name?: string;
         typeUser?: string;
         trainer_id?: string;
+        phone?: unknown;
       };
 
       const missing: string[] = [];
@@ -115,6 +123,7 @@ export class AuthController {
         typeUser: normalizedType,
         trainerId:
           normalizedType === 'student' ? String(trainerId).trim() : undefined,
+        phone,
       });
 
       res.status(201).json({

@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "nodemon --exec npx ts-node src/main.ts",
     "start": "ts-node src/main.ts",
+    "start:prod": "node dist/main.js",
+    "build": "tsc",
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:seed": "sequelize-cli db:seed:all",

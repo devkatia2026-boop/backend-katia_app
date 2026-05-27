@@ -18,7 +18,7 @@ export class SequelizeUserProfileWriter implements IUserProfileWriter {
       id: input.id,
       full_name: input.fullName,
       email: input.email,
-      phone: null,
+      phone: input.phone,
     });
   }
 
@@ -28,7 +28,7 @@ export class SequelizeUserProfileWriter implements IUserProfileWriter {
       trainer_id: input.trainerId,
       full_name: input.fullName,
       email: input.email,
-      phone: null,
+      phone: input.phone,
       birth: null,
       cpf: null,
       type_plan: null,

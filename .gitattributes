@@ -1,0 +1,2 @@
+# Scripts usados em imagens Linux (CRLF no Windows quebra o shebang no container).
+*.sh text eol=lf

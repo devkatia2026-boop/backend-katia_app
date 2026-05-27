@@ -2,6 +2,7 @@ export interface CreateTrainerProfileInput {
   id: string;
   email: string;
   fullName: string;
+  phone: string | null;
 }
 
 export interface CreateStudentProfileInput {
@@ -9,6 +10,7 @@ export interface CreateStudentProfileInput {
   trainerId: string;
   email: string;
   fullName: string;
+  phone: string | null;
 }
 
 export interface IUserProfileWriter {

@@ -1,6 +1,7 @@
 import type { IAuthProvider } from '../../ports/auth-provider.port';
 import type { IUserProfileWriter } from '../../ports/user-profile-writer.port';
 import type { INewStudentRegistrationNotifier } from '../../ports/new-student-registration-notifier.port';
+import { parseOptionalBrazilDisplayPhone } from '../../parsing/register-phone.parsing';
 
 export type RegisterUserProfileType = 'student' | 'trainer';
 
@@ -11,6 +12,8 @@ export interface RegisterUserProfileInput {
   typeUser: RegisterUserProfileType;
   /** Obrigatório apenas quando `typeUser` é `student`. */
   trainerId?: string;
+  /** Opcional — formato `(XX) número`; gravado apenas em trainers/students, não Cognito. */
+  phone?: unknown;
 }
 
 export interface RegisterUserProfileOutput {
@@ -26,6 +29,8 @@ export class RegisterUserProfileUseCase {
   ) {}
 
   async execute(input: RegisterUserProfileInput): Promise<RegisterUserProfileOutput> {
+    const phone = parseOptionalBrazilDisplayPhone(input.phone);
+
     const studentTrainerId =
       input.typeUser === 'student' ? input.trainerId?.trim() : undefined;
 
@@ -59,6 +64,7 @@ export class RegisterUserProfileUseCase {
         id: userSub,
         email: input.email,
         fullName: input.name,
+        phone,
       });
     } else {
       await this.userProfileWriter.createStudentProfile({
@@ -66,6 +72,7 @@ export class RegisterUserProfileUseCase {
         trainerId: studentTrainerId!,
         email: input.email,
         fullName: input.name,
+        phone,
       });
       await this.newStudentRegistrationNotifier.notifyNewStudentRegistered({
         trainerId: studentTrainerId!,
