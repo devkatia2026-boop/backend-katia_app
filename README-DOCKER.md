@@ -7,15 +7,17 @@
 - **Produção:** `NODE_ENV=production` na imagem (Express em modo prod). As migrações usam sempre o par `sequelize-cli`/`DB_*_*` conforme **`ENVIRONMENT`**: `{ local | development }` → `NODE_ENV` temporário apenas no comando `sequelize`; caso contrário → RDS (`DB_*_PROD`).
 - **Migrações na subida:** defina `RUN_MIGRATIONS_ON_START=true` para executar `sequelize-cli db:migrate` antes de `node dist/main.js`. Em produção AWS com várias réplicas ou deploy blue/green prefira aplicar migrações num job/task dedicado ou no pipeline CI e mantenha `RUN_MIGRATIONS_ON_START=false` (valor padrão na imagem se não definido).
 
-## Compose (local)
+## Compose (local — só API)
 
 ```bash
 docker compose up --build -d
 ```
 
-- HTTP/Swagger na máquina host: **http://localhost:8080** (ajuste `HTTP_PORT_PUBLISH` no `.env` se precisar).
-- Postgres também em **localhost:`POSTGRES_PORT_PUBLISH`** (padrão 5432).
-- Mantenha `COGNITO_*` válidos num ficheiro **`.env`** na raiz do backend (copie de [.env.template](.env.template)).
+- Sobe **apenas** o container da API. **Postgres não vem no compose** — usa o mesmo banco do `.env` (`DB_*_LOCAL` quando `ENVIRONMENT=local`).
+- HTTP/Swagger no host: **http://localhost:8080** (ajuste `HTTP_PORT_PUBLISH` no `.env` se precisar).
+- **Beekeeper / Postgres na máquina:** no `.env`, defina `DB_HOST_LOCAL=host.docker.internal` (dentro do container, `localhost` é o próprio container, não o teu PC).
+- Mantenha `COGNITO_*` e demais variáveis no **`.env`** (copie de [.env.template](.env.template)).
+- Migrações opcionais na subida: `RUN_MIGRATIONS_ON_START=true` no `.env`.
 
 ### Problemas comuns
 
@@ -28,8 +30,8 @@ docker compose up --build -d
 
 | Contexto               | `ENVIRONMENT`                             | Credenciais e migrações (`RUN_MIGRATIONS_ON_START`)      |
 |------------------------|--------------------------------------------|---------------------------------------------------------|
-| Compose neste repo     | `local`                                    | App e migrações: `DB_*_LOCAL` contra o serviço `db`     |
-| AWS / staging ou prod | não `local` nem `development`              | App e migrações: `DB_*_PROD` (RDS) quando as migrações correm na subida do container |
+| Compose (só API)       | `local` (no `.env`)                        | `DB_*_LOCAL` do `.env`; host `host.docker.internal` se Postgres no PC |
+| AWS / staging ou prod | não `local` nem `development`              | `DB_*_PROD` (RDS) quando as migrações correm na subida do container |
 
 Runtime da app (`getDatabaseConfig`) usa apenas **`ENVIRONMENT`**, não o `NODE_ENV` global.
 

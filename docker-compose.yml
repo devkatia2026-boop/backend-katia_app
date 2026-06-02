@@ -1,27 +1,11 @@
-# Backend + PostgreSQL para desenvolvimento local.
+# Só a API — Postgres fica fora (o mesmo que usas no Beekeeper / npm local).
 #
-# Na primeira vez:
-#   1. Copie .env.template → .env e preencha COGNITO_* (RDS local usa variáveis abaixo ou sobrescreva no .env).
-#   2. docker compose up --build -d
-#   3. API: http://localhost:8080  | Swagger: http://localhost:8080/api-docs
+# 1. .env com DB_*_LOCAL, ENVIRONMENT, COGNITO_*, etc. (sem sobrescrever credenciais aqui).
+# 2. Se o Postgres corre na máquina host, use DB_HOST_LOCAL=host.docker.internal (não localhost).
+# 3. docker compose up --build -d
+# 4. http://localhost:8080  (ou HTTP_PORT_PUBLISH no .env)
 #
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-katia}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-katia_local}
-      POSTGRES_DB: ${POSTGRES_DB:-katia}
-    ports:
-      - "${POSTGRES_PORT_PUBLISH:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-katia} -d ${POSTGRES_DB:-katia}']
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   api:
     build:
       context: .
@@ -31,18 +15,7 @@ services:
     env_file:
       - .env
     environment:
-      # App (`getDatabaseConfig`) e migrações no entrypoint alinham com ENVIRONMENT local|development vs produção.
-      ENVIRONMENT: local
+      # Porta interna do container; o mapeamento acima expõe no host.
       PORT: 3000
-      DB_HOST_LOCAL: db
-      DB_PORT_LOCAL: "5432"
-      DB_USER_LOCAL: ${POSTGRES_USER:-katia}
-      DB_PASSWORD_LOCAL: ${POSTGRES_PASSWORD:-katia_local}
-      DB_NAME_LOCAL: ${POSTGRES_DB:-katia}
-      RUN_MIGRATIONS_ON_START: "true"
-    depends_on:
-      db:
-        condition: service_healthy
-
-volumes:
-  postgres_data:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
