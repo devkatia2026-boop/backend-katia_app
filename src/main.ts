@@ -13,6 +13,7 @@ import { CognitoUserAttributesUpdater } from './infrastructure/auth/cognito/cogn
 import { models } from './infrastructure/database';
 import { SequelizeUserProfileWriter } from './infrastructure/database/user-profile.writer';
 import { SequelizeNewStudentRegistrationNotifier } from './infrastructure/database/new-student-registration.notifier';
+import { ResolveGoogleAuthUseCase } from './application/use-cases/auth/resolve-google-auth.use-case';
 import { RegisterUserProfileUseCase } from './application/use-cases/auth/register-user-profile.use-case';
 import { ConfirmSignUpUseCase } from './application/use-cases/auth/confirm-sign-up.use-case';
 import { SignInWithRefreshPersistenceUseCase } from './application/use-cases/auth/sign-in-with-refresh-persistence.use-case';
@@ -228,6 +229,12 @@ const meController = new MeController(
   new GetMeUseCase(userMeReader),
   new UpdateMyProfileUseCase(userMeReader, userProfileUpdater, authUserAttributesUpdater)
 );
+const resolveGoogleAuthUseCase = new ResolveGoogleAuthUseCase(
+  userMeReader,
+  userProfileWriter,
+  newStudentRegistrationNotifier,
+  loginRefreshTokenWriter
+);
 const authController = new AuthController(
   registerUserProfileUseCase,
   new ConfirmSignUpUseCase(authProvider),
@@ -235,7 +242,8 @@ const authController = new AuthController(
   new RefreshSessionUseCase(authProvider),
   new ForgotPasswordUseCase(authProvider),
   new ResetPasswordUseCase(authProvider),
-  new ResendSignUpConfirmationUseCase(authProvider)
+  new ResendSignUpConfirmationUseCase(authProvider),
+  resolveGoogleAuthUseCase
 );
 
 app.use('/auth', createAuthRoutes(authController, meController, requireAuth));

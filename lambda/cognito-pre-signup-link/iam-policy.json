@@ -1,0 +1,25 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CognitoPreSignUpLink",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:ListUsers",
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:AdminLinkProviderForUser"
+      ],
+      "Resource": "arn:aws:cognito-idp:sa-east-1:CONTA_AWS:userpool/sa-east-1_TzhJXbizQ"
+    },
+    {
+      "Sid": "CloudWatchLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:sa-east-1:CONTA_AWS:*"
+    }
+  ]
+}

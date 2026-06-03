@@ -22,6 +22,7 @@ export function createAuthRoutes(
   router.post('/resend-forgot-password', (req, res) => controller.resendForgotPassword(req, res));
   router.post('/reset-password', (req, res) => controller.resetPassword(req, res));
   router.post('/resend-confirmation', (req, res) => controller.resendSignUpConfirmation(req, res));
+  router.post('/google/resolve', requireAuth, (req, res) => controller.resolveGoogleAuth(req, res));
 
   router.get('/me', requireAuth, (req, res) => meController.getMe(req, res));
   router.patch('/me', requireAuth, (req, res) => meController.patchMe(req, res));

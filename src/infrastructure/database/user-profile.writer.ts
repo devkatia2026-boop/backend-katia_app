@@ -13,6 +13,22 @@ export class SequelizeUserProfileWriter implements IUserProfileWriter {
     return row !== null;
   }
 
+  async findStudentByEmail(email: string): Promise<{ id: string } | null> {
+    const row = await this.models.Student.findOne({
+      where: { email: email.trim().toLowerCase() },
+    });
+    if (!row) return null;
+    return { id: String(row.get('id')) };
+  }
+
+  async findTrainerByEmail(email: string): Promise<{ id: string } | null> {
+    const row = await this.models.Trainer.findOne({
+      where: { email: email.trim().toLowerCase() },
+    });
+    if (!row) return null;
+    return { id: String(row.get('id')) };
+  }
+
   async createTrainerProfile(input: CreateTrainerProfileInput): Promise<void> {
     await this.models.Trainer.create({
       id: input.id,

@@ -6,6 +6,7 @@ import type { SignInWithRefreshPersistenceUseCase } from '../../../application/u
 import type { RefreshSessionUseCase } from '../../../application/use-cases/auth/refresh-session.use-case';
 import type { ForgotPasswordUseCase } from '../../../application/use-cases/auth/forgot-password.use-case';
 import type { ResetPasswordUseCase } from '../../../application/use-cases/auth/reset-password.use-case';
+import type { ResolveGoogleAuthUseCase } from '../../../application/use-cases/auth/resolve-google-auth.use-case';
 import type { ResendSignUpConfirmationUseCase } from '../../../application/use-cases/auth/resend-sign-up-confirmation.use-case';
 
 const COGNITO_ERROR_STATUS: Record<string, number> = {
@@ -20,6 +21,9 @@ const COGNITO_ERROR_STATUS: Record<string, number> = {
   LimitExceededException: 429,
   TrainerNotFoundException: 404,
   ValidationException: 400,
+  EmailAlreadyRegisteredException: 409,
+  ProfileNotFoundException: 404,
+  FederatedAccountLinkFailedException: 409,
 };
 
 function isBlank(value: unknown): boolean {
@@ -44,7 +48,8 @@ export class AuthController {
     private readonly refreshSessionUseCase: RefreshSessionUseCase,
     private readonly forgotPasswordUseCase: ForgotPasswordUseCase,
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
-    private readonly resendSignUpConfirmationUseCase: ResendSignUpConfirmationUseCase
+    private readonly resendSignUpConfirmationUseCase: ResendSignUpConfirmationUseCase,
+    private readonly resolveGoogleAuthUseCase: ResolveGoogleAuthUseCase
   ) {}
 
   private handleError(err: unknown, res: Response, defaultMessage: string): void {
@@ -252,6 +257,88 @@ export class AuthController {
       res.status(200).json({ message: 'Senha alterada com sucesso.' });
     } catch (err) {
       this.handleError(err, res, 'Erro ao redefinir senha.');
+    }
+  }
+
+  async resolveGoogleAuth(req: Request, res: Response): Promise<void> {
+    try {
+      const sub = req.authUser?.sub;
+      if (!sub) {
+        res.status(401).json({ message: 'Usuário não autenticado.' });
+        return;
+      }
+
+      const {
+        email,
+        name,
+        intent,
+        trainer_id: trainerId,
+        phone,
+        refreshToken,
+        idToken,
+      } = req.body as {
+        email?: string;
+        name?: string;
+        intent?: string;
+        trainer_id?: string;
+        phone?: unknown;
+        refreshToken?: string;
+        idToken?: string;
+      };
+
+      const missing: string[] = [];
+      if (isBlank(email)) missing.push('email');
+      if (isBlank(intent)) missing.push('intent');
+
+      if (missing.length > 0) {
+        res.status(400).json({
+          message: formatMissingFieldsMessage(missing),
+          missing,
+        });
+        return;
+      }
+
+      const normalizedIntent = String(intent).trim().toLowerCase();
+      if (normalizedIntent !== 'login' && normalizedIntent !== 'signup') {
+        res.status(400).json({
+          message: 'intent deve ser "login" ou "signup".',
+          field: 'intent',
+        });
+        return;
+      }
+
+      if (normalizedIntent === 'signup') {
+        const signupMissing: string[] = [];
+        if (isBlank(name)) signupMissing.push('name');
+        if (isBlank(trainerId)) signupMissing.push('trainer_id');
+
+        if (signupMissing.length > 0) {
+          res.status(400).json({
+            message: formatMissingFieldsMessage(signupMissing),
+            missing: signupMissing,
+          });
+          return;
+        }
+      }
+
+      const result = await this.resolveGoogleAuthUseCase.execute({
+        userSub: sub,
+        email: String(email).trim(),
+        intent: normalizedIntent,
+        fullName: name?.trim(),
+        trainerId: trainerId?.trim(),
+        phone,
+        refreshToken: refreshToken?.trim(),
+        idToken: idToken?.trim(),
+      });
+
+      res.status(result.alreadyRegistered ? 200 : 201).json({
+        outcome: result.outcome,
+        alreadyRegistered: result.alreadyRegistered,
+        message: result.message,
+      });
+    } catch (err) {
+      this.handleRegisterProfileError(err, res);
     }
   }
 }
