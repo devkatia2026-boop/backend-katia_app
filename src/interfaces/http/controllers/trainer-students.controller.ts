@@ -7,6 +7,8 @@ import type { UpdateTrainerStudentUseCase } from '../../../application/use-cases
 import type { DeleteTrainerStudentAnamnesisUseCase } from '../../../application/use-cases/trainer/delete-trainer-student-anamnesis.use-case';
 import type { ListTrainerStudentPhysicalsUseCase } from '../../../application/use-cases/trainer/list-trainer-student-physicals.use-case';
 import type { ListTrainerStudentEvolutionsUseCase } from '../../../application/use-cases/trainer/list-trainer-student-evolutions.use-case';
+import type { ListTrainerStudentsAnamnesesUseCase } from '../../../application/use-cases/trainer/list-trainer-students-anamneses.use-case';
+import type { GetTrainerStudentAnamnesisUseCase } from '../../../application/use-cases/trainer/get-trainer-student-anamnesis.use-case';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'StudentNotFoundException';
@@ -30,7 +32,9 @@ export class TrainerStudentsController {
     private readonly updateTrainerStudent: UpdateTrainerStudentUseCase,
     private readonly deleteTrainerStudentAnamnesis: DeleteTrainerStudentAnamnesisUseCase,
     private readonly listTrainerStudentPhysicals: ListTrainerStudentPhysicalsUseCase,
-    private readonly listTrainerStudentEvolutions: ListTrainerStudentEvolutionsUseCase
+    private readonly listTrainerStudentEvolutions: ListTrainerStudentEvolutionsUseCase,
+    private readonly listTrainerStudentsAnamneses: ListTrainerStudentsAnamnesesUseCase,
+    private readonly getTrainerStudentAnamnesis: GetTrainerStudentAnamnesisUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -106,6 +110,36 @@ export class TrainerStudentsController {
         return;
       }
       res.status(500).json({ message: 'Erro ao atualizar aluna.' });
+    }
+  }
+
+  async listAnamneses(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const items = await this.listTrainerStudentsAnamneses.execute(trainerId);
+      res.status(200).json({ items });
+    } catch {
+      res.status(500).json({ message: 'Erro ao listar anamneses das alunas.' });
+    }
+  }
+
+  async getStudentAnamnesis(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const studentId = firstParam(req.params.studentId);
+      const row = await this.getTrainerStudentAnamnesis.execute(trainerId, studentId);
+      res.status(200).json(row);
+    } catch (err) {
+      const error = err as { name?: string; message?: string };
+      if (error.name === NOT_FOUND) {
+        res.status(404).json({ message: error.message ?? 'Aluna não encontrada.' });
+        return;
+      }
+      if (error.name === ANAMNESIS_NOT_FOUND) {
+        res.status(404).json({ message: error.message ?? 'Anamnese não encontrada.' });
+        return;
+      }
+      res.status(500).json({ message: 'Erro ao obter anamnese da aluna.' });
     }
   }
 

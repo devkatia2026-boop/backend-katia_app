@@ -17,6 +17,10 @@ export type AnamnesisUpsertValues = Partial<{
 
 export interface IStudentAnamnesisRepository {
   findLatestByStudentId(studentId: string): Promise<AnamnesisDTO | null>;
+  /** Última anamnese da aluna se pertencer ao treinador; null se aluna ok mas sem registro. */
+  findLatestForTrainerStudent(trainerId: string, studentId: string): Promise<AnamnesisDTO | null>;
+  /** Uma entrada por aluna (última linha) de todas as alunas do treinador que têm anamnese. */
+  listLatestForTrainer(trainerId: string): Promise<AnamnesisDTO[]>;
   createForStudent(studentId: string, values: AnamnesisUpsertValues): Promise<AnamnesisDTO>;
   updateLatestForStudent(studentId: string, values: AnamnesisUpsertValues): Promise<AnamnesisDTO>;
   /** Apaga todas as linhas de anamnese da aluna, se ela pertencer ao treinador. */

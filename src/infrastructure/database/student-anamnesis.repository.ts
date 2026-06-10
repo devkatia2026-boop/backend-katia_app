@@ -1,9 +1,20 @@
 import type { DatabaseModels } from './models';
+import { QueryTypes } from 'sequelize';
 import type {
   AnamnesisDTO,
   AnamnesisUpsertValues,
   IStudentAnamnesisRepository,
 } from '../../application/ports/student-anamnesis.port';
+
+type AnamnesisRow = {
+  id: number;
+  student_id: string;
+  main_objective: string | null;
+  place_training: string | null;
+  days_for_week: string | null;
+  level_experience: string | null;
+  created_at: Date;
+};
 
 export class SequelizeStudentAnamnesisRepository implements IStudentAnamnesisRepository {
   constructor(
@@ -16,6 +27,36 @@ export class SequelizeStudentAnamnesisRepository implements IStudentAnamnesisRep
       order: [['id', 'DESC']],
     });
     return row ? (row.toJSON() as AnamnesisDTO) : null;
+  }
+
+  async findLatestForTrainerStudent(
+    trainerId: string,
+    studentId: string
+  ): Promise<AnamnesisDTO | null> {
+    const student = await this.models.Student.findOne({
+      where: { id: studentId, trainer_id: trainerId },
+      attributes: ['id'],
+    });
+    if (!student) {
+      const err = new Error('Aluna não encontrada.');
+      err.name = 'StudentNotFoundException';
+      throw err;
+    }
+    return this.findLatestByStudentId(studentId);
+  }
+
+  async listLatestForTrainer(trainerId: string): Promise<AnamnesisDTO[]> {
+    const rows = await this.models.Anamnesis.sequelize!.query<AnamnesisRow>(
+      `SELECT DISTINCT ON (a.student_id)
+         a.id, a.student_id, a.main_objective, a.place_training,
+         a.days_for_week, a.level_experience, a.created_at
+       FROM anamneses a
+       INNER JOIN students s ON s.id = a.student_id
+       WHERE s.trainer_id = :trainerId
+       ORDER BY a.student_id, a.id DESC`,
+      { replacements: { trainerId }, type: QueryTypes.SELECT }
+    );
+    return rows;
   }
 
   async createForStudent(studentId: string, values: AnamnesisUpsertValues): Promise<AnamnesisDTO> {

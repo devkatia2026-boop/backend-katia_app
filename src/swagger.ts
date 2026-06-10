@@ -36,6 +36,20 @@ export const swaggerDocument = {
         description: 'Access token do Cognito (retornado no login; token_use=access).',
       },
     },
+    schemas: {
+      Anamnesis: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer', example: 1 },
+          student_id: { type: 'string', format: 'uuid' },
+          main_objective: { type: 'string', nullable: true },
+          place_training: { type: 'string', nullable: true },
+          days_for_week: { type: 'string', nullable: true },
+          level_experience: { type: 'string', nullable: true },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+    },
   },
   paths: {
     '/health': {
@@ -381,6 +395,25 @@ export const swaggerDocument = {
       },
     },
     '/student/anamnesis': {
+      get: {
+        summary: 'Obter anamnese da aluna',
+        description:
+          'Retorna a última anamnese (`anamneses`) da aluna autenticada. 404 se ainda não houver cadastro.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Anamnese encontrada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Anamnesis' },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna' },
+          '404': { description: 'Anamnese não encontrada' },
+        },
+      },
       post: {
         summary: 'Criar anamnese da aluna',
         description:
@@ -3027,7 +3060,62 @@ export const swaggerDocument = {
         },
       },
     },
+    '/trainer/anamneses': {
+      get: {
+        summary: 'Listar anamneses das alunas do treinador',
+        description:
+          'Uma entrada por aluna (`items`): a última linha em `anamneses` de cada aluna vinculada ao treinador autenticado. Alunas sem anamnese não aparecem na lista.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Lista em `items`',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Anamnesis' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+        },
+      },
+    },
     '/trainer/students/{studentId}/anamnesis': {
+      get: {
+        summary: 'Obter anamnese de uma aluna',
+        description:
+          'Retorna a última anamnese da aluna, desde que ela pertença ao treinador autenticado.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Anamnese encontrada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Anamnesis' },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+          '404': { description: 'Aluna não encontrada ou anamnese inexistente' },
+        },
+      },
       delete: {
         summary: 'Excluir anamnese(s) da aluna',
         description:

@@ -37,10 +37,13 @@ import { SearchTrainerStudentsUseCase } from './application/use-cases/trainer/se
 import { GetTrainerStudentUseCase } from './application/use-cases/trainer/get-trainer-student.use-case';
 import { UpdateTrainerStudentUseCase } from './application/use-cases/trainer/update-trainer-student.use-case';
 import { DeleteTrainerStudentAnamnesisUseCase } from './application/use-cases/trainer/delete-trainer-student-anamnesis.use-case';
+import { ListTrainerStudentsAnamnesesUseCase } from './application/use-cases/trainer/list-trainer-students-anamneses.use-case';
+import { GetTrainerStudentAnamnesisUseCase } from './application/use-cases/trainer/get-trainer-student-anamnesis.use-case';
 import { TrainerStudentsController } from './interfaces/http/controllers/trainer-students.controller';
 import { SequelizeStudentAnamnesisRepository } from './infrastructure/database/student-anamnesis.repository';
 import { CreateMyAnamnesisUseCase } from './application/use-cases/student/create-my-anamnesis.use-case';
 import { UpdateMyAnamnesisUseCase } from './application/use-cases/student/update-my-anamnesis.use-case';
+import { GetMyAnamnesisUseCase } from './application/use-cases/student/get-my-anamnesis.use-case';
 import { StudentAnamnesisController } from './interfaces/http/controllers/student-anamnesis.controller';
 import { SequelizeStudentPhysicalsRepository } from './infrastructure/database/student-physicals.repository';
 import { SequelizeStudentEvolutionsRepository } from './infrastructure/database/student-evolutions.repository';
@@ -488,7 +491,9 @@ const trainerStudentsController = new TrainerStudentsController(
   new UpdateTrainerStudentUseCase(trainerStudentsRepository),
   deleteTrainerStudentAnamnesisUseCase,
   listTrainerStudentPhysicalsUseCase,
-  listTrainerStudentEvolutionsUseCase
+  listTrainerStudentEvolutionsUseCase,
+  new ListTrainerStudentsAnamnesesUseCase(studentAnamnesisRepository),
+  new GetTrainerStudentAnamnesisUseCase(studentAnamnesisRepository)
 );
 app.use(
   '/trainer',
@@ -508,7 +513,8 @@ const requireStudent = createRequireStudent((sub) =>
 );
 const studentAnamnesisController = new StudentAnamnesisController(
   new CreateMyAnamnesisUseCase(studentAnamnesisRepository),
-  new UpdateMyAnamnesisUseCase(studentAnamnesisRepository)
+  new UpdateMyAnamnesisUseCase(studentAnamnesisRepository),
+  new GetMyAnamnesisUseCase(studentAnamnesisRepository)
 );
 const studentPhysicalsController = new StudentPhysicalsController(
   new ListMyPhysicalsUseCase(studentPhysicalsRepository),

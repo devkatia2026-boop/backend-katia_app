@@ -83,7 +83,13 @@ export function createTrainerRoutes(
   );
 
   router.get('/students/search', ...asTrainer, (req, res) => studentsController.search(req, res));
+  router.get('/anamneses', ...asTrainer, (req, res) => studentsController.listAnamneses(req, res));
   router.get('/students', ...asTrainer, (req, res) => studentsController.list(req, res));
+  router.get(
+    '/students/:studentId/anamnesis',
+    ...asTrainer,
+    (req, res) => studentsController.getStudentAnamnesis(req, res)
+  );
   router.delete(
     '/students/:studentId/anamnesis',
     ...asTrainer,

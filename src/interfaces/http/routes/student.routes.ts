@@ -14,6 +14,7 @@ export function createStudentRoutes(
   const router = Router();
   const asStudent: RequestHandler[] = [requireAuth, requireStudent];
 
+  router.get('/anamnesis', ...asStudent, (req, res) => anamnesisController.get(req, res));
   router.post('/anamnesis', ...asStudent, (req, res) => anamnesisController.create(req, res));
   router.patch('/anamnesis', ...asStudent, (req, res) => anamnesisController.patch(req, res));
 
