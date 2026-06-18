@@ -45,6 +45,16 @@ import { CreateMyAnamnesisUseCase } from './application/use-cases/student/create
 import { UpdateMyAnamnesisUseCase } from './application/use-cases/student/update-my-anamnesis.use-case';
 import { GetMyAnamnesisUseCase } from './application/use-cases/student/get-my-anamnesis.use-case';
 import { StudentAnamnesisController } from './interfaces/http/controllers/student-anamnesis.controller';
+import { SequelizeAnamnesisExclusiveRepository } from './infrastructure/database/anamnesis-exclusive.repository';
+import { CreateMyAnamnesisExclusiveUseCase } from './application/use-cases/anamnesis-exclusive/create-my-anamnesis-exclusive.use-case';
+import { GetAnamnesisExclusiveByStudentIdUseCase } from './application/use-cases/anamnesis-exclusive/get-anamnesis-exclusive-by-id.use-case';
+import { GetAnamnesisExclusiveCompletionUseCase } from './application/use-cases/anamnesis-exclusive/get-anamnesis-exclusive-completion.use-case';
+import { UploadAnamnesisExclusiveFilesUseCase } from './application/use-cases/anamnesis-exclusive/upload-anamnesis-exclusive-files.use-case';
+import { AnamnesisExclusiveController } from './interfaces/http/controllers/anamnesis-exclusive.controller';
+import { createAnamnesisExclusiveRoutes } from './interfaces/http/routes/anamnesis-exclusive.routes';
+import { createAnamnesisExclusiveUploadMiddleware } from './interfaces/http/middleware/anamnesis-exclusive-upload.middleware';
+import type { IObjectStorage } from './application/ports/object-storage.port';
+import { S3ObjectStorageAdapter } from './infrastructure/storage/s3-object-storage.adapter';
 import { SequelizeStudentPhysicalsRepository } from './infrastructure/database/student-physicals.repository';
 import { SequelizeStudentEvolutionsRepository } from './infrastructure/database/student-evolutions.repository';
 import { ListMyPhysicalsUseCase } from './application/use-cases/student/list-my-physicals.use-case';
@@ -516,6 +526,27 @@ const studentAnamnesisController = new StudentAnamnesisController(
   new UpdateMyAnamnesisUseCase(studentAnamnesisRepository),
   new GetMyAnamnesisUseCase(studentAnamnesisRepository)
 );
+const anamnesisExclusiveRepository = new SequelizeAnamnesisExclusiveRepository({
+  AnamnesisExclusive: models.AnamnesisExclusive,
+  Student: models.Student,
+});
+const objectStorage = createObjectStorage();
+const uploadAnamnesisExclusiveFilesUseCase = new UploadAnamnesisExclusiveFilesUseCase(objectStorage);
+const anamnesisExclusiveUploadMiddleware = createAnamnesisExclusiveUploadMiddleware();
+const anamnesisExclusiveController = new AnamnesisExclusiveController(
+  new CreateMyAnamnesisExclusiveUseCase(anamnesisExclusiveRepository, studentPhysicalsRepository),
+  uploadAnamnesisExclusiveFilesUseCase,
+  new GetAnamnesisExclusiveByStudentIdUseCase(anamnesisExclusiveRepository),
+  new GetAnamnesisExclusiveCompletionUseCase(anamnesisExclusiveRepository)
+);
+app.use(
+  '/anamnesis-exclusive',
+  createAnamnesisExclusiveRoutes(
+    anamnesisExclusiveController,
+    requireAuth,
+    requireStudentOrTrainer
+  )
+);
 const studentPhysicalsController = new StudentPhysicalsController(
   new ListMyPhysicalsUseCase(studentPhysicalsRepository),
   new GetMyPhysicalUseCase(studentPhysicalsRepository),
@@ -532,10 +563,12 @@ app.use(
   '/student',
   createStudentRoutes(
     studentAnamnesisController,
+    anamnesisExclusiveController,
     studentPhysicalsController,
     studentEvolutionsController,
     requireAuth,
-    requireStudent
+    requireStudent,
+    anamnesisExclusiveUploadMiddleware
   )
 );
 
@@ -641,6 +674,15 @@ attachConversationWebSocket({
   appendTurn: appendConversationTurnUseCase,
   hub: conversationRealtimeHub,
 });
+
+function createObjectStorage(): IObjectStorage | null {
+  const bucket = process.env.S3_BUCKET?.trim();
+  if (!bucket) return null;
+  const region =
+    process.env.S3_REGION?.trim() || process.env.AWS_REGION?.trim() || 'sa-east-1';
+  const publicBaseUrl = process.env.S3_PUBLIC_BASE_URL?.trim();
+  return new S3ObjectStorageAdapter({ bucket, region, publicBaseUrl });
+}
 
 server.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);

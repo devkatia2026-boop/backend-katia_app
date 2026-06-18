@@ -2,6 +2,7 @@ import type { Sequelize } from 'sequelize';
 import { initTrainer, Trainer } from './trainer.model';
 import { initStudent, Student } from './student.model';
 import { initAnamnesis, Anamnesis } from './anamnesis.model';
+import { initAnamnesisExclusive, AnamnesisExclusive } from './anamnesis-exclusive.model';
 import { initPhysical, Physical } from './physical.model';
 import { initConversation, Conversation } from './conversation.model';
 import { initPost, Post } from './post.model';
@@ -27,6 +28,7 @@ export type DatabaseModels = {
   Trainer: typeof Trainer;
   Student: typeof Student;
   Anamnesis: typeof Anamnesis;
+  AnamnesisExclusive: typeof AnamnesisExclusive;
   Physical: typeof Physical;
   Conversation: typeof Conversation;
   Post: typeof Post;
@@ -54,6 +56,7 @@ function associate(models: DatabaseModels): void {
     Trainer,
     Student,
     Anamnesis,
+    AnamnesisExclusive,
     Physical,
     Conversation,
     Post,
@@ -81,6 +84,9 @@ function associate(models: DatabaseModels): void {
 
   Student.hasMany(Anamnesis, { foreignKey: 'student_id', as: 'anamneses' });
   Anamnesis.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
+
+  Student.hasMany(AnamnesisExclusive, { foreignKey: 'student_id', as: 'anamnesis_exclusives' });
+  AnamnesisExclusive.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
 
   Student.hasMany(Physical, { foreignKey: 'student_id', as: 'physicals' });
   Physical.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
@@ -178,6 +184,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const TrainerModel = initTrainer(sequelize);
   const StudentModel = initStudent(sequelize);
   const AnamnesisModel = initAnamnesis(sequelize);
+  const AnamnesisExclusiveModel = initAnamnesisExclusive(sequelize);
   const PhysicalModel = initPhysical(sequelize);
   const ConversationModel = initConversation(sequelize);
   const PostModel = initPost(sequelize);
@@ -203,6 +210,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     Trainer: TrainerModel,
     Student: StudentModel,
     Anamnesis: AnamnesisModel,
+    AnamnesisExclusive: AnamnesisExclusiveModel,
     Physical: PhysicalModel,
     Conversation: ConversationModel,
     Post: PostModel,
@@ -234,6 +242,7 @@ export {
   Trainer,
   Student,
   Anamnesis,
+  AnamnesisExclusive,
   Physical,
   Conversation,
   Post,

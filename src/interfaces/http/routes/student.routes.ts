@@ -1,18 +1,26 @@
 import type { RequestHandler } from 'express';
 import { Router } from 'express';
 import type { StudentAnamnesisController } from '../controllers/student-anamnesis.controller';
+import type { AnamnesisExclusiveController } from '../controllers/anamnesis-exclusive.controller';
 import type { StudentPhysicalsController } from '../controllers/student-physicals.controller';
 import type { StudentEvolutionsController } from '../controllers/student-evolutions.controller';
+import { createAnamnesisExclusiveUploadMiddleware } from '../middleware/anamnesis-exclusive-upload.middleware';
 
 export function createStudentRoutes(
   anamnesisController: StudentAnamnesisController,
+  anamnesisExclusiveController: AnamnesisExclusiveController,
   physicalsController: StudentPhysicalsController,
   evolutionsController: StudentEvolutionsController,
   requireAuth: RequestHandler,
-  requireStudent: RequestHandler
+  requireStudent: RequestHandler,
+  anamnesisExclusiveUpload: RequestHandler
 ): Router {
   const router = Router();
   const asStudent: RequestHandler[] = [requireAuth, requireStudent];
+
+  router.post('/anamnesis-exclusive', ...asStudent, anamnesisExclusiveUpload, (req, res) =>
+    anamnesisExclusiveController.create(req, res)
+  );
 
   router.get('/anamnesis', ...asStudent, (req, res) => anamnesisController.get(req, res));
   router.post('/anamnesis', ...asStudent, (req, res) => anamnesisController.create(req, res));
