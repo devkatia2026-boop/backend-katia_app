@@ -55,6 +55,7 @@ export class UpdateMyAnamnesisUseCase {
     if ('place_training' in body) out.place_training = nullableTrimmedString(body.place_training, 'place_training');
     if ('days_for_week' in body) out.days_for_week = nullableTrimmedString(body.days_for_week, 'days_for_week');
     if ('level_experience' in body) out.level_experience = nullableTrimmedString(body.level_experience, 'level_experience');
+    if ('bother' in body) out.bother = nullableTrimmedString(body.bother, 'bother');
     return out;
   }
 }

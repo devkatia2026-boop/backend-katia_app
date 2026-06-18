@@ -13,6 +13,7 @@ type AnamnesisRow = {
   place_training: string | null;
   days_for_week: string | null;
   level_experience: string | null;
+  bother: string | null;
   created_at: Date;
 };
 
@@ -49,7 +50,7 @@ export class SequelizeStudentAnamnesisRepository implements IStudentAnamnesisRep
     const rows = await this.models.Anamnesis.sequelize!.query<AnamnesisRow>(
       `SELECT DISTINCT ON (a.student_id)
          a.id, a.student_id, a.main_objective, a.place_training,
-         a.days_for_week, a.level_experience, a.created_at
+         a.days_for_week, a.level_experience, a.bother, a.created_at
        FROM anamneses a
        INNER JOIN students s ON s.id = a.student_id
        WHERE s.trainer_id = :trainerId

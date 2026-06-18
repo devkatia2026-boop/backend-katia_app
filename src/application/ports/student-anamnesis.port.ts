@@ -5,6 +5,7 @@ export type AnamnesisDTO = {
   place_training: string | null;
   days_for_week: string | null;
   level_experience: string | null;
+  bother: string | null;
   created_at: Date;
 };
 
@@ -13,6 +14,7 @@ export type AnamnesisUpsertValues = Partial<{
   place_training: string | null;
   days_for_week: string | null;
   level_experience: string | null;
+  bother: string | null;
 }>;
 
 export interface IStudentAnamnesisRepository {

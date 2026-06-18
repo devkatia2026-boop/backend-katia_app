@@ -7,6 +7,7 @@ export class Anamnesis extends Model {
   declare place_training: string | null;
   declare days_for_week: string | null;
   declare level_experience: string | null;
+  declare bother: string | null;
   declare readonly created_at: Date;
 }
 
@@ -26,6 +27,7 @@ export function initAnamnesis(sequelize: Sequelize): typeof Anamnesis {
       place_training: DataTypes.STRING,
       days_for_week: DataTypes.STRING,
       level_experience: DataTypes.STRING,
+      bother: DataTypes.STRING,
     },
     {
       sequelize,
