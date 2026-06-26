@@ -4,17 +4,20 @@ export type TrainingDTO = {
   id: number;
   lyric: string | null;
   description: string | null;
+  time: number;
   created_at: Date;
 };
 
 export type CreateTrainingInput = {
   lyric: string | null;
   description: string | null;
+  time: number;
 };
 
 export type PatchTrainingInput = Partial<{
   lyric: string | null;
   description: string | null;
+  time: number;
 }>;
 
 export interface ITrainingsRepository {

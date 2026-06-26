@@ -4,7 +4,7 @@ import type { ExerciseDTO } from './exercises.port';
 
 export type ExerciseToTrainingTraining = Pick<
   TrainingDTO,
-  'id' | 'lyric' | 'description' | 'created_at'
+  'id' | 'lyric' | 'description' | 'time' | 'created_at'
 >;
 
 export type ExerciseToTrainingExercise = Pick<

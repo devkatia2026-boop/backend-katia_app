@@ -44,6 +44,7 @@ import { SequelizeStudentAnamnesisRepository } from './infrastructure/database/s
 import { CreateMyAnamnesisUseCase } from './application/use-cases/student/create-my-anamnesis.use-case';
 import { UpdateMyAnamnesisUseCase } from './application/use-cases/student/update-my-anamnesis.use-case';
 import { GetMyAnamnesisUseCase } from './application/use-cases/student/get-my-anamnesis.use-case';
+import { ListMyAnamnesisHistoryUseCase } from './application/use-cases/student/list-my-anamnesis-history.use-case';
 import { StudentAnamnesisController } from './interfaces/http/controllers/student-anamnesis.controller';
 import { SequelizeAnamnesisExclusiveRepository } from './infrastructure/database/anamnesis-exclusive.repository';
 import { CreateMyAnamnesisExclusiveUseCase } from './application/use-cases/anamnesis-exclusive/create-my-anamnesis-exclusive.use-case';
@@ -364,9 +365,7 @@ app.use(
 const setsToStudentsRepository = new SequelizeSetsToStudentsRepository({
   SetsToStudents: models.SetsToStudents,
   Student: models.Student,
-  SetsToTrainings: models.SetsToTrainings,
   Set: models.Set,
-  Training: models.Training,
 });
 const setsToStudentsController = new SetsToStudentsController(
   new ListSetsToStudentsUseCase(setsToStudentsRepository),
@@ -524,7 +523,8 @@ const requireStudent = createRequireStudent((sub) =>
 const studentAnamnesisController = new StudentAnamnesisController(
   new CreateMyAnamnesisUseCase(studentAnamnesisRepository),
   new UpdateMyAnamnesisUseCase(studentAnamnesisRepository),
-  new GetMyAnamnesisUseCase(studentAnamnesisRepository)
+  new GetMyAnamnesisUseCase(studentAnamnesisRepository),
+  new ListMyAnamnesisHistoryUseCase(studentAnamnesisRepository)
 );
 const anamnesisExclusiveRepository = new SequelizeAnamnesisExclusiveRepository({
   AnamnesisExclusive: models.AnamnesisExclusive,

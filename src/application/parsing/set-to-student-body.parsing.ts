@@ -68,8 +68,8 @@ export function parseSetToStudentCreateBody(body: unknown): CreateSetToStudentIn
     err.name = VALIDATION;
     throw err;
   }
-  if (!('student_id' in body) || !('setstotrainings_id' in body)) {
-    const err = new Error('Campos "student_id" e "setstotrainings_id" são obrigatórios.');
+  if (!('student_id' in body) || !('sets_id' in body)) {
+    const err = new Error('Campos "student_id" e "sets_id" são obrigatórios.');
     err.name = VALIDATION;
     throw err;
   }
@@ -77,7 +77,7 @@ export function parseSetToStudentCreateBody(body: unknown): CreateSetToStudentIn
   const statusRaw = 'status' in body ? body.status : undefined;
   return {
     student_id: expectUuid(body.student_id, 'student_id'),
-    setstotrainings_id: expectPositiveInt(body.setstotrainings_id, 'setstotrainings_id'),
+    sets_id: expectPositiveInt(body.sets_id, 'sets_id'),
     validity:
       validityRaw === undefined ? null : expectOptionalNullableTrimmedString(validityRaw, 'validity') ?? null,
     status: statusRaw === undefined ? null : expectOptionalBoolOrNull(statusRaw, 'status') ?? null,
@@ -96,8 +96,8 @@ export function parseSetToStudentPatchBody(body: unknown): PatchSetToStudentInpu
     patch.student_id = expectUuid(body.student_id, 'student_id');
     n++;
   }
-  if ('setstotrainings_id' in body) {
-    patch.setstotrainings_id = expectPositiveInt(body.setstotrainings_id, 'setstotrainings_id');
+  if ('sets_id' in body) {
+    patch.sets_id = expectPositiveInt(body.sets_id, 'sets_id');
     n++;
   }
   if ('validity' in body) {
@@ -121,7 +121,7 @@ export function parseOptionalUuid(value: unknown, field: string): string | undef
   return expectUuid(value, field);
 }
 
-export function parseOptionalSetstotrainingsId(value: unknown, field: string): number | undefined {
+export function parseOptionalSetsId(value: unknown, field: string): number | undefined {
   if (value === undefined || value === null || value === '') return undefined;
   return expectPositiveInt(value, field);
 }

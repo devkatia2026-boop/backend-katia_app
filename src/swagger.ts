@@ -50,6 +50,16 @@ export const swaggerDocument = {
           created_at: { type: 'string', format: 'date-time' },
         },
       },
+      Training: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer', example: 1 },
+          lyric: { type: 'string', nullable: true },
+          description: { type: 'string', nullable: true },
+          time: { type: 'integer', example: 45, description: 'Tempo (minutos). Padrão 45 na criação.' },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
       AnamnesisExclusive: {
         type: 'object',
         description: 'Registro em `anamnesisexclusive` (many-to-one com `students`). Campos com várias fotos retornam array de URLs.',
@@ -562,9 +572,9 @@ export const swaggerDocument = {
         },
       },
       post: {
-        summary: 'Criar anamnese da aluna',
+        summary: 'Criar versão da anamnese da aluna',
         description:
-          'Cria a anamnese para a aluna autenticada. Retorna 409 se já existir uma anamnese cadastrada para a aluna.',
+          'Cria uma nova versão da anamnese para a aluna autenticada, mesclando campos informados com a última versão existente. Cada envio gera um snapshot no histórico.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -585,11 +595,17 @@ export const swaggerDocument = {
           },
         },
         responses: {
-          '201': { description: 'Anamnese criada' },
+          '201': {
+            description: 'Anamnese criada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Anamnesis' },
+              },
+            },
+          },
           '400': { description: 'Corpo inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não é aluna' },
-          '409': { description: 'Anamnese já existe' },
         },
       },
       patch: {
@@ -621,6 +637,29 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não é aluna' },
           '404': { description: 'Anamnese não encontrada' },
+        },
+      },
+    },
+    '/student/anamnesis/history': {
+      get: {
+        summary: 'Histórico de divisões da aluna',
+        description:
+          'Lista snapshots da anamnese com foco e frequência definidos (`bother` e `days_for_week`), ordenados da versão mais recente para a mais antiga.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Histórico encontrado',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Anamnesis' },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna' },
         },
       },
     },
@@ -1608,6 +1647,7 @@ export const swaggerDocument = {
                                   id: { type: 'integer' },
                                   lyric: { type: 'string', nullable: true },
                                   description: { type: 'string', nullable: true },
+                                  time: { type: 'integer', example: 45 },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -1640,6 +1680,7 @@ export const swaggerDocument = {
                               id: { type: 'integer' },
                               lyric: { type: 'string', nullable: true },
                               description: { type: 'string', nullable: true },
+                              time: { type: 'integer', example: 45 },
                               created_at: { type: 'string', format: 'date-time' },
                             },
                           },
@@ -1773,6 +1814,11 @@ export const swaggerDocument = {
                 properties: {
                   lyric: { type: 'string', nullable: true },
                   description: { type: 'string', nullable: true },
+                  time: {
+                    type: 'integer',
+                    example: 45,
+                    description: 'Opcional; padrão 45 se omitido.',
+                  },
                 },
                 description: 'Ao menos um dos dois com texto após trim.',
               },
@@ -1780,7 +1826,14 @@ export const swaggerDocument = {
           },
         },
         responses: {
-          '201': { description: 'Criado' },
+          '201': {
+            description: 'Criado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Training' },
+              },
+            },
+          },
           '400': { description: 'Corpo inválido (informe lyric ou description)' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
@@ -1795,7 +1848,14 @@ export const swaggerDocument = {
           { name: 'trainingId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
         ],
         responses: {
-          '200': { description: 'Treino' },
+          '200': {
+            description: 'Treino',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Training' },
+              },
+            },
+          },
           '400': { description: 'ID inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
@@ -1818,13 +1878,21 @@ export const swaggerDocument = {
                 properties: {
                   lyric: { type: 'string', nullable: true },
                   description: { type: 'string', nullable: true },
+                  time: { type: 'integer' },
                 },
               },
             },
           },
         },
         responses: {
-          '200': { description: 'Atualizado' },
+          '200': {
+            description: 'Atualizado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Training' },
+              },
+            },
+          },
           '400': { description: 'Corpo inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
@@ -2245,6 +2313,7 @@ export const swaggerDocument = {
                                   id: { type: 'integer' },
                                   lyric: { type: 'string', nullable: true },
                                   description: { type: 'string', nullable: true },
+                                  time: { type: 'integer', example: 45 },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -2283,6 +2352,7 @@ export const swaggerDocument = {
                               id: { type: 'integer' },
                               lyric: { type: 'string', nullable: true },
                               description: { type: 'string', nullable: true },
+                              time: { type: 'integer', example: 45 },
                               created_at: { type: 'string', format: 'date-time' },
                             },
                           },
@@ -2395,11 +2465,11 @@ export const swaggerDocument = {
     },
     '/sets-to-students': {
       get: {
-        summary: 'Listar vínculos aluna ↔ set/treino (setstotrainings)',
+        summary: 'Listar vínculos aluna ↔ set',
         description:
-          'Paginado, mais recentes primeiro. **Treinadora:** pode listar sem filtro ou usar `studentId` e/ou `setstotrainingsId`. ' +
-          'Apenas `studentId`: linha `setstostudents` (id, validity, status, …) + `sets_to_training` com `set` e `training`. Apenas `setstotrainingsId`: itens são dados resumidos das alunas. ' +
-          'Sem filtro ou ambos: vínculo completo com `student` e `sets_to_training` aninhados. **Aluna:** deve usar exatamente um filtro (`studentId` = próprio id) ou (`setstotrainingsId` de vínculo em que participa); sem filtro retorna 403.',
+          'Paginado, mais recentes primeiro. **Treinadora:** pode listar sem filtro ou usar `studentId` e/ou `setsId`. ' +
+          'Apenas `studentId`: linha `setstostudents` (id, validity, status, …) + `set` aninhado. Apenas `setsId`: itens são dados resumidos das alunas. ' +
+          'Sem filtro ou ambos: vínculo completo com `student` e `set` aninhados. **Aluna:** deve usar exatamente um filtro (`studentId` = próprio id) ou (`setsId` de vínculo em que participa); sem filtro retorna 403.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -2409,7 +2479,7 @@ export const swaggerDocument = {
             schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
           },
           { name: 'studentId', in: 'query', schema: { type: 'string', format: 'uuid' } },
-          { name: 'setstotrainingsId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+          { name: 'setsId', in: 'query', schema: { type: 'integer', minimum: 1 } },
         ],
         responses: {
           '200': {
@@ -2430,7 +2500,7 @@ export const swaggerDocument = {
                             properties: {
                               id: { type: 'integer' },
                               student_id: { type: 'string', format: 'uuid' },
-                              setstotrainings_id: { type: 'integer' },
+                              sets_id: { type: 'integer' },
                               validity: { type: 'string', nullable: true },
                               status: { type: 'boolean', nullable: true },
                               created_at: { type: 'string', format: 'date-time' },
@@ -2444,13 +2514,13 @@ export const swaggerDocument = {
                                   email: { type: 'string', format: 'email' },
                                 },
                               },
-                              sets_to_training: {
+                              set: {
                                 type: 'object',
                                 nullable: true,
                                 properties: {
                                   id: { type: 'integer' },
-                                  training_id: { type: 'integer' },
-                                  set_id: { type: 'integer' },
+                                  name: { type: 'string', nullable: true },
+                                  order: { type: 'string', nullable: true },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -2458,50 +2528,29 @@ export const swaggerDocument = {
                           },
                           {
                             type: 'object',
-                            description:
-                              'Por aluna (filtro apenas studentId): vínculo setstostudents + setstotrainings + set + treino.',
+                            description: 'Por aluna (filtro apenas studentId): vínculo setstostudents + set.',
                             properties: {
                               id: { type: 'integer' },
                               student_id: { type: 'string', format: 'uuid' },
-                              setstotrainings_id: { type: 'integer' },
+                              sets_id: { type: 'integer' },
                               validity: { type: 'string', nullable: true },
                               status: { type: 'boolean', nullable: true },
                               created_at: { type: 'string', format: 'date-time' },
-                              sets_to_training: {
+                              set: {
                                 type: 'object',
                                 nullable: true,
                                 properties: {
                                   id: { type: 'integer' },
-                                  training_id: { type: 'integer' },
-                                  set_id: { type: 'integer' },
+                                  name: { type: 'string', nullable: true },
+                                  order: { type: 'string', nullable: true },
                                   created_at: { type: 'string', format: 'date-time' },
-                                  set: {
-                                    type: 'object',
-                                    nullable: true,
-                                    properties: {
-                                      id: { type: 'integer' },
-                                      name: { type: 'string', nullable: true },
-                                      order: { type: 'string', nullable: true },
-                                      created_at: { type: 'string', format: 'date-time' },
-                                    },
-                                  },
-                                  training: {
-                                    type: 'object',
-                                    nullable: true,
-                                    properties: {
-                                      id: { type: 'integer' },
-                                      lyric: { type: 'string', nullable: true },
-                                      description: { type: 'string', nullable: true },
-                                      created_at: { type: 'string', format: 'date-time' },
-                                    },
-                                  },
                                 },
                               },
                             },
                           },
                           {
                             type: 'object',
-                            description: 'Aluna resumida (filtro apenas setstotrainingsId)',
+                            description: 'Aluna resumida (filtro apenas setsId)',
                             properties: {
                               id: { type: 'string', format: 'uuid' },
                               full_name: { type: 'string' },
@@ -2526,7 +2575,7 @@ export const swaggerDocument = {
         },
       },
       post: {
-        summary: 'Criar vínculo aluna ↔ setstotrainings',
+        summary: 'Criar vínculo aluna ↔ set',
         description: 'Somente treinadora; a aluna deve ser sua.',
         security: [{ bearerAuth: [] }],
         requestBody: {
@@ -2535,10 +2584,10 @@ export const swaggerDocument = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['student_id', 'setstotrainings_id'],
+                required: ['student_id', 'sets_id'],
                 properties: {
                   student_id: { type: 'string', format: 'uuid' },
-                  setstotrainings_id: { type: 'integer', minimum: 1 },
+                  sets_id: { type: 'integer', minimum: 1 },
                   validity: { type: 'string', nullable: true },
                   status: { type: 'boolean', nullable: true },
                 },
@@ -2587,7 +2636,7 @@ export const swaggerDocument = {
                 minProperties: 1,
                 properties: {
                   student_id: { type: 'string', format: 'uuid' },
-                  setstotrainings_id: { type: 'integer', minimum: 1 },
+                  sets_id: { type: 'integer', minimum: 1 },
                   validity: { type: 'string', nullable: true },
                   status: { type: 'boolean', nullable: true },
                 },

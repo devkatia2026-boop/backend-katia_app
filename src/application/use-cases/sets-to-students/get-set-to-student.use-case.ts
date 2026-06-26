@@ -11,7 +11,7 @@ export class GetSetToStudentUseCase {
   async execute(id: number, auth: GetSetToStudentAuth): Promise<SetToStudentDTO> {
     const row = await this.repo.findById(id);
     if (!row) {
-      const err = new Error('Vínculo aluna↔set/treino não encontrado.');
+      const err = new Error('Vínculo aluna↔set não encontrado.');
       err.name = NOT_FOUND;
       throw err;
     }

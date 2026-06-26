@@ -22,6 +22,9 @@ export function createStudentRoutes(
     anamnesisExclusiveController.create(req, res)
   );
 
+  router.get('/anamnesis/history', ...asStudent, (req, res) =>
+    anamnesisController.listHistory(req, res)
+  );
   router.get('/anamnesis', ...asStudent, (req, res) => anamnesisController.get(req, res));
   router.post('/anamnesis', ...asStudent, (req, res) => anamnesisController.create(req, res));
   router.patch('/anamnesis', ...asStudent, (req, res) => anamnesisController.patch(req, res));

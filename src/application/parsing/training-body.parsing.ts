@@ -1,6 +1,7 @@
 import type { CreateTrainingInput, PatchTrainingInput } from '../ports/trainings.port';
 
 const VALIDATION = 'ValidationException';
+const DEFAULT_TIME = 45;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -17,7 +18,30 @@ function expectNullableTrimmed(value: unknown, field: string): string | null {
   return t.length === 0 ? null : t;
 }
 
-/** Criação: ao menos `lyric` ou `description` deve ter texto após trim. */
+function expectInteger(value: unknown, field: string): number {
+  if (typeof value === 'number' && Number.isInteger(value)) return value;
+  if (typeof value === 'string') {
+    const t = value.trim();
+    if (t.length === 0) {
+      const err = new Error(`Campo "${field}" deve ser inteiro.`);
+      err.name = VALIDATION;
+      throw err;
+    }
+    const n = Number.parseInt(t, 10);
+    if (Number.isInteger(n)) return n;
+  }
+  const err = new Error(`Campo "${field}" deve ser inteiro.`);
+  err.name = VALIDATION;
+  throw err;
+}
+
+function parseCreateTime(body: Record<string, unknown>): number {
+  if (!('time' in body) || body.time === null || body.time === undefined) {
+    return DEFAULT_TIME;
+  }
+  return expectInteger(body.time, 'time');
+}
+
 export function parseTrainingCreateBody(body: unknown): CreateTrainingInput {
   if (!isPlainObject(body)) {
     const err = new Error('Corpo da requisição deve ser um objeto JSON.');
@@ -35,7 +59,7 @@ export function parseTrainingCreateBody(body: unknown): CreateTrainingInput {
     throw err;
   }
 
-  return { lyric, description };
+  return { lyric, description, time: parseCreateTime(body) };
 }
 
 export function parseTrainingPatchBody(body: unknown): PatchTrainingInput {
@@ -52,6 +76,10 @@ export function parseTrainingPatchBody(body: unknown): PatchTrainingInput {
   }
   if ('description' in body) {
     patch.description = expectNullableTrimmed(body.description, 'description');
+    n++;
+  }
+  if ('time' in body) {
+    patch.time = expectInteger(body.time, 'time');
     n++;
   }
   if (n === 0) {

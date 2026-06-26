@@ -10,26 +10,19 @@ import type {
 } from '../../application/ports/sets-to-students.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = ['id', 'student_id', 'setstotrainings_id', 'validity', 'status', 'created_at'] as const;
+const ATTR = ['id', 'student_id', 'sets_id', 'validity', 'status', 'created_at'] as const;
 const STUDENT_BRIEF = ['id', 'full_name', 'photo_perfil', 'email'] as const;
-const ST_LINK = ['id', 'training_id', 'set_id', 'created_at'] as const;
 const SET_NEST_ATTR = ['id', 'name', 'order', 'created_at'] as const;
-const TRAINING_NEST_ATTR = ['id', 'lyric', 'description', 'created_at'] as const;
 
 function buildWhere(filters: ListSetsToStudentsFilters): Record<string, unknown> {
   const where: Record<string, unknown> = {};
   if (filters.studentId !== undefined) where.student_id = filters.studentId;
-  if (filters.setstotrainingsId !== undefined) where.setstotrainings_id = filters.setstotrainingsId;
+  if (filters.setsId !== undefined) where.sets_id = filters.setsId;
   return where;
 }
 
 export class SequelizeSetsToStudentsRepository implements ISetsToStudentsRepository {
-  constructor(
-    private readonly models: Pick<
-      DatabaseModels,
-      'SetsToStudents' | 'Student' | 'SetsToTrainings' | 'Set' | 'Training'
-    >
-  ) {}
+  constructor(private readonly models: Pick<DatabaseModels, 'SetsToStudents' | 'Student' | 'Set'>) {}
 
   private get includeOpts() {
     return [
@@ -40,9 +33,9 @@ export class SequelizeSetsToStudentsRepository implements ISetsToStudentsReposit
         required: false,
       },
       {
-        model: this.models.SetsToTrainings,
-        as: 'sets_to_training',
-        attributes: [...ST_LINK],
+        model: this.models.Set,
+        as: 'set',
+        attributes: [...SET_NEST_ATTR],
         required: false,
       },
     ];
@@ -74,7 +67,7 @@ export class SequelizeSetsToStudentsRepository implements ISetsToStudentsReposit
     return { items: rows, total, page, pageSize };
   }
 
-  async listSetstotrainingsByStudent(
+  async listSetsByStudent(
     studentId: string,
     page: number,
     pageSize: number
@@ -88,24 +81,10 @@ export class SequelizeSetsToStudentsRepository implements ISetsToStudentsReposit
         where,
         include: [
           {
-            model: this.models.SetsToTrainings,
-            as: 'sets_to_training',
-            attributes: [...ST_LINK],
+            model: this.models.Set,
+            as: 'set',
+            attributes: [...SET_NEST_ATTR],
             required: true,
-            include: [
-              {
-                model: this.models.Set,
-                as: 'set',
-                attributes: [...SET_NEST_ATTR],
-                required: false,
-              },
-              {
-                model: this.models.Training,
-                as: 'training',
-                attributes: [...TRAINING_NEST_ATTR],
-                required: false,
-              },
-            ],
           },
         ],
         order: [
@@ -126,13 +105,13 @@ export class SequelizeSetsToStudentsRepository implements ISetsToStudentsReposit
     };
   }
 
-  async listStudentsBySetstotrainings(
-    setstotrainingsId: number,
+  async listStudentsBySet(
+    setsId: number,
     page: number,
     pageSize: number
   ): Promise<PagedList<SetToStudentStudentBrief>> {
     const offset = (page - 1) * pageSize;
-    const where = { setstotrainings_id: setstotrainingsId };
+    const where = { sets_id: setsId };
     const [total, rows] = await Promise.all([
       this.models.SetsToStudents.count({ where }),
       this.models.SetsToStudents.findAll({
@@ -176,12 +155,9 @@ export class SequelizeSetsToStudentsRepository implements ISetsToStudentsReposit
     return row ? (row as { student_id: string }).student_id : null;
   }
 
-  async studentHasLinkToSetstotrainings(
-    studentId: string,
-    setstotrainingsId: number
-  ): Promise<boolean> {
+  async studentHasLinkToSet(studentId: string, setsId: number): Promise<boolean> {
     const n = await this.models.SetsToStudents.count({
-      where: { student_id: studentId, setstotrainings_id: setstotrainingsId },
+      where: { student_id: studentId, sets_id: setsId },
     });
     return n > 0;
   }
@@ -206,7 +182,7 @@ export class SequelizeSetsToStudentsRepository implements ISetsToStudentsReposit
       where: { id },
     });
     if (affected === 0) {
-      const err = new Error('Vínculo aluna↔set/treino não encontrado.');
+      const err = new Error('Vínculo aluna↔set não encontrado.');
       err.name = 'NotFoundException';
       throw err;
     }

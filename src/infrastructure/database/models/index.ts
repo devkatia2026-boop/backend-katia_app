@@ -113,8 +113,8 @@ function associate(models: DatabaseModels): void {
 
   Student.hasMany(SetsToStudents, { foreignKey: 'student_id', as: 'sets_to_students' });
   SetsToStudents.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
-  SetsToTrainings.hasMany(SetsToStudents, { foreignKey: 'setstotrainings_id', as: 'sets_to_students' });
-  SetsToStudents.belongsTo(SetsToTrainings, { foreignKey: 'setstotrainings_id', as: 'sets_to_training' });
+  Set.hasMany(SetsToStudents, { foreignKey: 'sets_id', as: 'sets_to_students' });
+  SetsToStudents.belongsTo(Set, { foreignKey: 'sets_id', as: 'set' });
 
   // N:N Programs <-> Exercises
   Program.belongsToMany(Exercise, {

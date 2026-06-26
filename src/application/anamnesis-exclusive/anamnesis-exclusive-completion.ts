@@ -4,7 +4,13 @@ import type {
 } from '../ports/anamnesis-exclusive.port';
 import { isMultiLinkField, isMultiLinkFieldFilled } from './anamnesis-exclusive-response.formatter';
 
-export const ANAMNESIS_EXCLUSIVE_DATA_FIELDS = [
+export const ANAMNESIS_EXCLUSIVE_OPTIONAL_FIELDS = [
+  'link_food_planning',
+  'link_current_workout',
+  'link_woman_inspiration',
+] as const;
+
+export const ANAMNESIS_EXCLUSIVE_REQUIRED_FIELDS = [
   'full_name',
   'adress',
   'birth',
@@ -27,15 +33,12 @@ export const ANAMNESIS_EXCLUSIVE_DATA_FIELDS = [
   'have_a_children',
   'objective',
   'nutritional_monitoring',
-  'link_food_planning',
   'biggest_challenge',
   'already_training',
   'weekly_training_quantity',
   'time_training',
   'pain',
-  'link_current_workout',
   'level_trianing',
-  'link_woman_inspiration',
   'reason',
   'size_shirt',
   'size_leggin',
@@ -43,9 +46,14 @@ export const ANAMNESIS_EXCLUSIVE_DATA_FIELDS = [
   'number_shoe',
 ] as const;
 
-type DataField = (typeof ANAMNESIS_EXCLUSIVE_DATA_FIELDS)[number];
+export const ANAMNESIS_EXCLUSIVE_DATA_FIELDS = [
+  ...ANAMNESIS_EXCLUSIVE_REQUIRED_FIELDS,
+  ...ANAMNESIS_EXCLUSIVE_OPTIONAL_FIELDS,
+] as const;
 
-function isFieldFilled(record: AnamnesisExclusiveDTO, field: DataField): boolean {
+type RequiredField = (typeof ANAMNESIS_EXCLUSIVE_REQUIRED_FIELDS)[number];
+
+function isFieldFilled(record: AnamnesisExclusiveDTO, field: RequiredField): boolean {
   const value = record[field];
   if (value === null || value === undefined) return false;
   if (isMultiLinkField(field)) {
@@ -65,10 +73,10 @@ export function evaluateAnamnesisExclusiveCompletion(
     return {
       student_id: studentId,
       complete: false,
-      missing_fields: [...ANAMNESIS_EXCLUSIVE_DATA_FIELDS],
+      missing_fields: [...ANAMNESIS_EXCLUSIVE_REQUIRED_FIELDS],
     };
   }
-  const missing = ANAMNESIS_EXCLUSIVE_DATA_FIELDS.filter((field) => !isFieldFilled(record, field));
+  const missing = ANAMNESIS_EXCLUSIVE_REQUIRED_FIELDS.filter((field) => !isFieldFilled(record, field));
   return {
     student_id: studentId,
     complete: missing.length === 0,

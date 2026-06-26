@@ -49,12 +49,16 @@ export class UploadAnamnesisExclusiveFilesUseCase {
       const urls: string[] = [];
       for (const file of list) {
         const key = this.buildObjectKey(studentId, field, file.originalName);
-        const url = await this.storage.putObject({
-          key,
-          body: file.buffer,
-          contentType: file.mimeType || 'application/octet-stream',
-        });
-        urls.push(url);
+        try {
+          const url = await this.storage.putObject({
+            key,
+            body: file.buffer,
+            contentType: file.mimeType || 'application/octet-stream',
+          });
+          urls.push(url);
+        } catch (uploadErr) {
+          throw this.toStorageError(uploadErr);
+        }
       }
 
       out[field] = config.multiple ? JSON.stringify(urls) : urls[0]!;
@@ -83,6 +87,21 @@ export class UploadAnamnesisExclusiveFilesUseCase {
   private buildObjectKey(studentId: string, field: string, originalName: string): string {
     const ext = path.extname(originalName).slice(0, 32).replace(/[^a-zA-Z0-9.]/g, '');
     return `anamnesis-exclusive/${studentId}/${field}/${randomUUID()}${ext}`;
+  }
+
+  private toStorageError(err: unknown): Error {
+    const aws = err as { name?: string; Code?: string; message?: string };
+    const code = aws.name ?? aws.Code ?? '';
+    if (code === 'AccessDenied') {
+      const storageErr = new Error(
+        'Usuário AWS sem permissão s3:PutObject no bucket configurado (prefixo anamnesis-exclusive/*).'
+      );
+      storageErr.name = STORAGE;
+      return storageErr;
+    }
+    const storageErr = new Error(aws.message ?? 'Falha ao enviar arquivo para o S3.');
+    storageErr.name = STORAGE;
+    return storageErr;
   }
 }
 

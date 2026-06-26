@@ -11,7 +11,7 @@ import type {
 import type { PagedList } from '../../application/ports/social-feed.port';
 
 const ATTR = ['id', 'training_id', 'exercise_id', 'created_at'] as const;
-const TRAINING_ATTR = ['id', 'lyric', 'description', 'created_at'] as const;
+const TRAINING_ATTR = ['id', 'lyric', 'description', 'time', 'created_at'] as const;
 const EXERCISE_ATTR = [
   'id',
   'name',

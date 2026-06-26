@@ -44,13 +44,11 @@ export class AnamnesisExclusiveController {
     try {
       const studentId = req.authUser!.sub;
       let uploadedValues;
-      if (isMultipartRequest(req)) {
-        if (hasUploadedAnamnesisExclusiveFiles(req)) {
-          uploadedValues = await this.uploadFiles.execute(
-            studentId,
-            extractAnamnesisExclusiveUploadedFiles(req)
-          );
-        }
+      if (isMultipartRequest(req) && hasUploadedAnamnesisExclusiveFiles(req)) {
+        uploadedValues = await this.uploadFiles.execute(
+          studentId,
+          extractAnamnesisExclusiveUploadedFiles(req)
+        );
       }
       const created = await this.createMy.execute(studentId, req.body, uploadedValues);
       res.status(201).json(formatAnamnesisExclusiveResponse(created));

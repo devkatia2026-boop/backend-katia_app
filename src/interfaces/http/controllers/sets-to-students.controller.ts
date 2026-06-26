@@ -52,12 +52,12 @@ export class SetsToStudentsController {
         firstQuery(req.query.page),
         firstQuery(req.query.pageSize),
         firstQuery(req.query.studentId),
-        firstQuery(req.query.setstotrainingsId),
+        firstQuery(req.query.setsId),
         authFrom(req)
       );
       res.status(200).json(result);
     } catch (err) {
-      this.handleRead(err, res, 'Erro ao listar vínculos aluna↔set/treino.');
+      this.handleRead(err, res, 'Erro ao listar vínculos aluna↔set.');
     }
   }
 
@@ -67,7 +67,7 @@ export class SetsToStudentsController {
       const row = await this.getLink.execute(id, authFrom(req));
       res.status(200).json(row);
     } catch (err) {
-      this.handleRead(err, res, 'Erro ao obter vínculo aluna↔set/treino.');
+      this.handleRead(err, res, 'Erro ao obter vínculo aluna↔set.');
     }
   }
 
@@ -76,7 +76,7 @@ export class SetsToStudentsController {
       const created = await this.createLink.execute(req.body, req.authUser!.sub);
       res.status(201).json(created);
     } catch (err) {
-      this.handleWrite(err, res, 'Erro ao criar vínculo aluna↔set/treino.');
+      this.handleWrite(err, res, 'Erro ao criar vínculo aluna↔set.');
     }
   }
 
@@ -86,7 +86,7 @@ export class SetsToStudentsController {
       const updated = await this.updateLink.execute(id, req.body, req.authUser!.sub);
       res.status(200).json(updated);
     } catch (err) {
-      this.handleWrite(err, res, 'Erro ao atualizar vínculo aluna↔set/treino.');
+      this.handleWrite(err, res, 'Erro ao atualizar vínculo aluna↔set.');
     }
   }
 
@@ -96,7 +96,7 @@ export class SetsToStudentsController {
       await this.deleteLink.execute(id, req.authUser!.sub);
       res.status(204).end();
     } catch (err) {
-      this.handleWrite(err, res, 'Erro ao excluir vínculo aluna↔set/treino.');
+      this.handleWrite(err, res, 'Erro ao excluir vínculo aluna↔set.');
     }
   }
 
@@ -121,11 +121,11 @@ export class SetsToStudentsController {
     if (err instanceof UniqueConstraintError) {
       res
         .status(409)
-        .json({ message: 'Essa aluna já está vinculada a esse set/treino (setstotrainings).' });
+        .json({ message: 'Essa aluna já está vinculada a esse set.' });
       return;
     }
     if (err instanceof ForeignKeyConstraintError) {
-      res.status(400).json({ message: 'student_id ou setstotrainings_id não existe.' });
+      res.status(400).json({ message: 'student_id ou sets_id não existe.' });
       return;
     }
     const error = err as { name?: string; message?: string };

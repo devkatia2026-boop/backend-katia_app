@@ -1,5 +1,5 @@
 import type { DatabaseModels } from './models';
-import { QueryTypes } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 import type {
   AnamnesisDTO,
   AnamnesisUpsertValues,
@@ -58,6 +58,18 @@ export class SequelizeStudentAnamnesisRepository implements IStudentAnamnesisRep
       { replacements: { trainerId }, type: QueryTypes.SELECT }
     );
     return rows;
+  }
+
+  async listDivisionHistoryByStudentId(studentId: string): Promise<AnamnesisDTO[]> {
+    const rows = await this.models.Anamnesis.findAll({
+      where: {
+        student_id: studentId,
+        bother: { [Op.ne]: null },
+        days_for_week: { [Op.ne]: null },
+      },
+      order: [['id', 'DESC']],
+    });
+    return rows.map((row) => row.toJSON() as AnamnesisDTO);
   }
 
   async createForStudent(studentId: string, values: AnamnesisUpsertValues): Promise<AnamnesisDTO> {

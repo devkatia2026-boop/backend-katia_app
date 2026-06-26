@@ -2,16 +2,17 @@ import type { Request, Response } from 'express';
 import type { CreateMyAnamnesisUseCase } from '../../../application/use-cases/student/create-my-anamnesis.use-case';
 import type { UpdateMyAnamnesisUseCase } from '../../../application/use-cases/student/update-my-anamnesis.use-case';
 import type { GetMyAnamnesisUseCase } from '../../../application/use-cases/student/get-my-anamnesis.use-case';
+import type { ListMyAnamnesisHistoryUseCase } from '../../../application/use-cases/student/list-my-anamnesis-history.use-case';
 
 const VALIDATION = 'ValidationException';
-const ALREADY_EXISTS = 'AnamnesisAlreadyExistsException';
 const NOT_FOUND = 'AnamnesisNotFoundException';
 
 export class StudentAnamnesisController {
   constructor(
     private readonly createMyAnamnesis: CreateMyAnamnesisUseCase,
     private readonly updateMyAnamnesis: UpdateMyAnamnesisUseCase,
-    private readonly getMyAnamnesis: GetMyAnamnesisUseCase
+    private readonly getMyAnamnesis: GetMyAnamnesisUseCase,
+    private readonly listMyAnamnesisHistory: ListMyAnamnesisHistoryUseCase
   ) {}
 
   async get(req: Request, res: Response): Promise<void> {
@@ -40,11 +41,17 @@ export class StudentAnamnesisController {
         res.status(400).json({ message: error.message ?? 'Dados inválidos.' });
         return;
       }
-      if (error.name === ALREADY_EXISTS) {
-        res.status(409).json({ message: error.message ?? 'Anamnese já existe.' });
-        return;
-      }
       res.status(500).json({ message: 'Erro ao criar anamnese.' });
+    }
+  }
+
+  async listHistory(req: Request, res: Response): Promise<void> {
+    try {
+      const studentId = req.authUser!.sub;
+      const rows = await this.listMyAnamnesisHistory.execute(studentId);
+      res.status(200).json(rows);
+    } catch {
+      res.status(500).json({ message: 'Erro ao listar histórico de anamnese.' });
     }
   }
 
