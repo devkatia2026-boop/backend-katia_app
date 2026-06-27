@@ -190,6 +190,11 @@ import { UpdateProgramUseCase } from './application/use-cases/trainer/update-pro
 import { DeleteProgramUseCase } from './application/use-cases/trainer/delete-program.use-case';
 import { ProgramsController } from './interfaces/http/controllers/programs.controller';
 import { createProgramsRoutes } from './interfaces/http/routes/programs.routes';
+import { SequelizeTrainingsToProgramsRepository } from './infrastructure/database/trainings-to-programs.repository';
+import { ListTrainingsToProgramsUseCase } from './application/use-cases/trainings-to-programs/list-trainings-to-programs.use-case';
+import { CreateTrainingToProgramUseCase } from './application/use-cases/trainer/create-training-to-program.use-case';
+import { TrainingsToProgramsController } from './interfaces/http/controllers/trainings-to-programs.controller';
+import { createTrainingsToProgramsRoutes } from './interfaces/http/routes/trainings-to-programs.routes';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -298,12 +303,21 @@ app.use('/posts', createSocialRoutes(socialFeedController, requireAuth, requireS
 const programsRepository = new SequelizeProgramsRepository({
   Program: models.Program,
 });
+const trainingsToProgramsRepository = new SequelizeTrainingsToProgramsRepository({
+  TrainingsToPrograms: models.TrainingsToPrograms,
+  Program: models.Program,
+  Training: models.Training,
+});
+const listTrainingsToProgramsUseCase = new ListTrainingsToProgramsUseCase(
+  trainingsToProgramsRepository
+);
 const programsController = new ProgramsController(
   new ListProgramsUseCase(programsRepository),
   new GetProgramUseCase(programsRepository),
   new CreateProgramUseCase(programsRepository),
   new UpdateProgramUseCase(programsRepository),
-  new DeleteProgramUseCase(programsRepository)
+  new DeleteProgramUseCase(programsRepository),
+  listTrainingsToProgramsUseCase
 );
 
 const trainerStudentsRepository = new SequelizeTrainerStudentsRepository({
@@ -316,6 +330,20 @@ const requireTrainer = createRequireTrainer((sub) =>
 app.use(
   '/programs',
   createProgramsRoutes(programsController, requireAuth, requireStudentOrTrainer, requireTrainer)
+);
+
+const trainingsToProgramsController = new TrainingsToProgramsController(
+  listTrainingsToProgramsUseCase,
+  new CreateTrainingToProgramUseCase(trainingsToProgramsRepository)
+);
+app.use(
+  '/trainings-to-programs',
+  createTrainingsToProgramsRoutes(
+    trainingsToProgramsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer
+  )
 );
 
 const exercisesToProgramsRepository = new SequelizeExercisesToProgramsRepository({

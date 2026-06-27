@@ -4,7 +4,7 @@ import type { TrainingDTO } from './trainings.port';
 
 export type SetToTrainingTraining = Pick<
   TrainingDTO,
-  'id' | 'lyric' | 'description' | 'time' | 'created_at'
+  'id' | 'lyric' | 'description' | 'time' | 'type' | 'created_at'
 >;
 
 export type SetToTrainingSet = Pick<SetDTO, 'id' | 'name' | 'order' | 'created_at'>;

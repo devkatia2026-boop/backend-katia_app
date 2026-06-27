@@ -2,6 +2,8 @@ import type { CreateTrainingInput, PatchTrainingInput } from '../ports/trainings
 
 const VALIDATION = 'ValidationException';
 const DEFAULT_TIME = 45;
+const DEFAULT_TYPE = 'ambos';
+const TRAINING_TYPES = new Set(['casa', 'academia', 'ambos']);
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -42,6 +44,33 @@ function parseCreateTime(body: Record<string, unknown>): number {
   return expectInteger(body.time, 'time');
 }
 
+function expectTrainingType(value: unknown, field: string): string {
+  if (typeof value !== 'string') {
+    const err = new Error(`Campo "${field}" deve ser string.`);
+    err.name = VALIDATION;
+    throw err;
+  }
+  const t = value.trim();
+  if (t.length === 0) {
+    const err = new Error(`Campo "${field}" deve ser "casa", "academia" ou "ambos".`);
+    err.name = VALIDATION;
+    throw err;
+  }
+  if (!TRAINING_TYPES.has(t)) {
+    const err = new Error(`Campo "${field}" deve ser "casa", "academia" ou "ambos".`);
+    err.name = VALIDATION;
+    throw err;
+  }
+  return t;
+}
+
+function parseCreateType(body: Record<string, unknown>): string {
+  if (!('type' in body) || body.type === null || body.type === undefined) {
+    return DEFAULT_TYPE;
+  }
+  return expectTrainingType(body.type, 'type');
+}
+
 export function parseTrainingCreateBody(body: unknown): CreateTrainingInput {
   if (!isPlainObject(body)) {
     const err = new Error('Corpo da requisição deve ser um objeto JSON.');
@@ -59,7 +88,7 @@ export function parseTrainingCreateBody(body: unknown): CreateTrainingInput {
     throw err;
   }
 
-  return { lyric, description, time: parseCreateTime(body) };
+  return { lyric, description, time: parseCreateTime(body), type: parseCreateType(body) };
 }
 
 export function parseTrainingPatchBody(body: unknown): PatchTrainingInput {
@@ -80,6 +109,10 @@ export function parseTrainingPatchBody(body: unknown): PatchTrainingInput {
   }
   if ('time' in body) {
     patch.time = expectInteger(body.time, 'time');
+    n++;
+  }
+  if ('type' in body) {
+    patch.type = expectTrainingType(body.type, 'type');
     n++;
   }
   if (n === 0) {

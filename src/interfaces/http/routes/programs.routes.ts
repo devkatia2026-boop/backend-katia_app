@@ -13,6 +13,9 @@ export function createProgramsRoutes(
   router.get('/', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.list(req, res)
   );
+  router.get('/:programId/trainings', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
+    controller.listTrainings(req, res)
+  );
   router.get('/:programId', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.getById(req, res)
   );

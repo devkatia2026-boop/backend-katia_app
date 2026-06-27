@@ -5,6 +5,8 @@ import type { CreateProgramUseCase } from '../../../application/use-cases/traine
 import type { UpdateProgramUseCase } from '../../../application/use-cases/trainer/update-program.use-case';
 import type { DeleteProgramUseCase } from '../../../application/use-cases/trainer/delete-program.use-case';
 
+import type { ListTrainingsToProgramsUseCase } from '../../../application/use-cases/trainings-to-programs/list-trainings-to-programs.use-case';
+
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
 
@@ -35,7 +37,8 @@ export class ProgramsController {
     private readonly getProgram: GetProgramUseCase,
     private readonly createProgram: CreateProgramUseCase,
     private readonly updateProgram: UpdateProgramUseCase,
-    private readonly deleteProgram: DeleteProgramUseCase
+    private readonly deleteProgram: DeleteProgramUseCase,
+    private readonly listProgramTrainings: ListTrainingsToProgramsUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -54,6 +57,25 @@ export class ProgramsController {
       res.status(200).json(row);
     } catch (err) {
       this.handleRead(err, res);
+    }
+  }
+
+  async listTrainings(req: Request, res: Response): Promise<void> {
+    try {
+      const programId = parseProgramId(firstParam(req.params.programId));
+      const result = await this.listProgramTrainings.executeByProgramId(
+        programId,
+        firstQuery(req.query.page),
+        firstQuery(req.query.pageSize)
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      const error = err as { name?: string; message?: string };
+      if (error.name === VALIDATION) {
+        res.status(400).json({ message: error.message ?? 'Parâmetro inválido.' });
+        return;
+      }
+      res.status(500).json({ message: 'Erro ao listar treinos do programa.' });
     }
   }
 

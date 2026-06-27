@@ -7,7 +7,7 @@ import type {
 } from '../../application/ports/trainings.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = ['id', 'lyric', 'description', 'time', 'created_at'] as const;
+const ATTR = ['id', 'lyric', 'description', 'time', 'type', 'created_at'] as const;
 
 export class SequelizeTrainingsRepository implements ITrainingsRepository {
   constructor(private readonly models: Pick<DatabaseModels, 'Training'>) {}
@@ -43,6 +43,7 @@ export class SequelizeTrainingsRepository implements ITrainingsRepository {
       lyric: input.lyric,
       description: input.description,
       time: input.time,
+      type: input.type,
     });
     return row.get({ plain: true }) as TrainingDTO;
   }

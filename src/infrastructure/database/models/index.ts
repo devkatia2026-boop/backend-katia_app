@@ -18,6 +18,7 @@ import { initExercisesToPrograms, ExercisesToPrograms } from './exercises-to-pro
 import { initExercisesToTrainings, ExercisesToTrainings } from './exercises-to-trainings.model';
 import { initSetsToTrainings, SetsToTrainings } from './sets-to-trainings.model';
 import { initSetsToStudents, SetsToStudents } from './sets-to-students.model';
+import { initTrainingsToPrograms, TrainingsToPrograms } from './trainings-to-programs.model';
 import { initRepsToExercises, RepsToExercises } from './reps-to-exercises.model';
 import { initObsToTrainings, ObsToTrainings } from './obs-to-trainings.model';
 import { initPoint, Point } from './point.model';
@@ -41,6 +42,7 @@ export type DatabaseModels = {
   Set: typeof Set;
   Training: typeof Training;
   ExercisesToPrograms: typeof ExercisesToPrograms;
+  TrainingsToPrograms: typeof TrainingsToPrograms;
   ExercisesToTrainings: typeof ExercisesToTrainings;
   SetsToTrainings: typeof SetsToTrainings;
   SetsToStudents: typeof SetsToStudents;
@@ -69,6 +71,7 @@ function associate(models: DatabaseModels): void {
     Set,
     Training,
     ExercisesToPrograms,
+    TrainingsToPrograms,
     ExercisesToTrainings,
     SetsToTrainings,
     SetsToStudents,
@@ -134,6 +137,23 @@ function associate(models: DatabaseModels): void {
   ExercisesToPrograms.belongsTo(Program, { foreignKey: 'program_id', as: 'program' });
   ExercisesToPrograms.belongsTo(Exercise, { foreignKey: 'exercise_id', as: 'exercise' });
 
+  Program.belongsToMany(Training, {
+    through: TrainingsToPrograms,
+    foreignKey: 'program_id',
+    otherKey: 'training_id',
+    as: 'trainings',
+  });
+  Training.belongsToMany(Program, {
+    through: TrainingsToPrograms,
+    foreignKey: 'training_id',
+    otherKey: 'program_id',
+    as: 'programs',
+  });
+  Program.hasMany(TrainingsToPrograms, { foreignKey: 'program_id', as: 'trainings_to_programs' });
+  Training.hasMany(TrainingsToPrograms, { foreignKey: 'training_id', as: 'trainings_to_programs' });
+  TrainingsToPrograms.belongsTo(Program, { foreignKey: 'program_id', as: 'program' });
+  TrainingsToPrograms.belongsTo(Training, { foreignKey: 'training_id', as: 'training' });
+
   // N:N Trainings <-> Exercises
   Training.belongsToMany(Exercise, {
     through: ExercisesToTrainings,
@@ -197,6 +217,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const SetModel = initSet(sequelize);
   const TrainingModel = initTraining(sequelize);
   const ExercisesToProgramsModel = initExercisesToPrograms(sequelize);
+  const TrainingsToProgramsModel = initTrainingsToPrograms(sequelize);
   const ExercisesToTrainingsModel = initExercisesToTrainings(sequelize);
   const SetsToTrainingsModel = initSetsToTrainings(sequelize);
   const SetsToStudentsModel = initSetsToStudents(sequelize);
@@ -223,6 +244,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     Set: SetModel,
     Training: TrainingModel,
     ExercisesToPrograms: ExercisesToProgramsModel,
+    TrainingsToPrograms: TrainingsToProgramsModel,
     ExercisesToTrainings: ExercisesToTrainingsModel,
     SetsToTrainings: SetsToTrainingsModel,
     SetsToStudents: SetsToStudentsModel,
@@ -255,6 +277,7 @@ export {
   Set,
   Training,
   ExercisesToPrograms,
+  TrainingsToPrograms,
   ExercisesToTrainings,
   SetsToTrainings,
   SetsToStudents,

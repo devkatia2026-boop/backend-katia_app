@@ -57,6 +57,12 @@ export const swaggerDocument = {
           lyric: { type: 'string', nullable: true },
           description: { type: 'string', nullable: true },
           time: { type: 'integer', example: 45, description: 'Tempo (minutos). Padrão 45 na criação.' },
+          type: {
+            type: 'string',
+            example: 'ambos',
+            enum: ['casa', 'academia', 'ambos'],
+            description: 'Padrão "ambos" na criação se omitido.',
+          },
           created_at: { type: 'string', format: 'date-time' },
         },
       },
@@ -1082,6 +1088,58 @@ export const swaggerDocument = {
         },
       },
     },
+    '/programs/{programId}/trainings': {
+      get: {
+        summary: 'Listar treinos de um programa',
+        description:
+          'Retorna os treinos vinculados ao programa, paginado, mais recentes primeiro. Alunas e treinadoras autenticadas.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'programId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista paginada de treinos',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['items', 'total', 'page', 'pageSize'],
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer' },
+                          lyric: { type: 'string', nullable: true },
+                          description: { type: 'string', nullable: true },
+                          time: { type: 'integer', nullable: true },
+                          type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
+                          created_at: { type: 'string', format: 'date-time' },
+                        },
+                      },
+                    },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Não cadastrado como aluna nem treinadora' },
+        },
+      },
+    },
     '/programs/{programId}': {
       get: {
         summary: 'Obter programa por id',
@@ -1648,6 +1706,7 @@ export const swaggerDocument = {
                                   lyric: { type: 'string', nullable: true },
                                   description: { type: 'string', nullable: true },
                                   time: { type: 'integer', example: 45 },
+                                  type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -1681,6 +1740,7 @@ export const swaggerDocument = {
                               lyric: { type: 'string', nullable: true },
                               description: { type: 'string', nullable: true },
                               time: { type: 'integer', example: 45 },
+                              type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
                               created_at: { type: 'string', format: 'date-time' },
                             },
                           },
@@ -1819,6 +1879,12 @@ export const swaggerDocument = {
                     example: 45,
                     description: 'Opcional; padrão 45 se omitido.',
                   },
+                  type: {
+                    type: 'string',
+                    enum: ['casa', 'academia', 'ambos'],
+                    example: 'ambos',
+                    description: 'Opcional; padrão "ambos" se omitido.',
+                  },
                 },
                 description: 'Ao menos um dos dois com texto após trim.',
               },
@@ -1879,6 +1945,7 @@ export const swaggerDocument = {
                   lyric: { type: 'string', nullable: true },
                   description: { type: 'string', nullable: true },
                   time: { type: 'integer' },
+                  type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
                 },
               },
             },
@@ -2064,6 +2131,140 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Não cadastrado como aluna nem treinadora' },
           '404': { description: 'Exercício não encontrado' },
+        },
+      },
+    },
+    '/trainings-to-programs': {
+      get: {
+        summary: 'Listar vínculos treino↔programa',
+        description:
+          'Paginado, mais recentes primeiro. Aluna e treinadora autenticadas. Forma da resposta depende dos filtros:\n' +
+          '- Apenas `programId`: retorna os treinos daquele programa.\n' +
+          '- Apenas `trainingId`: retorna os programas daquele treino.\n' +
+          '- Sem filtro (ou ambos): retorna o vínculo com `program` e `training` aninhados.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+          { name: 'programId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+          { name: 'trainingId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista paginada em items, total, page, pageSize',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['items', 'total', 'page', 'pageSize'],
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        oneOf: [
+                          {
+                            type: 'object',
+                            description: 'Vínculo completo (sem filtro ou ambos os filtros).',
+                            properties: {
+                              id: { type: 'integer' },
+                              program_id: { type: 'integer' },
+                              training_id: { type: 'integer' },
+                              created_at: { type: 'string', format: 'date-time' },
+                              program: {
+                                type: 'object',
+                                nullable: true,
+                                properties: {
+                                  id: { type: 'integer' },
+                                  name: { type: 'string', nullable: true },
+                                  photo: { type: 'string', nullable: true },
+                                  status: { type: 'boolean', nullable: true },
+                                  type: { type: 'string', nullable: true },
+                                  description: { type: 'string', nullable: true },
+                                  level: { type: 'string', nullable: true },
+                                  created_at: { type: 'string', format: 'date-time' },
+                                },
+                              },
+                              training: {
+                                type: 'object',
+                                nullable: true,
+                                properties: {
+                                  id: { type: 'integer' },
+                                  lyric: { type: 'string', nullable: true },
+                                  description: { type: 'string', nullable: true },
+                                  time: { type: 'integer', nullable: true },
+                                  type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
+                                  created_at: { type: 'string', format: 'date-time' },
+                                },
+                              },
+                            },
+                          },
+                          {
+                            type: 'object',
+                            description: 'Treino (quando filtra apenas por programId).',
+                            properties: {
+                              id: { type: 'integer' },
+                              lyric: { type: 'string', nullable: true },
+                              description: { type: 'string', nullable: true },
+                              time: { type: 'integer', nullable: true },
+                              type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
+                              created_at: { type: 'string', format: 'date-time' },
+                            },
+                          },
+                          {
+                            type: 'object',
+                            description: 'Programa (quando filtra apenas por trainingId).',
+                            properties: {
+                              id: { type: 'integer' },
+                              name: { type: 'string', nullable: true },
+                              photo: { type: 'string', nullable: true },
+                              status: { type: 'boolean', nullable: true },
+                              type: { type: 'string', nullable: true },
+                              description: { type: 'string', nullable: true },
+                              level: { type: 'string', nullable: true },
+                              created_at: { type: 'string', format: 'date-time' },
+                            },
+                          },
+                        ],
+                      },
+                    },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Filtro inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Não cadastrado como aluna nem treinadora' },
+        },
+      },
+      post: {
+        summary: 'Criar vínculo treino↔programa',
+        description: 'Somente treinadora autenticada.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['program_id', 'training_id'],
+                properties: {
+                  program_id: { type: 'integer', minimum: 1 },
+                  training_id: { type: 'integer', minimum: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Criado' },
+          '400': { description: 'Corpo inválido ou FK inexistente' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '409': { description: 'Vínculo já existe (program_id, training_id)' },
         },
       },
     },
@@ -2314,6 +2515,7 @@ export const swaggerDocument = {
                                   lyric: { type: 'string', nullable: true },
                                   description: { type: 'string', nullable: true },
                                   time: { type: 'integer', example: 45 },
+                                  type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -2353,6 +2555,7 @@ export const swaggerDocument = {
                               lyric: { type: 'string', nullable: true },
                               description: { type: 'string', nullable: true },
                               time: { type: 'integer', example: 45 },
+                              type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
                               created_at: { type: 'string', format: 'date-time' },
                             },
                           },
