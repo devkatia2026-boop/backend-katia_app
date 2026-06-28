@@ -19,6 +19,7 @@ import { initExercisesToTrainings, ExercisesToTrainings } from './exercises-to-t
 import { initSetsToTrainings, SetsToTrainings } from './sets-to-trainings.model';
 import { initSetsToStudents, SetsToStudents } from './sets-to-students.model';
 import { initTrainingsToPrograms, TrainingsToPrograms } from './trainings-to-programs.model';
+import { initProgramsToStudents, ProgramsToStudents } from './programs-to-students.model';
 import { initRepsToExercises, RepsToExercises } from './reps-to-exercises.model';
 import { initObsToTrainings, ObsToTrainings } from './obs-to-trainings.model';
 import { initPoint, Point } from './point.model';
@@ -43,6 +44,7 @@ export type DatabaseModels = {
   Training: typeof Training;
   ExercisesToPrograms: typeof ExercisesToPrograms;
   TrainingsToPrograms: typeof TrainingsToPrograms;
+  ProgramsToStudents: typeof ProgramsToStudents;
   ExercisesToTrainings: typeof ExercisesToTrainings;
   SetsToTrainings: typeof SetsToTrainings;
   SetsToStudents: typeof SetsToStudents;
@@ -72,6 +74,7 @@ function associate(models: DatabaseModels): void {
     Training,
     ExercisesToPrograms,
     TrainingsToPrograms,
+    ProgramsToStudents,
     ExercisesToTrainings,
     SetsToTrainings,
     SetsToStudents,
@@ -154,6 +157,11 @@ function associate(models: DatabaseModels): void {
   TrainingsToPrograms.belongsTo(Program, { foreignKey: 'program_id', as: 'program' });
   TrainingsToPrograms.belongsTo(Training, { foreignKey: 'training_id', as: 'training' });
 
+  Student.hasMany(ProgramsToStudents, { foreignKey: 'student_id', as: 'programs_to_students' });
+  ProgramsToStudents.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
+  Program.hasMany(ProgramsToStudents, { foreignKey: 'program_id', as: 'programs_to_students' });
+  ProgramsToStudents.belongsTo(Program, { foreignKey: 'program_id', as: 'program' });
+
   // N:N Trainings <-> Exercises
   Training.belongsToMany(Exercise, {
     through: ExercisesToTrainings,
@@ -218,6 +226,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const TrainingModel = initTraining(sequelize);
   const ExercisesToProgramsModel = initExercisesToPrograms(sequelize);
   const TrainingsToProgramsModel = initTrainingsToPrograms(sequelize);
+  const ProgramsToStudentsModel = initProgramsToStudents(sequelize);
   const ExercisesToTrainingsModel = initExercisesToTrainings(sequelize);
   const SetsToTrainingsModel = initSetsToTrainings(sequelize);
   const SetsToStudentsModel = initSetsToStudents(sequelize);
@@ -245,6 +254,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     Training: TrainingModel,
     ExercisesToPrograms: ExercisesToProgramsModel,
     TrainingsToPrograms: TrainingsToProgramsModel,
+    ProgramsToStudents: ProgramsToStudentsModel,
     ExercisesToTrainings: ExercisesToTrainingsModel,
     SetsToTrainings: SetsToTrainingsModel,
     SetsToStudents: SetsToStudentsModel,
@@ -278,6 +288,7 @@ export {
   Training,
   ExercisesToPrograms,
   TrainingsToPrograms,
+  ProgramsToStudents,
   ExercisesToTrainings,
   SetsToTrainings,
   SetsToStudents,

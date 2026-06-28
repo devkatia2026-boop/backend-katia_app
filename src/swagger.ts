@@ -1088,6 +1088,152 @@ export const swaggerDocument = {
         },
       },
     },
+    '/programs-to-students': {
+      get: {
+        summary: 'Listar vínculos aluna ↔ programa',
+        description:
+          'Paginado, mais recentes primeiro. **Treinadora:** `programId` → alunas do programa; `studentId` → programas da aluna; sem filtro ou ambos → vínculo completo. **Aluna:** sem filtro → seus programas; `programId` → alunas do programa; `studentId` → só o próprio UUID.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+          },
+          { name: 'studentId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'programId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista paginada',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['items', 'total', 'page', 'pageSize'],
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        oneOf: [
+                          {
+                            type: 'object',
+                            description: 'Vínculo completo',
+                            properties: {
+                              id: { type: 'integer' },
+                              student_id: { type: 'string', format: 'uuid' },
+                              program_id: { type: 'integer' },
+                              created_at: { type: 'string', format: 'date-time' },
+                              student: {
+                                type: 'object',
+                                nullable: true,
+                                properties: {
+                                  id: { type: 'string', format: 'uuid' },
+                                  full_name: { type: 'string' },
+                                  photo_perfil: { type: 'string', nullable: true },
+                                  email: { type: 'string', format: 'email' },
+                                },
+                              },
+                              program: {
+                                type: 'object',
+                                nullable: true,
+                                properties: {
+                                  id: { type: 'integer' },
+                                  name: { type: 'string', nullable: true },
+                                  photo: { type: 'string', nullable: true },
+                                  status: { type: 'boolean', nullable: true },
+                                  type: { type: 'string', nullable: true },
+                                  description: { type: 'string', nullable: true },
+                                  level: { type: 'string', nullable: true },
+                                  created_at: { type: 'string', format: 'date-time' },
+                                },
+                              },
+                            },
+                          },
+                          {
+                            type: 'object',
+                            description: 'Programa (filtro apenas studentId ou aluna sem filtro)',
+                            properties: {
+                              id: { type: 'integer' },
+                              name: { type: 'string', nullable: true },
+                              photo: { type: 'string', nullable: true },
+                              status: { type: 'boolean', nullable: true },
+                              type: { type: 'string', nullable: true },
+                              description: { type: 'string', nullable: true },
+                              level: { type: 'string', nullable: true },
+                              created_at: { type: 'string', format: 'date-time' },
+                            },
+                          },
+                          {
+                            type: 'object',
+                            description: 'Aluna resumida (filtro apenas programId)',
+                            properties: {
+                              id: { type: 'string', format: 'uuid' },
+                              full_name: { type: 'string' },
+                              photo_perfil: { type: 'string', nullable: true },
+                              email: { type: 'string', format: 'email' },
+                            },
+                          },
+                        ],
+                      },
+                    },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Filtro inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Não cadastrado como aluna nem treinadora, ou acesso negado' },
+        },
+      },
+      post: {
+        summary: 'Aluna entra em um programa',
+        description: 'Somente aluna autenticada. O `student_id` é inferido do token.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['program_id'],
+                properties: {
+                  program_id: { type: 'integer', minimum: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Vínculo criado' },
+          '400': { description: 'Corpo inválido ou program_id inexistente' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas alunas' },
+          '409': { description: 'Aluna já faz parte deste programa' },
+        },
+      },
+      delete: {
+        summary: 'Aluna sai de um programa',
+        description:
+          'Somente aluna autenticada. Remove o vínculo da aluna logada com o `programId` informado.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'programId', in: 'query', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Vínculo removido' },
+          '400': { description: 'programId inválido ou ausente' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas alunas' },
+          '404': { description: 'Aluna não faz parte deste programa' },
+        },
+      },
+    },
     '/programs/{programId}/trainings': {
       get: {
         summary: 'Listar treinos de um programa',
@@ -1123,6 +1269,56 @@ export const swaggerDocument = {
                           time: { type: 'integer', nullable: true },
                           type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
                           created_at: { type: 'string', format: 'date-time' },
+                        },
+                      },
+                    },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Não cadastrado como aluna nem treinadora' },
+        },
+      },
+    },
+    '/programs/{programId}/students': {
+      get: {
+        summary: 'Listar alunas de um programa',
+        description:
+          'Retorna as alunas vinculadas ao programa, paginado, mais recentes primeiro. Alunas e treinadoras autenticadas.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'programId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista paginada de alunas',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['items', 'total', 'page', 'pageSize'],
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', format: 'uuid' },
+                          full_name: { type: 'string' },
+                          photo_perfil: { type: 'string', nullable: true },
+                          email: { type: 'string', format: 'email' },
                         },
                       },
                     },

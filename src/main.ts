@@ -195,6 +195,12 @@ import { ListTrainingsToProgramsUseCase } from './application/use-cases/training
 import { CreateTrainingToProgramUseCase } from './application/use-cases/trainer/create-training-to-program.use-case';
 import { TrainingsToProgramsController } from './interfaces/http/controllers/trainings-to-programs.controller';
 import { createTrainingsToProgramsRoutes } from './interfaces/http/routes/trainings-to-programs.routes';
+import { SequelizeProgramsToStudentsRepository } from './infrastructure/database/programs-to-students.repository';
+import { ListProgramsToStudentsUseCase } from './application/use-cases/programs-to-students/list-programs-to-students.use-case';
+import { CreateProgramToStudentUseCase } from './application/use-cases/student/create-program-to-student.use-case';
+import { LeaveProgramToStudentUseCase } from './application/use-cases/student/leave-program-to-student.use-case';
+import { ProgramsToStudentsController } from './interfaces/http/controllers/programs-to-students.controller';
+import { createProgramsToStudentsRoutes } from './interfaces/http/routes/programs-to-students.routes';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -311,13 +317,22 @@ const trainingsToProgramsRepository = new SequelizeTrainingsToProgramsRepository
 const listTrainingsToProgramsUseCase = new ListTrainingsToProgramsUseCase(
   trainingsToProgramsRepository
 );
+const programsToStudentsRepository = new SequelizeProgramsToStudentsRepository({
+  ProgramsToStudents: models.ProgramsToStudents,
+  Student: models.Student,
+  Program: models.Program,
+});
+const listProgramsToStudentsUseCase = new ListProgramsToStudentsUseCase(
+  programsToStudentsRepository
+);
 const programsController = new ProgramsController(
   new ListProgramsUseCase(programsRepository),
   new GetProgramUseCase(programsRepository),
   new CreateProgramUseCase(programsRepository),
   new UpdateProgramUseCase(programsRepository),
   new DeleteProgramUseCase(programsRepository),
-  listTrainingsToProgramsUseCase
+  listTrainingsToProgramsUseCase,
+  listProgramsToStudentsUseCase
 );
 
 const trainerStudentsRepository = new SequelizeTrainerStudentsRepository({
@@ -547,6 +562,20 @@ app.use(
 
 const requireStudent = createRequireStudent((sub) =>
   models.Student.findByPk(sub).then((row) => row !== null)
+);
+const programsToStudentsController = new ProgramsToStudentsController(
+  listProgramsToStudentsUseCase,
+  new CreateProgramToStudentUseCase(programsToStudentsRepository),
+  new LeaveProgramToStudentUseCase(programsToStudentsRepository)
+);
+app.use(
+  '/programs-to-students',
+  createProgramsToStudentsRoutes(
+    programsToStudentsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireStudent
+  )
 );
 const studentAnamnesisController = new StudentAnamnesisController(
   new CreateMyAnamnesisUseCase(studentAnamnesisRepository),
