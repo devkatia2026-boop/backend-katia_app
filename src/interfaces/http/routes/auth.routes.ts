@@ -10,7 +10,8 @@ import type { MeController } from '../controllers/me.controller';
 export function createAuthRoutes(
   controller: AuthController,
   meController: MeController,
-  requireAuth: RequestHandler
+  requireAuth: RequestHandler,
+  profileImageUpload: RequestHandler
 ): Router {
   const router = Router();
 
@@ -25,7 +26,7 @@ export function createAuthRoutes(
   router.post('/google/resolve', requireAuth, (req, res) => controller.resolveGoogleAuth(req, res));
 
   router.get('/me', requireAuth, (req, res) => meController.getMe(req, res));
-  router.patch('/me', requireAuth, (req, res) => meController.patchMe(req, res));
+  router.patch('/me', requireAuth, profileImageUpload, (req, res) => meController.patchMe(req, res));
 
   return router;
 }

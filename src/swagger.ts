@@ -485,7 +485,7 @@ export const swaggerDocument = {
       patch: {
         summary: 'Atualizar perfil autenticado',
         description:
-          'Atualiza parcialmente o perfil. Para campos de identidade (name/email/phone) o backend sincroniza também com o Cognito via access token; os demais campos permanecem apenas no banco. Envie apenas os campos a alterar. `photo_perfil` é string (URL ou base64) ou null para limpar; treinador e aluna. Campos `birth`, `cpf`, `type_plan`, `height` e `weight` são exclusivos de aluno. O token de push Expo não é retornado no GET /auth/me.',
+          'Atualiza parcialmente o perfil. Para campos de identidade (name/email/phone) o backend sincroniza também com o Cognito via access token; os demais campos permanecem apenas no banco. Envie apenas os campos a alterar. `photo_perfil` pode ser URL, enviada como arquivo em `multipart/form-data` (campo `photo_perfil`, gravado no S3) ou null para limpar. Treinador e aluna. Campos `birth`, `cpf`, `type_plan`, `height` e `weight` são exclusivos de aluno. O token de push Expo não é retornado no GET /auth/me.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -499,7 +499,7 @@ export const swaggerDocument = {
                   photo_perfil: {
                     type: 'string',
                     nullable: true,
-                    description: 'Foto de perfil (URL ou base64); null remove',
+                    description: 'URL da foto no S3; null remove. Ou envie arquivo multipart no campo photo_perfil.',
                   },
                   phone: { type: 'string', nullable: true, description: 'Telefone ou null para limpar' },
                   email: { type: 'string', format: 'email' },
@@ -517,6 +517,24 @@ export const swaggerDocument = {
                   type_plan: { type: 'string', nullable: true, description: 'Apenas student' },
                   height: { type: 'number', nullable: true, description: 'Apenas student' },
                   weight: { type: 'number', nullable: true, description: 'Apenas student' },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  name: { type: 'string' },
+                  photo_perfil: { type: 'string', format: 'binary' },
+                  phone: { type: 'string' },
+                  email: { type: 'string', format: 'email' },
+                  expo_push_token: { type: 'string' },
+                  birth: { type: 'string' },
+                  cpf: { type: 'string' },
+                  type_plan: { type: 'string' },
+                  height: { type: 'string' },
+                  weight: { type: 'string' },
                 },
               },
             },
@@ -554,6 +572,7 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '404': { description: 'Perfil não encontrado' },
           '409': { description: 'Conflito no banco (ex.: e-mail duplicado)' },
+          '503': { description: 'S3 não configurado ao enviar arquivo' },
         },
       },
     },
@@ -871,11 +890,307 @@ export const swaggerDocument = {
         },
       },
     },
+    '/student/training/today': {
+      get: {
+        summary: 'Treino de hoje',
+        description:
+          'Retorna qual treino a aluna autenticada deve fazer hoje, com base nos sets com `status=true` e no campo `order` de cada set.\n\n' +
+          'A semana começa na segunda-feira. Para `order` como `"5,6,7"`: segunda→5, terça→6, quarta→7, quinta→5, sexta→6, sábado→7.\n\n' +
+          'No domingo: se `order` tiver **6 ids ou menos**, retorna `kind: free_choice` com a mensagem *"Hoje é domingo, escolha qualquer treino ou programa"*. ' +
+          'Se tiver **7 ids ou mais**, retorna o **7º** id da ordem.\n\n' +
+          'Data e dia da semana usam o fuso `America/Sao_Paulo`. Pode haver mais de um item se a aluna tiver vários sets ativos.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Treino(s) do dia',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['date', 'day_of_week', 'items'],
+                  properties: {
+                    date: { type: 'string', format: 'date', example: '2026-06-02' },
+                    day_of_week: {
+                      type: 'integer',
+                      minimum: 0,
+                      maximum: 6,
+                      description: '0=domingo … 6=sábado (America/Sao_Paulo)',
+                    },
+                    items: {
+                      type: 'array',
+                      items: {
+                        oneOf: [
+                          {
+                            type: 'object',
+                            required: ['kind', 'message', 'set_to_student_id', 'sets_id', 'set'],
+                            properties: {
+                              kind: { type: 'string', enum: ['free_choice'] },
+                              message: {
+                                type: 'string',
+                                example: 'Hoje é domingo, escolha qualquer treino ou programa',
+                              },
+                              set_to_student_id: { type: 'integer' },
+                              student_id: { type: 'string', format: 'uuid' },
+                              sets_id: { type: 'integer' },
+                              validity: { type: 'string', nullable: true },
+                              status: { type: 'boolean', nullable: true },
+                              created_at: { type: 'string', format: 'date-time' },
+                              set: {
+                                type: 'object',
+                                properties: {
+                                  id: { type: 'integer' },
+                                  name: { type: 'string', nullable: true },
+                                  order: { type: 'string', nullable: true },
+                                  created_at: { type: 'string', format: 'date-time' },
+                                },
+                              },
+                            },
+                          },
+                          {
+                            type: 'object',
+                            required: [
+                              'kind',
+                              'training_id',
+                              'order_index',
+                              'set_to_student_id',
+                              'sets_id',
+                              'set',
+                              'training',
+                            ],
+                            properties: {
+                              kind: { type: 'string', enum: ['training'] },
+                              training_id: { type: 'integer' },
+                              order_index: { type: 'integer', minimum: 0 },
+                              set_to_student_id: { type: 'integer' },
+                              student_id: { type: 'string', format: 'uuid' },
+                              sets_id: { type: 'integer' },
+                              validity: { type: 'string', nullable: true },
+                              status: { type: 'boolean', nullable: true },
+                              created_at: { type: 'string', format: 'date-time' },
+                              set: {
+                                type: 'object',
+                                properties: {
+                                  id: { type: 'integer' },
+                                  name: { type: 'string', nullable: true },
+                                  order: { type: 'string', nullable: true },
+                                  created_at: { type: 'string', format: 'date-time' },
+                                },
+                              },
+                              training: {
+                                type: 'object',
+                                properties: {
+                                  id: { type: 'integer' },
+                                  lyric: { type: 'string', nullable: true },
+                                  description: { type: 'string', nullable: true },
+                                  time: { type: 'integer', example: 45 },
+                                  type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
+                                  created_at: { type: 'string', format: 'date-time' },
+                                },
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Ordem de treinos inválida no set' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna' },
+          '404': { description: 'Nenhum set ativo ou treino não encontrado' },
+        },
+      },
+    },
+    '/student/training/week': {
+      get: {
+        summary: 'Treinos da semana',
+        description:
+          'Retorna a grade semanal de treinos da aluna autenticada, com base nos sets com `status=true` e no campo `order`.\n\n' +
+          'A semana começa na **segunda-feira** (fuso `America/Sao_Paulo`). Para `order` como `"5,6,7"`: segunda→5, terça→6, quarta→7, quinta→5, sexta→6, sábado→7.\n\n' +
+          'Se `order` tiver **6 ids ou menos**, a grade vai de **segunda a sábado**. Se tiver **7 ids ou mais**, inclui também o **domingo** (7º id).\n\n' +
+          'O campo `trained` em cada dia indica se existe registro em `points` naquela data (mesma regra de `/points`).\n\n' +
+          'Totais por set: `total_trainings`, `completed_trainings`, `pending_trainings`. `next_training` é o próximo treino pendente a partir de hoje (inclusive).',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Grade semanal',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['date', 'day_of_week', 'week_start', 'week_end', 'items'],
+                  properties: {
+                    date: { type: 'string', format: 'date' },
+                    day_of_week: { type: 'integer', minimum: 0, maximum: 6 },
+                    week_start: { type: 'string', format: 'date' },
+                    week_end: { type: 'string', format: 'date' },
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        required: [
+                          'set_to_student_id',
+                          'sets_id',
+                          'set',
+                          'week_start',
+                          'week_end',
+                          'week_days',
+                          'next_training',
+                          'total_trainings',
+                          'completed_trainings',
+                          'pending_trainings',
+                        ],
+                        properties: {
+                          set_to_student_id: { type: 'integer' },
+                          student_id: { type: 'string', format: 'uuid' },
+                          sets_id: { type: 'integer' },
+                          validity: { type: 'string', nullable: true },
+                          status: { type: 'boolean', nullable: true },
+                          created_at: { type: 'string', format: 'date-time' },
+                          set: { type: 'object' },
+                          week_start: { type: 'string', format: 'date' },
+                          week_end: { type: 'string', format: 'date' },
+                          week_days: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              required: [
+                                'date',
+                                'day_of_week',
+                                'trained',
+                                'kind',
+                                'training_id',
+                                'order_index',
+                                'training',
+                              ],
+                              properties: {
+                                date: { type: 'string', format: 'date' },
+                                day_of_week: { type: 'integer', minimum: 0, maximum: 6 },
+                                trained: { type: 'boolean' },
+                                kind: { type: 'string', enum: ['training'] },
+                                training_id: { type: 'integer' },
+                                order_index: { type: 'integer', minimum: 0 },
+                                training: { type: 'object' },
+                              },
+                            },
+                          },
+                          next_training: {
+                            nullable: true,
+                            type: 'object',
+                            properties: {
+                              date: { type: 'string', format: 'date' },
+                              day_of_week: { type: 'integer' },
+                              training_id: { type: 'integer' },
+                              order_index: { type: 'integer' },
+                              training: { type: 'object' },
+                            },
+                          },
+                          total_trainings: { type: 'integer', minimum: 0 },
+                          completed_trainings: { type: 'integer', minimum: 0 },
+                          pending_trainings: { type: 'integer', minimum: 0 },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Ordem de treinos inválida no set' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna' },
+          '404': { description: 'Nenhum set ativo ou treino não encontrado' },
+        },
+      },
+    },
+    '/student/training/calendar': {
+      get: {
+        summary: 'Calendário mensal de treinos',
+        description:
+          'Retorna todos os dias do mês informado com base nos registros de `points` da aluna autenticada (fuso `America/Sao_Paulo`).\n\n' +
+          'Cada dia inclui `trained` (se houve treino registrado) e `points` com os registros daquele dia (`time`, `qtt_excercise`, `goal`, …).\n\n' +
+          'Se `month` e/ou `year` forem omitidos, usa o mês/ano atuais no Brasil.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'month', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 12 } },
+          { name: 'year', in: 'query', schema: { type: 'integer', minimum: 2000, maximum: 2100 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Calendário do mês',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: [
+                    'month',
+                    'year',
+                    'month_start',
+                    'month_end',
+                    'total_days',
+                    'training_days',
+                    'total_points',
+                    'days',
+                  ],
+                  properties: {
+                    month: { type: 'integer', minimum: 1, maximum: 12, example: 6 },
+                    year: { type: 'integer', example: 2026 },
+                    month_start: { type: 'string', format: 'date', example: '2026-06-01' },
+                    month_end: { type: 'string', format: 'date', example: '2026-06-30' },
+                    total_days: { type: 'integer', example: 30 },
+                    training_days: {
+                      type: 'integer',
+                      description: 'Dias do mês com pelo menos um registro em points',
+                    },
+                    total_points: {
+                      type: 'integer',
+                      description: 'Total de registros em points no mês',
+                    },
+                    days: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        required: ['date', 'day_of_week', 'trained', 'points'],
+                        properties: {
+                          date: { type: 'string', format: 'date' },
+                          day_of_week: { type: 'integer', minimum: 0, maximum: 6 },
+                          trained: { type: 'boolean' },
+                          points: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer' },
+                                student_id: { type: 'string', format: 'uuid' },
+                                time: { type: 'string', nullable: true },
+                                qtt_excercise: { type: 'integer', nullable: true },
+                                goal: { type: 'integer', nullable: true },
+                                created_at: { type: 'string', format: 'date-time' },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'month ou year inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna' },
+        },
+      },
+    },
     '/student/evolutions': {
       get: {
         summary: 'Listar evoluções (imagens antes/depois)',
         description:
-          'Lista as evoluções da aluna autenticada (`evolutions`): mais recentes primeiro. Imagens são strings (URL ou base64) em `original_photo` e `current_photo`.',
+          'Lista as evoluções da aluna autenticada (`evolutions`): mais recentes primeiro. `original_photo` e `current_photo` são URLs no S3.',
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {
@@ -898,7 +1213,7 @@ export const swaggerDocument = {
       post: {
         summary: 'Registrar evolução (imagens)',
         description:
-          'Cria uma evolução. Envie ao menos uma imagem em `original_photo` ou `current_photo` (string; URL ou dados base64 conforme política do app).',
+          'Cria uma evolução. Envie ao menos uma imagem em `original_photo` ou `current_photo` (URL JSON ou arquivo multipart; arquivos vão para o S3).',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -908,8 +1223,17 @@ export const swaggerDocument = {
                 type: 'object',
                 minProperties: 1,
                 properties: {
-                  original_photo: { type: 'string', nullable: true },
-                  current_photo: { type: 'string', nullable: true },
+                  original_photo: { type: 'string', format: 'uri', nullable: true },
+                  current_photo: { type: 'string', format: 'uri', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  original_photo: { type: 'string', format: 'binary' },
+                  current_photo: { type: 'string', format: 'binary' },
                 },
               },
             },
@@ -920,6 +1244,7 @@ export const swaggerDocument = {
           '400': { description: 'Corpo inválido (nenhuma imagem válida)' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não é aluna' },
+          '503': { description: 'S3 não configurado ao enviar arquivo' },
         },
       },
     },
@@ -941,7 +1266,7 @@ export const swaggerDocument = {
       patch: {
         summary: 'Atualizar evolução',
         description:
-          'PATCH parcial sobre `original_photo` e `current_photo`; envie ao menos um campo.',
+          'PATCH parcial sobre `original_photo` e `current_photo`; envie ao menos um campo (URL ou arquivo multipart → S3).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'evolutionId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
@@ -954,8 +1279,18 @@ export const swaggerDocument = {
                 type: 'object',
                 minProperties: 1,
                 properties: {
-                  original_photo: { type: 'string', nullable: true },
-                  current_photo: { type: 'string', nullable: true },
+                  original_photo: { type: 'string', format: 'uri', nullable: true },
+                  current_photo: { type: 'string', format: 'uri', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  original_photo: { type: 'string', format: 'binary' },
+                  current_photo: { type: 'string', format: 'binary' },
                 },
               },
             },
@@ -967,6 +1302,7 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não é aluna' },
           '404': { description: 'Não encontrada' },
+          '503': { description: 'S3 não configurado ao enviar arquivo' },
         },
       },
     },
@@ -1055,7 +1391,7 @@ export const swaggerDocument = {
       },
       post: {
         summary: 'Criar programa',
-        description: 'Somente treinadora autenticada.',
+        description: 'Somente treinadora autenticada. Campo `photo` aceita URL JSON ou arquivo multipart (S3).',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -1066,7 +1402,7 @@ export const swaggerDocument = {
                 required: ['name'],
                 properties: {
                   name: { type: 'string' },
-                  photo: { type: 'string', nullable: true },
+                  photo: { type: 'string', format: 'uri', nullable: true },
                   status: { type: 'boolean', nullable: true },
                   type: { type: 'string', nullable: true, enum: ['casa', 'academia', 'ambos'] },
                   description: { type: 'string', nullable: true },
@@ -1078,6 +1414,20 @@ export const swaggerDocument = {
                 },
               },
             },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                  name: { type: 'string' },
+                  photo: { type: 'string', format: 'binary' },
+                  status: { type: 'string' },
+                  type: { type: 'string' },
+                  description: { type: 'string' },
+                  level: { type: 'string' },
+                },
+              },
+            },
           },
         },
         responses: {
@@ -1085,6 +1435,7 @@ export const swaggerDocument = {
           '400': { description: 'Corpo inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
+          '503': { description: 'S3 não configurado ao enviar arquivo' },
         },
       },
     },
@@ -1354,7 +1705,7 @@ export const swaggerDocument = {
       },
       patch: {
         summary: 'Atualizar programa',
-        description: 'Somente treinadora. PATCH parcial.',
+        description: 'Somente treinadora. PATCH parcial. Campo `photo` aceita URL ou arquivo multipart (S3).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'programId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
@@ -1368,11 +1719,25 @@ export const swaggerDocument = {
                 minProperties: 1,
                 properties: {
                   name: { type: 'string', nullable: true },
-                  photo: { type: 'string', nullable: true },
+                  photo: { type: 'string', format: 'uri', nullable: true },
                   status: { type: 'boolean', nullable: true },
                   type: { type: 'string', nullable: true },
                   description: { type: 'string', nullable: true },
                   level: { type: 'string', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  name: { type: 'string' },
+                  photo: { type: 'string', format: 'binary' },
+                  status: { type: 'string' },
+                  type: { type: 'string' },
+                  description: { type: 'string' },
+                  level: { type: 'string' },
                 },
               },
             },
@@ -1384,6 +1749,7 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
           '404': { description: 'Programa não encontrado' },
+          '503': { description: 'S3 não configurado ao enviar arquivo' },
         },
       },
       delete: {
@@ -1454,7 +1820,7 @@ export const swaggerDocument = {
       post: {
         summary: 'Criar post',
         description:
-          'Aluna ou treinadora autenticada. Exige ao menos `content` ou `image`. O autor é inferido do token (`author_id`/`author_type`).',
+          'Aluna ou treinadora autenticada. Exige ao menos `content` ou `image`. `image` pode ser URL ou arquivo multipart (S3). O autor é inferido do token.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -1465,7 +1831,16 @@ export const swaggerDocument = {
                 minProperties: 1,
                 properties: {
                   content: { type: 'string', nullable: true },
-                  image: { type: 'string', nullable: true },
+                  image: { type: 'string', format: 'uri', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  content: { type: 'string' },
+                  image: { type: 'string', format: 'binary' },
                 },
               },
             },
@@ -1476,12 +1851,14 @@ export const swaggerDocument = {
           '400': { description: 'Corpo inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não é aluna nem treinadora' },
+          '503': { description: 'S3 não configurado ao enviar arquivo' },
         },
       },
     },
     '/posts/{postId}': {
       patch: {
         summary: 'Editar post (apenas dono)',
+        description: 'PATCH parcial; `image` aceita URL ou arquivo multipart (S3).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'postId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
@@ -1495,7 +1872,17 @@ export const swaggerDocument = {
                 minProperties: 1,
                 properties: {
                   content: { type: 'string', nullable: true },
-                  image: { type: 'string', nullable: true },
+                  image: { type: 'string', format: 'uri', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  content: { type: 'string' },
+                  image: { type: 'string', format: 'binary' },
                 },
               },
             },
@@ -1507,6 +1894,7 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Sem permissão' },
           '404': { description: 'Post não encontrado' },
+          '503': { description: 'S3 não configurado ao enviar arquivo' },
         },
       },
       delete: {
@@ -2330,6 +2718,38 @@ export const swaggerDocument = {
         },
       },
     },
+    '/sets/{setId}': {
+      get: {
+        summary: 'Obter set por id',
+        description: 'Aluna e treinadora autenticadas. Mesma carga útil que `/trainer/sets/{setId}`.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'setId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Set',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'integer' },
+                    name: { type: 'string', nullable: true },
+                    order: { type: 'string', nullable: true },
+                    created_at: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Não cadastrado como aluna nem treinadora' },
+          '404': { description: 'Set não encontrado' },
+        },
+      },
+    },
     '/trainings-to-programs': {
       get: {
         summary: 'Listar vínculos treino↔programa',
@@ -2844,6 +3264,199 @@ export const swaggerDocument = {
           '403': { description: 'Apenas treinadoras' },
           '404': { description: 'Vínculo não encontrado' },
           '409': { description: 'Vínculo (training_id, exercise_id) já existe' },
+        },
+      },
+      delete: {
+        summary: 'Excluir vínculo',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Excluído' },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '404': { description: 'Vínculo não encontrado' },
+        },
+      },
+    },
+    '/sets-to-trainings': {
+      get: {
+        summary: 'Listar vínculos set↔treino',
+        description:
+          'Paginado, mais recentes primeiro. Aluna e treinadora autenticadas. Forma da resposta depende dos filtros:\n' +
+          '- Apenas `trainingId`: retorna os sets daquele treino.\n' +
+          '- Apenas `setId`: retorna os treinos daquele set.\n' +
+          '- Sem filtro (ou ambos): retorna o vínculo com `training` e `set` aninhados.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+          },
+          { name: 'trainingId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+          { name: 'setId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista paginada em items, total, page, pageSize',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['items', 'total', 'page', 'pageSize'],
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        oneOf: [
+                          {
+                            type: 'object',
+                            description: 'Vínculo completo (sem filtro ou ambos os filtros).',
+                            properties: {
+                              id: { type: 'integer' },
+                              training_id: { type: 'integer' },
+                              set_id: { type: 'integer' },
+                              created_at: { type: 'string', format: 'date-time' },
+                              training: {
+                                type: 'object',
+                                nullable: true,
+                                properties: {
+                                  id: { type: 'integer' },
+                                  lyric: { type: 'string', nullable: true },
+                                  description: { type: 'string', nullable: true },
+                                  time: { type: 'integer', example: 45 },
+                                  type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
+                                  created_at: { type: 'string', format: 'date-time' },
+                                },
+                              },
+                              set: {
+                                type: 'object',
+                                nullable: true,
+                                properties: {
+                                  id: { type: 'integer' },
+                                  name: { type: 'string', nullable: true },
+                                  order: { type: 'string', nullable: true },
+                                  created_at: { type: 'string', format: 'date-time' },
+                                },
+                              },
+                            },
+                          },
+                          {
+                            type: 'object',
+                            description: 'Set (quando filtra apenas por trainingId).',
+                            properties: {
+                              id: { type: 'integer' },
+                              name: { type: 'string', nullable: true },
+                              order: { type: 'string', nullable: true },
+                              created_at: { type: 'string', format: 'date-time' },
+                            },
+                          },
+                          {
+                            type: 'object',
+                            description: 'Treino (quando filtra apenas por setId).',
+                            properties: {
+                              id: { type: 'integer' },
+                              lyric: { type: 'string', nullable: true },
+                              description: { type: 'string', nullable: true },
+                              time: { type: 'integer', example: 45 },
+                              type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
+                              created_at: { type: 'string', format: 'date-time' },
+                            },
+                          },
+                        ],
+                      },
+                    },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Filtro inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Não cadastrado como aluna nem treinadora' },
+        },
+      },
+      post: {
+        summary: 'Criar vínculo set↔treino',
+        description: 'Somente treinadora autenticada.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['training_id', 'set_id'],
+                properties: {
+                  training_id: { type: 'integer', minimum: 1 },
+                  set_id: { type: 'integer', minimum: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Criado' },
+          '400': { description: 'Corpo inválido ou FK inexistente' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '409': { description: 'Vínculo já existe (training_id, set_id)' },
+        },
+      },
+    },
+    '/sets-to-trainings/{id}': {
+      get: {
+        summary: 'Obter vínculo por id',
+        description: 'Aluna e treinadora autenticadas.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': { description: 'Vínculo' },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Não cadastrado como aluna nem treinadora' },
+          '404': { description: 'Vínculo não encontrado' },
+        },
+      },
+      patch: {
+        summary: 'Atualizar vínculo',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  training_id: { type: 'integer', minimum: 1 },
+                  set_id: { type: 'integer', minimum: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Atualizado' },
+          '400': { description: 'Corpo inválido ou FK inexistente' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '404': { description: 'Vínculo não encontrado' },
+          '409': { description: 'Vínculo (training_id, set_id) já existe' },
         },
       },
       delete: {

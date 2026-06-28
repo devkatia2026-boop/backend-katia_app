@@ -6,7 +6,8 @@ export function createProgramsRoutes(
   controller: ProgramsController,
   requireAuth: RequestHandler,
   requireStudentOrTrainer: RequestHandler,
-  requireTrainer: RequestHandler
+  requireTrainer: RequestHandler,
+  programImageUpload: RequestHandler
 ): Router {
   const router = Router();
 
@@ -23,10 +24,10 @@ export function createProgramsRoutes(
     controller.getById(req, res)
   );
 
-  router.post('/', [requireAuth, requireTrainer], (req: Request, res: Response) =>
+  router.post('/', [requireAuth, requireTrainer, programImageUpload], (req: Request, res: Response) =>
     controller.create(req, res)
   );
-  router.patch('/:programId', [requireAuth, requireTrainer], (req: Request, res: Response) =>
+  router.patch('/:programId', [requireAuth, requireTrainer, programImageUpload], (req: Request, res: Response) =>
     controller.patch(req, res)
   );
   router.delete('/:programId', [requireAuth, requireTrainer], (req: Request, res: Response) =>

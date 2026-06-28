@@ -3,6 +3,15 @@ import type { ListMyEvolutionsUseCase } from '../../../application/use-cases/stu
 import type { GetMyEvolutionUseCase } from '../../../application/use-cases/student/get-my-evolution.use-case';
 import type { CreateMyEvolutionUseCase } from '../../../application/use-cases/student/create-my-evolution.use-case';
 import type { UpdateMyEvolutionUseCase } from '../../../application/use-cases/student/update-my-evolution.use-case';
+import {
+  OBJECT_STORAGE_EXCEPTION,
+  type UploadImageFilesUseCase,
+} from '../../../application/use-cases/media/upload-image-files.use-case';
+import {
+  EVOLUTION_IMAGE_FIELDS,
+  S3_PREFIX_EVOLUTION,
+} from '../../../application/media/image-upload.config';
+import { mergeImageUploadsIntoBody } from '../helpers/merge-image-uploads';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'EvolutionNotFoundException';
@@ -27,7 +36,8 @@ export class StudentEvolutionsController {
     private readonly listMyEvolutions: ListMyEvolutionsUseCase,
     private readonly getMyEvolution: GetMyEvolutionUseCase,
     private readonly createMyEvolution: CreateMyEvolutionUseCase,
-    private readonly updateMyEvolution: UpdateMyEvolutionUseCase
+    private readonly updateMyEvolution: UpdateMyEvolutionUseCase,
+    private readonly uploadImages: UploadImageFilesUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -63,15 +73,17 @@ export class StudentEvolutionsController {
   async create(req: Request, res: Response): Promise<void> {
     try {
       const studentId = req.authUser!.sub;
-      const created = await this.createMyEvolution.execute(studentId, req.body);
+      const body = await mergeImageUploadsIntoBody(
+        req,
+        this.uploadImages,
+        studentId,
+        S3_PREFIX_EVOLUTION,
+        EVOLUTION_IMAGE_FIELDS
+      );
+      const created = await this.createMyEvolution.execute(studentId, body);
       res.status(201).json(created);
     } catch (err) {
-      const error = err as { name?: string; message?: string };
-      if (error.name === VALIDATION) {
-        res.status(400).json({ message: error.message ?? 'Dados inválidos.' });
-        return;
-      }
-      res.status(500).json({ message: 'Erro ao criar evolução.' });
+      this.handleWrite(err, res, 'Erro ao criar evolução.');
     }
   }
 
@@ -79,19 +91,34 @@ export class StudentEvolutionsController {
     try {
       const studentId = req.authUser!.sub;
       const evolutionId = parseEvolutionId(firstParam(req.params.evolutionId));
-      const updated = await this.updateMyEvolution.execute(studentId, evolutionId, req.body);
+      const body = await mergeImageUploadsIntoBody(
+        req,
+        this.uploadImages,
+        studentId,
+        S3_PREFIX_EVOLUTION,
+        EVOLUTION_IMAGE_FIELDS
+      );
+      const updated = await this.updateMyEvolution.execute(studentId, evolutionId, body);
       res.status(200).json(updated);
     } catch (err) {
-      const error = err as { name?: string; message?: string };
-      if (error.name === VALIDATION) {
-        res.status(400).json({ message: error.message ?? 'Dados inválidos.' });
-        return;
-      }
-      if (error.name === NOT_FOUND) {
-        res.status(404).json({ message: error.message ?? 'Evolução não encontrada.' });
-        return;
-      }
-      res.status(500).json({ message: 'Erro ao atualizar evolução.' });
+      this.handleWrite(err, res, 'Erro ao atualizar evolução.');
     }
+  }
+
+  private handleWrite(err: unknown, res: Response, fallback: string): void {
+    const error = err as { name?: string; message?: string };
+    if (error.name === OBJECT_STORAGE_EXCEPTION) {
+      res.status(503).json({ message: error.message ?? 'Armazenamento indisponível.' });
+      return;
+    }
+    if (error.name === VALIDATION) {
+      res.status(400).json({ message: error.message ?? 'Dados inválidos.' });
+      return;
+    }
+    if (error.name === NOT_FOUND) {
+      res.status(404).json({ message: error.message ?? 'Evolução não encontrada.' });
+      return;
+    }
+    res.status(500).json({ message: fallback });
   }
 }

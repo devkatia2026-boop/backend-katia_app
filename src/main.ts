@@ -51,9 +51,11 @@ import { CreateMyAnamnesisExclusiveUseCase } from './application/use-cases/anamn
 import { GetAnamnesisExclusiveByStudentIdUseCase } from './application/use-cases/anamnesis-exclusive/get-anamnesis-exclusive-by-id.use-case';
 import { GetAnamnesisExclusiveCompletionUseCase } from './application/use-cases/anamnesis-exclusive/get-anamnesis-exclusive-completion.use-case';
 import { UploadAnamnesisExclusiveFilesUseCase } from './application/use-cases/anamnesis-exclusive/upload-anamnesis-exclusive-files.use-case';
+import { UploadImageFilesUseCase } from './application/use-cases/media/upload-image-files.use-case';
 import { AnamnesisExclusiveController } from './interfaces/http/controllers/anamnesis-exclusive.controller';
 import { createAnamnesisExclusiveRoutes } from './interfaces/http/routes/anamnesis-exclusive.routes';
 import { createAnamnesisExclusiveUploadMiddleware } from './interfaces/http/middleware/anamnesis-exclusive-upload.middleware';
+import { createImageUploadMiddleware } from './interfaces/http/middleware/create-image-upload.middleware';
 import type { IObjectStorage } from './application/ports/object-storage.port';
 import { S3ObjectStorageAdapter } from './infrastructure/storage/s3-object-storage.adapter';
 import { SequelizeStudentPhysicalsRepository } from './infrastructure/database/student-physicals.repository';
@@ -97,7 +99,10 @@ import { GetSetToTrainingUseCase } from './application/use-cases/sets-to-trainin
 import { CreateSetToTrainingUseCase } from './application/use-cases/trainer/create-set-to-training.use-case';
 import { UpdateSetToTrainingUseCase } from './application/use-cases/trainer/update-set-to-training.use-case';
 import { DeleteSetToTrainingUseCase } from './application/use-cases/trainer/delete-set-to-training.use-case';
-import { TrainerSetsToTrainingsController } from './interfaces/http/controllers/trainer-sets-to-trainings.controller';
+import { SetsController } from './interfaces/http/controllers/sets.controller';
+import { createSetsRoutes } from './interfaces/http/routes/sets.routes';
+import { SetsToTrainingsController } from './interfaces/http/controllers/sets-to-trainings.controller';
+import { createSetsToTrainingsRoutes } from './interfaces/http/routes/sets-to-trainings.routes';
 import { SequelizeExercisesToProgramsRepository } from './infrastructure/database/exercises-to-programs.repository';
 import { ListExercisesToProgramsUseCase } from './application/use-cases/exercises-to-programs/list-exercises-to-programs.use-case';
 import { GetExerciseToProgramUseCase } from './application/use-cases/exercises-to-programs/get-exercise-to-program.use-case';
@@ -166,6 +171,10 @@ import { ConversationsController } from './interfaces/http/controllers/conversat
 import { createConversationsRoutes } from './interfaces/http/routes/conversations.routes';
 import { StudentPhysicalsController } from './interfaces/http/controllers/student-physicals.controller';
 import { StudentEvolutionsController } from './interfaces/http/controllers/student-evolutions.controller';
+import { StudentTrainingController } from './interfaces/http/controllers/student-training.controller';
+import { GetTodayTrainingUseCase } from './application/use-cases/student/get-today-training.use-case';
+import { GetWeeklyTrainingScheduleUseCase } from './application/use-cases/student/get-weekly-training-schedule.use-case';
+import { GetMonthlyTrainingCalendarUseCase } from './application/use-cases/student/get-monthly-training-calendar.use-case';
 import { createRequireStudentOrTrainer } from './interfaces/http/middleware/create-require-student-or-trainer.middleware';
 import { createSocialRoutes } from './interfaces/http/routes/social.routes';
 import { SequelizeSocialFeedRepository } from './infrastructure/database/social-feed.repository';
@@ -204,6 +213,25 @@ import { createProgramsToStudentsRoutes } from './interfaces/http/routes/program
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
+
+function createObjectStorage(): IObjectStorage | null {
+  const bucket = process.env.S3_BUCKET?.trim();
+  if (!bucket) return null;
+  const region =
+    process.env.S3_REGION?.trim() || process.env.AWS_REGION?.trim() || 'sa-east-1';
+  const publicBaseUrl = process.env.S3_PUBLIC_BASE_URL?.trim();
+  return new S3ObjectStorageAdapter({ bucket, region, publicBaseUrl });
+}
+
+const objectStorage = createObjectStorage();
+const uploadImageFilesUseCase = new UploadImageFilesUseCase(objectStorage);
+const profileImageUploadMiddleware = createImageUploadMiddleware(['photo_perfil']);
+const postImageUploadMiddleware = createImageUploadMiddleware(['image']);
+const programImageUploadMiddleware = createImageUploadMiddleware(['photo']);
+const evolutionImageUploadMiddleware = createImageUploadMiddleware([
+  'original_photo',
+  'current_photo',
+]);
 
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -252,7 +280,8 @@ const userProfileUpdater = new SequelizeUserProfileUpdater({
 const authUserAttributesUpdater = new CognitoUserAttributesUpdater();
 const meController = new MeController(
   new GetMeUseCase(userMeReader),
-  new UpdateMyProfileUseCase(userMeReader, userProfileUpdater, authUserAttributesUpdater)
+  new UpdateMyProfileUseCase(userMeReader, userProfileUpdater, authUserAttributesUpdater),
+  uploadImageFilesUseCase
 );
 const resolveGoogleAuthUseCase = new ResolveGoogleAuthUseCase(
   userMeReader,
@@ -271,7 +300,10 @@ const authController = new AuthController(
   resolveGoogleAuthUseCase
 );
 
-app.use('/auth', createAuthRoutes(authController, meController, requireAuth));
+app.use(
+  '/auth',
+  createAuthRoutes(authController, meController, requireAuth, profileImageUploadMiddleware)
+);
 
 const requireStudentOrTrainer = createRequireStudentOrTrainer(async (sub) => {
   const student = await models.Student.findByPk(sub);
@@ -302,9 +334,18 @@ const socialFeedController = new SocialFeedController(
   new LikePostUseCase(socialFeedRepository, feedNotificationPublisher),
   new UnlikePostUseCase(socialFeedRepository),
   new ListPostCommentsUseCase(socialFeedRepository),
-  new ListPostLikesUseCase(socialFeedRepository)
+  new ListPostLikesUseCase(socialFeedRepository),
+  uploadImageFilesUseCase
 );
-app.use('/posts', createSocialRoutes(socialFeedController, requireAuth, requireStudentOrTrainer));
+app.use(
+  '/posts',
+  createSocialRoutes(
+    socialFeedController,
+    requireAuth,
+    requireStudentOrTrainer,
+    postImageUploadMiddleware
+  )
+);
 
 const programsRepository = new SequelizeProgramsRepository({
   Program: models.Program,
@@ -332,7 +373,8 @@ const programsController = new ProgramsController(
   new UpdateProgramUseCase(programsRepository),
   new DeleteProgramUseCase(programsRepository),
   listTrainingsToProgramsUseCase,
-  listProgramsToStudentsUseCase
+  listProgramsToStudentsUseCase,
+  uploadImageFilesUseCase
 );
 
 const trainerStudentsRepository = new SequelizeTrainerStudentsRepository({
@@ -344,7 +386,13 @@ const requireTrainer = createRequireTrainer((sub) =>
 
 app.use(
   '/programs',
-  createProgramsRoutes(programsController, requireAuth, requireStudentOrTrainer, requireTrainer)
+  createProgramsRoutes(
+    programsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer,
+    programImageUploadMiddleware
+  )
 );
 
 const trainingsToProgramsController = new TrainingsToProgramsController(
@@ -529,12 +577,23 @@ const setsToTrainingsRepository = new SequelizeSetsToTrainingsRepository({
   Training: models.Training,
   Set: models.Set,
 });
-const trainerSetsToTrainingsController = new TrainerSetsToTrainingsController(
+const setsToTrainingsController = new SetsToTrainingsController(
   new ListSetsToTrainingsUseCase(setsToTrainingsRepository),
   new GetSetToTrainingUseCase(setsToTrainingsRepository),
   new CreateSetToTrainingUseCase(setsToTrainingsRepository),
   new UpdateSetToTrainingUseCase(setsToTrainingsRepository),
   new DeleteSetToTrainingUseCase(setsToTrainingsRepository)
+);
+const setsController = new SetsController(new GetSetUseCase(setsRepository));
+app.use('/sets', createSetsRoutes(setsController, requireAuth, requireStudentOrTrainer));
+app.use(
+  '/sets-to-trainings',
+  createSetsToTrainingsRoutes(
+    setsToTrainingsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer
+  )
 );
 const trainerStudentsController = new TrainerStudentsController(
   new ListTrainerStudentsUseCase(trainerStudentsRepository),
@@ -554,7 +613,7 @@ app.use(
     trainerTrainingsController,
     trainerExercisesController,
     trainerSetsController,
-    trainerSetsToTrainingsController,
+    setsToTrainingsController,
     requireAuth,
     requireTrainer
   )
@@ -587,7 +646,6 @@ const anamnesisExclusiveRepository = new SequelizeAnamnesisExclusiveRepository({
   AnamnesisExclusive: models.AnamnesisExclusive,
   Student: models.Student,
 });
-const objectStorage = createObjectStorage();
 const uploadAnamnesisExclusiveFilesUseCase = new UploadAnamnesisExclusiveFilesUseCase(objectStorage);
 const anamnesisExclusiveUploadMiddleware = createAnamnesisExclusiveUploadMiddleware();
 const anamnesisExclusiveController = new AnamnesisExclusiveController(
@@ -614,7 +672,21 @@ const studentEvolutionsController = new StudentEvolutionsController(
   new ListMyEvolutionsUseCase(studentEvolutionsRepository),
   new GetMyEvolutionUseCase(studentEvolutionsRepository),
   new CreateMyEvolutionUseCase(studentEvolutionsRepository),
-  new UpdateMyEvolutionUseCase(studentEvolutionsRepository)
+  new UpdateMyEvolutionUseCase(studentEvolutionsRepository),
+  uploadImageFilesUseCase
+);
+const pointsRepository = new SequelizePointsRepository({
+  Point: models.Point,
+  Student: models.Student,
+});
+const studentTrainingController = new StudentTrainingController(
+  new GetTodayTrainingUseCase(setsToStudentsRepository, trainingsRepository),
+  new GetWeeklyTrainingScheduleUseCase(
+    setsToStudentsRepository,
+    trainingsRepository,
+    pointsRepository
+  ),
+  new GetMonthlyTrainingCalendarUseCase(pointsRepository)
 );
 app.use(
   '/student',
@@ -623,16 +695,14 @@ app.use(
     anamnesisExclusiveController,
     studentPhysicalsController,
     studentEvolutionsController,
+    studentTrainingController,
     requireAuth,
     requireStudent,
-    anamnesisExclusiveUploadMiddleware
+    anamnesisExclusiveUploadMiddleware,
+    evolutionImageUploadMiddleware
   )
 );
 
-const pointsRepository = new SequelizePointsRepository({
-  Point: models.Point,
-  Student: models.Student,
-});
 const pointCreatedNotifier = new SequelizePointCreatedNotifier({
   Notification: models.Notification,
   Trainer: models.Trainer,
@@ -731,15 +801,6 @@ attachConversationWebSocket({
   appendTurn: appendConversationTurnUseCase,
   hub: conversationRealtimeHub,
 });
-
-function createObjectStorage(): IObjectStorage | null {
-  const bucket = process.env.S3_BUCKET?.trim();
-  if (!bucket) return null;
-  const region =
-    process.env.S3_REGION?.trim() || process.env.AWS_REGION?.trim() || 'sa-east-1';
-  const publicBaseUrl = process.env.S3_PUBLIC_BASE_URL?.trim();
-  return new S3ObjectStorageAdapter({ bucket, region, publicBaseUrl });
-}
 
 server.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);

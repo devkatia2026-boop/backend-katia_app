@@ -7,6 +7,15 @@ import type { DeleteProgramUseCase } from '../../../application/use-cases/traine
 
 import type { ListTrainingsToProgramsUseCase } from '../../../application/use-cases/trainings-to-programs/list-trainings-to-programs.use-case';
 import type { ListProgramsToStudentsUseCase } from '../../../application/use-cases/programs-to-students/list-programs-to-students.use-case';
+import {
+  OBJECT_STORAGE_EXCEPTION,
+  type UploadImageFilesUseCase,
+} from '../../../application/use-cases/media/upload-image-files.use-case';
+import {
+  PROGRAM_IMAGE_FIELDS,
+  S3_PREFIX_PROGRAM,
+} from '../../../application/media/image-upload.config';
+import { mergeImageUploadsIntoBody } from '../helpers/merge-image-uploads';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -40,7 +49,8 @@ export class ProgramsController {
     private readonly updateProgram: UpdateProgramUseCase,
     private readonly deleteProgram: DeleteProgramUseCase,
     private readonly listProgramTrainings: ListTrainingsToProgramsUseCase,
-    private readonly listProgramStudents: ListProgramsToStudentsUseCase
+    private readonly listProgramStudents: ListProgramsToStudentsUseCase,
+    private readonly uploadImages: UploadImageFilesUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -102,7 +112,15 @@ export class ProgramsController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const created = await this.createProgram.execute(req.body);
+      const trainerId = req.authUser!.sub;
+      const body = await mergeImageUploadsIntoBody(
+        req,
+        this.uploadImages,
+        trainerId,
+        S3_PREFIX_PROGRAM,
+        PROGRAM_IMAGE_FIELDS
+      );
+      const created = await this.createProgram.execute(body);
       res.status(201).json(created);
     } catch (err) {
       this.handleWrite(err, res);
@@ -112,7 +130,15 @@ export class ProgramsController {
   async patch(req: Request, res: Response): Promise<void> {
     try {
       const id = parseProgramId(firstParam(req.params.programId));
-      const updated = await this.updateProgram.execute(id, req.body);
+      const trainerId = req.authUser!.sub;
+      const body = await mergeImageUploadsIntoBody(
+        req,
+        this.uploadImages,
+        trainerId,
+        S3_PREFIX_PROGRAM,
+        PROGRAM_IMAGE_FIELDS
+      );
+      const updated = await this.updateProgram.execute(id, body);
       res.status(200).json(updated);
     } catch (err) {
       this.handleWrite(err, res);
@@ -153,6 +179,10 @@ export class ProgramsController {
 
   private handleWrite(err: unknown, res: Response): void {
     const error = err as { name?: string; message?: string };
+    if (error.name === OBJECT_STORAGE_EXCEPTION) {
+      res.status(503).json({ message: error.message ?? 'Armazenamento indisponível.' });
+      return;
+    }
     if (error.name === VALIDATION) {
       res.status(400).json({ message: error.message ?? 'Dados inválidos.' });
       return;

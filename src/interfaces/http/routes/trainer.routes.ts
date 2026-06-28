@@ -4,14 +4,14 @@ import type { TrainerStudentsController } from '../controllers/trainer-students.
 import type { TrainerTrainingsController } from '../controllers/trainer-trainings.controller';
 import type { TrainerExercisesController } from '../controllers/trainer-exercises.controller';
 import type { TrainerSetsController } from '../controllers/trainer-sets.controller';
-import type { TrainerSetsToTrainingsController } from '../controllers/trainer-sets-to-trainings.controller';
+import type { SetsToTrainingsController } from '../controllers/sets-to-trainings.controller';
 
 export function createTrainerRoutes(
   studentsController: TrainerStudentsController,
   trainingsController: TrainerTrainingsController,
   exercisesController: TrainerExercisesController,
   setsController: TrainerSetsController,
-  setsToTrainingsController: TrainerSetsToTrainingsController,
+  setsToTrainingsController: SetsToTrainingsController,
   requireAuth: RequestHandler,
   requireTrainer: RequestHandler
 ): Router {

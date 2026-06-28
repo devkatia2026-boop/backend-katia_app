@@ -11,6 +11,15 @@ import type { UnlikePostUseCase } from '../../../application/use-cases/social/un
 import type { ListPostCommentsUseCase } from '../../../application/use-cases/social/list-post-comments.use-case';
 import type { ListPostLikesUseCase } from '../../../application/use-cases/social/list-post-likes.use-case';
 import type { ListPostsUseCase } from '../../../application/use-cases/social/list-posts.use-case';
+import {
+  OBJECT_STORAGE_EXCEPTION,
+  type UploadImageFilesUseCase,
+} from '../../../application/use-cases/media/upload-image-files.use-case';
+import {
+  POST_IMAGE_FIELDS,
+  S3_PREFIX_POST,
+} from '../../../application/media/image-upload.config';
+import { mergeImageUploadsIntoBody } from '../helpers/merge-image-uploads';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -53,7 +62,8 @@ export class SocialFeedController {
     private readonly likePost: LikePostUseCase,
     private readonly unlikePost: UnlikePostUseCase,
     private readonly listPostComments: ListPostCommentsUseCase,
-    private readonly listPostLikes: ListPostLikesUseCase
+    private readonly listPostLikes: ListPostLikesUseCase,
+    private readonly uploadImages: UploadImageFilesUseCase
   ) {}
 
   async postList(req: Request, res: Response): Promise<void> {
@@ -71,7 +81,14 @@ export class SocialFeedController {
   async postCreate(req: Request, res: Response): Promise<void> {
     try {
       const a = actor(req);
-      const created = await this.createPost.execute(a.id, a.role, req.body);
+      const body = await mergeImageUploadsIntoBody(
+        req,
+        this.uploadImages,
+        a.id,
+        S3_PREFIX_POST,
+        POST_IMAGE_FIELDS
+      );
+      const created = await this.createPost.execute(a.id, a.role, body);
       res.status(201).json(created);
     } catch (err) {
       this.handle(err, res, 'Erro ao criar post.');
@@ -82,7 +99,14 @@ export class SocialFeedController {
     try {
       const a = actor(req);
       const postId = parsePositiveInt(firstParam(req.params.postId), 'postId');
-      const updated = await this.updatePost.execute(a.id, a.role, postId, req.body);
+      const body = await mergeImageUploadsIntoBody(
+        req,
+        this.uploadImages,
+        a.id,
+        S3_PREFIX_POST,
+        POST_IMAGE_FIELDS
+      );
+      const updated = await this.updatePost.execute(a.id, a.role, postId, body);
       res.status(200).json(updated);
     } catch (err) {
       this.handle(err, res, 'Erro ao atualizar post.');
@@ -187,6 +211,10 @@ export class SocialFeedController {
 
   private handle(err: unknown, res: Response, fallback: string): void {
     const error = err as { name?: string; message?: string };
+    if (error.name === OBJECT_STORAGE_EXCEPTION) {
+      res.status(503).json({ message: error.message ?? 'Armazenamento indisponível.' });
+      return;
+    }
     if (error.name === VALIDATION) {
       res.status(400).json({ message: error.message ?? 'Dados inválidos.' });
       return;

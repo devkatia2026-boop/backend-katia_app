@@ -1,5 +1,10 @@
 import { Op } from 'sequelize';
 import type { DatabaseModels } from './models';
+import {
+  brazilDateToUtcRangeEndExclusive,
+  brazilDateToUtcRangeStart,
+  formatBrazilDateFromInstant,
+} from '../../application/parsing/set-order-schedule.parsing';
 import type {
   CreatePointInput,
   IPointsRepository,
@@ -151,5 +156,53 @@ export class SequelizePointsRepository implements IPointsRepository {
     const created = await this.models.Point.create(input as any);
     const row = await this.findById(created.get('id') as number);
     return row as PointDTO;
+  }
+
+  async listBrazilTrainingDatesForStudent(
+    studentId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<string[]> {
+    const rows = await this.models.Point.findAll({
+      attributes: ['created_at'],
+      where: {
+        student_id: studentId,
+        created_at: {
+          [Op.gte]: brazilDateToUtcRangeStart(startDate),
+          [Op.lt]: brazilDateToUtcRangeEndExclusive(endDate),
+        },
+      },
+      raw: true,
+    }) as unknown as Array<{ created_at: Date }>;
+
+    const dates = new Set<string>();
+    for (const row of rows) {
+      dates.add(formatBrazilDateFromInstant(new Date(row.created_at)));
+    }
+    return [...dates];
+  }
+
+  async listByStudentInBrazilDateRange(
+    studentId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<PointDTO[]> {
+    const rows = await this.models.Point.findAll({
+      attributes: [...ATTR],
+      where: {
+        student_id: studentId,
+        created_at: {
+          [Op.gte]: brazilDateToUtcRangeStart(startDate),
+          [Op.lt]: brazilDateToUtcRangeEndExclusive(endDate),
+        },
+      },
+      order: [
+        ['created_at', 'DESC'],
+        ['id', 'DESC'],
+      ],
+      raw: true,
+    }) as unknown as PointDTO[];
+
+    return rows.map((row) => ({ ...row, student: null }));
   }
 }

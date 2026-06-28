@@ -34,4 +34,14 @@ export interface IPointsRepository {
     studentId: string
   ): Promise<{ trainer_id: string; full_name: string } | null>;
   create(input: CreatePointInput): Promise<PointDTO>;
+  listBrazilTrainingDatesForStudent(
+    studentId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<string[]>;
+  listByStudentInBrazilDateRange(
+    studentId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<PointDTO[]>;
 }

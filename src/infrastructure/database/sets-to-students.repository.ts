@@ -105,6 +105,30 @@ export class SequelizeSetsToStudentsRepository implements ISetsToStudentsReposit
     };
   }
 
+  async listActiveSetsByStudent(studentId: string): Promise<SetToStudentByStudentListItem[]> {
+    return this.models.SetsToStudents.findAll({
+      attributes: [...ATTR],
+      where: {
+        student_id: studentId,
+        status: true,
+      },
+      include: [
+        {
+          model: this.models.Set,
+          as: 'set',
+          attributes: [...SET_NEST_ATTR],
+          required: true,
+        },
+      ],
+      order: [
+        ['created_at', 'DESC'],
+        ['id', 'DESC'],
+      ],
+      raw: true,
+      nest: true,
+    }) as unknown as Promise<SetToStudentByStudentListItem[]>;
+  }
+
   async listStudentsBySet(
     setsId: number,
     page: number,

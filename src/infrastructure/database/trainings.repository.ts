@@ -38,6 +38,16 @@ export class SequelizeTrainingsRepository implements ITrainingsRepository {
     return row ? (row as TrainingDTO) : null;
   }
 
+  async findByIds(trainingIds: number[]): Promise<TrainingDTO[]> {
+    if (trainingIds.length === 0) return [];
+    const rows = await this.models.Training.findAll({
+      attributes: [...ATTR],
+      where: { id: trainingIds },
+      raw: true,
+    });
+    return rows as TrainingDTO[];
+  }
+
   async create(input: CreateTrainingInput): Promise<TrainingDTO> {
     const row = await this.models.Training.create({
       lyric: input.lyric,

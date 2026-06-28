@@ -58,6 +58,7 @@ export interface ISetsToStudentsRepository {
     page: number,
     pageSize: number
   ): Promise<PagedList<SetToStudentByStudentListItem>>;
+  listActiveSetsByStudent(studentId: string): Promise<SetToStudentByStudentListItem[]>;
   listStudentsBySet(
     setsId: number,
     page: number,

@@ -32,6 +32,12 @@ function expectNullableTrimmed(value: unknown, field: string): string | null {
 function expectNullableBoolean(value: unknown, field: string): boolean | null {
   if (value === null) return null;
   if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const t = value.trim().toLowerCase();
+    if (t.length === 0) return null;
+    if (t === 'true') return true;
+    if (t === 'false') return false;
+  }
   const err = new Error(`Campo "${field}" deve ser boolean ou null.`);
   err.name = VALIDATION;
   throw err;

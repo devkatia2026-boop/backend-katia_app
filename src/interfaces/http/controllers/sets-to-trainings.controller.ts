@@ -30,7 +30,7 @@ function parseLinkId(raw: string | undefined): number {
   return n;
 }
 
-export class TrainerSetsToTrainingsController {
+export class SetsToTrainingsController {
   constructor(
     private readonly listLinks: ListSetsToTrainingsUseCase,
     private readonly getLink: GetSetToTrainingUseCase,

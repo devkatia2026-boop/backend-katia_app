@@ -4,6 +4,7 @@ import type { StudentAnamnesisController } from '../controllers/student-anamnesi
 import type { AnamnesisExclusiveController } from '../controllers/anamnesis-exclusive.controller';
 import type { StudentPhysicalsController } from '../controllers/student-physicals.controller';
 import type { StudentEvolutionsController } from '../controllers/student-evolutions.controller';
+import type { StudentTrainingController } from '../controllers/student-training.controller';
 import { createAnamnesisExclusiveUploadMiddleware } from '../middleware/anamnesis-exclusive-upload.middleware';
 
 export function createStudentRoutes(
@@ -11,9 +12,11 @@ export function createStudentRoutes(
   anamnesisExclusiveController: AnamnesisExclusiveController,
   physicalsController: StudentPhysicalsController,
   evolutionsController: StudentEvolutionsController,
+  trainingController: StudentTrainingController,
   requireAuth: RequestHandler,
   requireStudent: RequestHandler,
-  anamnesisExclusiveUpload: RequestHandler
+  anamnesisExclusiveUpload: RequestHandler,
+  evolutionImageUpload: RequestHandler
 ): Router {
   const router = Router();
   const asStudent: RequestHandler[] = [requireAuth, requireStudent];
@@ -35,9 +38,17 @@ export function createStudentRoutes(
   router.patch('/physicals/:physicalId', ...asStudent, (req, res) => physicalsController.patch(req, res));
 
   router.get('/evolutions', ...asStudent, (req, res) => evolutionsController.list(req, res));
-  router.post('/evolutions', ...asStudent, (req, res) => evolutionsController.create(req, res));
+  router.post('/evolutions', ...asStudent, evolutionImageUpload, (req, res) =>
+    evolutionsController.create(req, res)
+  );
   router.get('/evolutions/:evolutionId', ...asStudent, (req, res) => evolutionsController.getOne(req, res));
-  router.patch('/evolutions/:evolutionId', ...asStudent, (req, res) => evolutionsController.patch(req, res));
+  router.patch('/evolutions/:evolutionId', ...asStudent, evolutionImageUpload, (req, res) =>
+    evolutionsController.patch(req, res)
+  );
+
+  router.get('/training/today', ...asStudent, (req, res) => trainingController.getToday(req, res));
+  router.get('/training/week', ...asStudent, (req, res) => trainingController.getWeek(req, res));
+  router.get('/training/calendar', ...asStudent, (req, res) => trainingController.getCalendar(req, res));
 
   return router;
 }

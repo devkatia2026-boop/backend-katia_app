@@ -26,6 +26,7 @@ export type PatchTrainingInput = Partial<{
 export interface ITrainingsRepository {
   listPaged(page: number, pageSize: number): Promise<PagedList<TrainingDTO>>;
   findById(trainingId: number): Promise<TrainingDTO | null>;
+  findByIds(trainingIds: number[]): Promise<TrainingDTO[]>;
   create(input: CreateTrainingInput): Promise<TrainingDTO>;
   update(trainingId: number, patch: PatchTrainingInput): Promise<TrainingDTO>;
   deleteById(trainingId: number): Promise<boolean>;
