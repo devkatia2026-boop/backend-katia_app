@@ -26,7 +26,7 @@ export function initProgram(sequelize: Sequelize): typeof Program {
       photo: DataTypes.TEXT,
       status: DataTypes.BOOLEAN,
       type: DataTypes.STRING,
-      description: DataTypes.STRING,
+      description: DataTypes.TEXT,
       level: DataTypes.STRING,
     },
     {

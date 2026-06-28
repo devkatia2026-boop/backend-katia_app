@@ -24,7 +24,7 @@ export function initExercise(sequelize: Sequelize): typeof Exercise {
       name: DataTypes.STRING,
       video: DataTypes.TEXT,
       type: DataTypes.STRING,
-      description: DataTypes.STRING,
+      description: DataTypes.TEXT,
       level: DataTypes.STRING,
     },
     {

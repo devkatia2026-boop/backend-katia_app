@@ -61,12 +61,14 @@ export function parsePointCreateBody(body: unknown): Omit<CreatePointInput, 'stu
     'qtt_excercise' in body
       ? expectNullableNonNegativeInt(body.qtt_excercise ?? null, 'qtt_excercise')
       : null;
-  if (time === null && qtt_excercise === null) {
+  const goal =
+    'goal' in body ? expectNullableNonNegativeInt(body.goal ?? null, 'goal') : null;
+  if (time === null && qtt_excercise === null && goal === null) {
     const err = new Error(
-      'Informe ao menos "time" (texto) ou "qtt_excercise" (número inteiro >= 0).'
+      'Informe ao menos "time" (texto), "qtt_excercise" (inteiro >= 0) ou "goal" (inteiro >= 0).'
     );
     err.name = VALIDATION;
     throw err;
   }
-  return { time, qtt_excercise };
+  return { time, qtt_excercise, goal };
 }

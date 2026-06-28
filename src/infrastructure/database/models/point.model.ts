@@ -5,6 +5,7 @@ export class Point extends Model {
   declare student_id: string;
   declare time: string | null;
   declare qtt_excercise: number | null;
+  declare goal: number | null;
   declare readonly created_at: Date;
 }
 
@@ -22,6 +23,7 @@ export function initPoint(sequelize: Sequelize): typeof Point {
       },
       time: DataTypes.STRING,
       qtt_excercise: DataTypes.INTEGER,
+      goal: DataTypes.INTEGER,
     },
     {
       sequelize,

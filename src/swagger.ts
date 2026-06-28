@@ -3401,6 +3401,7 @@ export const swaggerDocument = {
                           student_id: { type: 'string', format: 'uuid' },
                           time: { type: 'string', nullable: true },
                           qtt_excercise: { type: 'integer', minimum: 0, nullable: true },
+                          goal: { type: 'integer', minimum: 0, nullable: true },
                           created_at: { type: 'string', format: 'date-time' },
                           student: {
                             type: 'object',
@@ -3428,7 +3429,7 @@ export const swaggerDocument = {
       post: {
         summary: 'Registrar informações do treino (aluna)',
         description:
-          'Somente aluna. Ao menos um de `time` (texto) ou `qtt_excercise` (inteiro >= 0). Grava com `student_id` da autenticação e notifica a treinadora no app (push Expo, se houver token).',
+          'Somente aluna. Ao menos um de `time` (texto), `qtt_excercise` (inteiro >= 0) ou `goal` (inteiro >= 0). Grava com `student_id` da autenticação e notifica a treinadora no app (push Expo, se houver token).',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -3444,6 +3445,12 @@ export const swaggerDocument = {
                     nullable: true,
                     description: 'Quantidade de exercícios (inteiro >= 0)',
                   },
+                  goal: {
+                    type: 'integer',
+                    minimum: 0,
+                    nullable: true,
+                    description: 'Meta (inteiro >= 0)',
+                  },
                 },
               },
             },
@@ -3451,7 +3458,7 @@ export const swaggerDocument = {
         },
         responses: {
           '201': { description: 'Criado (student null na resposta)' },
-          '400': { description: 'Corpo inválido; informe time e/ou qtt_excercise válido' },
+          '400': { description: 'Corpo inválido; informe time, qtt_excercise e/ou goal válido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas alunas' },
         },
