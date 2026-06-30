@@ -77,6 +77,8 @@ import { CreateTrainingUseCase } from './application/use-cases/trainer/create-tr
 import { UpdateTrainingUseCase } from './application/use-cases/trainer/update-training.use-case';
 import { DeleteTrainingUseCase } from './application/use-cases/trainer/delete-training.use-case';
 import { TrainerTrainingsController } from './interfaces/http/controllers/trainer-trainings.controller';
+import { TrainingsController } from './interfaces/http/controllers/trainings.controller';
+import { createTrainingsRoutes } from './interfaces/http/routes/trainings.routes';
 import { SequelizeExercisesRepository } from './infrastructure/database/exercises.repository';
 import { ListExercisesUseCase } from './application/use-cases/trainer/list-exercises.use-case';
 import { GetExerciseUseCase } from './application/use-cases/trainer/get-exercise.use-case';
@@ -548,6 +550,11 @@ const trainerTrainingsController = new TrainerTrainingsController(
   new CreateTrainingUseCase(trainingsRepository),
   new UpdateTrainingUseCase(trainingsRepository),
   new DeleteTrainingUseCase(trainingsRepository)
+);
+const trainingsController = new TrainingsController(new GetTrainingUseCase(trainingsRepository));
+app.use(
+  '/trainings',
+  createTrainingsRoutes(trainingsController, requireAuth, requireStudentOrTrainer)
 );
 const exercisesRepository = new SequelizeExercisesRepository({
   Exercise: models.Exercise,

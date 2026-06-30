@@ -9,7 +9,7 @@ export type TrainingToProgramProgram = Pick<
 
 export type TrainingToProgramTraining = Pick<
   TrainingDTO,
-  'id' | 'lyric' | 'description' | 'time' | 'type' | 'created_at'
+  'id' | 'lyric' | 'description' | 'time' | 'type' | 'muscles' | 'created_at'
 >;
 
 export type TrainingToProgramDTO = {

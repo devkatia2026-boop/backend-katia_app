@@ -6,6 +6,7 @@ export type TrainingDTO = {
   description: string | null;
   time: number;
   type: string;
+  muscles: string | null;
   created_at: Date;
 };
 
@@ -14,6 +15,7 @@ export type CreateTrainingInput = {
   description: string | null;
   time: number;
   type: string;
+  muscles: string | null;
 };
 
 export type PatchTrainingInput = Partial<{
@@ -21,6 +23,7 @@ export type PatchTrainingInput = Partial<{
   description: string | null;
   time: number;
   type: string;
+  muscles: string | null;
 }>;
 
 export interface ITrainingsRepository {

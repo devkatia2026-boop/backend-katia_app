@@ -81,6 +81,7 @@ export function parseTrainingCreateBody(body: unknown): CreateTrainingInput {
   const lyric = 'lyric' in body ? expectNullableTrimmed(body.lyric ?? null, 'lyric') : null;
   const description =
     'description' in body ? expectNullableTrimmed(body.description ?? null, 'description') : null;
+  const muscles = 'muscles' in body ? expectNullableTrimmed(body.muscles ?? null, 'muscles') : null;
 
   if (lyric === null && description === null) {
     const err = new Error('Informe ao menos um texto em "lyric" ou "description".');
@@ -88,7 +89,7 @@ export function parseTrainingCreateBody(body: unknown): CreateTrainingInput {
     throw err;
   }
 
-  return { lyric, description, time: parseCreateTime(body), type: parseCreateType(body) };
+  return { lyric, description, time: parseCreateTime(body), type: parseCreateType(body), muscles };
 }
 
 export function parseTrainingPatchBody(body: unknown): PatchTrainingInput {
@@ -113,6 +114,10 @@ export function parseTrainingPatchBody(body: unknown): PatchTrainingInput {
   }
   if ('type' in body) {
     patch.type = expectTrainingType(body.type, 'type');
+    n++;
+  }
+  if ('muscles' in body) {
+    patch.muscles = expectNullableTrimmed(body.muscles, 'muscles');
     n++;
   }
   if (n === 0) {

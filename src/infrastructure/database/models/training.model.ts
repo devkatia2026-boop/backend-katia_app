@@ -6,6 +6,7 @@ export class Training extends Model {
   declare description: string | null;
   declare time: number;
   declare type: string;
+  declare muscles: string | null;
   declare readonly created_at: Date;
 }
 
@@ -29,6 +30,7 @@ export function initTraining(sequelize: Sequelize): typeof Training {
         allowNull: false,
         defaultValue: 'Casa/Academia',
       },
+      muscles: DataTypes.STRING,
     },
     {
       sequelize,

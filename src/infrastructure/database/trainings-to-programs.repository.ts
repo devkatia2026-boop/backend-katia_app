@@ -20,7 +20,7 @@ const PROGRAM_ATTR = [
   'level',
   'created_at',
 ] as const;
-const TRAINING_ATTR = ['id', 'lyric', 'description', 'time', 'type', 'created_at'] as const;
+const TRAINING_ATTR = ['id', 'lyric', 'description', 'time', 'type', 'muscles', 'created_at'] as const;
 
 function buildWhere(filters: ListTrainingsToProgramsFilters): Record<string, unknown> {
   const where: Record<string, unknown> = {};
