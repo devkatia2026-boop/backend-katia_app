@@ -7,6 +7,8 @@ import type { DeleteProgramUseCase } from '../../../application/use-cases/traine
 
 import type { ListTrainingsToProgramsUseCase } from '../../../application/use-cases/trainings-to-programs/list-trainings-to-programs.use-case';
 import type { ListProgramsToStudentsUseCase } from '../../../application/use-cases/programs-to-students/list-programs-to-students.use-case';
+import type { ListMatchedProgramsForStudentUseCase } from '../../../application/use-cases/program/list-matched-programs-for-student.use-case';
+import type { GetProgramMatchForStudentUseCase } from '../../../application/use-cases/program/get-program-match-for-student.use-case';
 import {
   OBJECT_STORAGE_EXCEPTION,
   type UploadImageFilesUseCase,
@@ -19,6 +21,8 @@ import { mergeImageUploadsIntoBody } from '../helpers/merge-image-uploads';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
+const FORBIDDEN = 'ForbiddenException';
+const STUDENT_NOT_FOUND = 'StudentNotFoundException';
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? '';
@@ -50,6 +54,8 @@ export class ProgramsController {
     private readonly deleteProgram: DeleteProgramUseCase,
     private readonly listProgramTrainings: ListTrainingsToProgramsUseCase,
     private readonly listProgramStudents: ListProgramsToStudentsUseCase,
+    private readonly listMatchedProgramsForStudent: ListMatchedProgramsForStudentUseCase,
+    private readonly getProgramMatchForStudent: GetProgramMatchForStudentUseCase,
     private readonly uploadImages: UploadImageFilesUseCase
   ) {}
 
@@ -59,6 +65,33 @@ export class ProgramsController {
       res.status(200).json(result);
     } catch {
       res.status(500).json({ message: 'Erro ao listar programas.' });
+    }
+  }
+
+  async listMatchedForStudent(req: Request, res: Response): Promise<void> {
+    try {
+      const authUser = req.authUser!;
+      const result = await this.listMatchedProgramsForStudent.execute(req.query.studentId, {
+        role: authUser.role as 'student' | 'trainer',
+        sub: authUser.sub,
+      });
+      res.status(200).json(result);
+    } catch (err) {
+      this.handleMatch(err, res, 'Erro ao listar programas compatíveis.');
+    }
+  }
+
+  async getMatchForStudent(req: Request, res: Response): Promise<void> {
+    try {
+      const programId = parseProgramId(firstParam(req.params.programId));
+      const authUser = req.authUser!;
+      const result = await this.getProgramMatchForStudent.execute(programId, req.query.studentId, {
+        role: authUser.role as 'student' | 'trainer',
+        sub: authUser.sub,
+      });
+      res.status(200).json(result);
+    } catch (err) {
+      this.handleMatch(err, res, 'Erro ao avaliar compatibilidade do programa.');
     }
   }
 
@@ -162,6 +195,23 @@ export class ProgramsController {
       }
       res.status(500).json({ message: 'Erro ao excluir programa.' });
     }
+  }
+
+  private handleMatch(err: unknown, res: Response, fallback: string): void {
+    const error = err as { name?: string; message?: string };
+    if (error.name === VALIDATION) {
+      res.status(400).json({ message: error.message ?? 'Parâmetro inválido.' });
+      return;
+    }
+    if (error.name === FORBIDDEN) {
+      res.status(403).json({ message: error.message ?? 'Acesso negado.' });
+      return;
+    }
+    if (error.name === NOT_FOUND || error.name === STUDENT_NOT_FOUND) {
+      res.status(404).json({ message: error.message ?? 'Não encontrado.' });
+      return;
+    }
+    res.status(500).json({ message: fallback });
   }
 
   private handleRead(err: unknown, res: Response): void {

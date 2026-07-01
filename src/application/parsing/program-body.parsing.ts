@@ -97,6 +97,8 @@ export function parseProgramCreateBody(body: unknown): CreateProgramInput {
     description:
       'description' in body ? expectNullableTrimmed(body.description ?? null, 'description') : null,
     level: 'level' in body ? expectNullableProgramLevel(body.level, 'level') : null,
+    objective: 'objective' in body ? expectNullableTrimmed(body.objective ?? null, 'objective') : null,
+    bother: 'bother' in body ? expectNullableTrimmed(body.bother ?? null, 'bother') : null,
   };
 }
 
@@ -130,6 +132,14 @@ export function parseProgramPatchBody(body: unknown): PatchProgramInput {
   }
   if ('level' in body) {
     patch.level = body.level === null ? null : expectNullableProgramLevel(body.level, 'level');
+    n++;
+  }
+  if ('objective' in body) {
+    patch.objective = expectNullableTrimmed(body.objective, 'objective');
+    n++;
+  }
+  if ('bother' in body) {
+    patch.bother = expectNullableTrimmed(body.bother, 'bother');
     n++;
   }
   if (n === 0) {

@@ -19,6 +19,8 @@ const PROGRAM_ATTR = [
   'type',
   'description',
   'level',
+  'objective',
+  'bother',
   'created_at',
 ] as const;
 

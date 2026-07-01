@@ -8,6 +8,8 @@ export type ProgramDTO = {
   type: string | null;
   description: string | null;
   level: string | null;
+  objective: string | null;
+  bother: string | null;
   created_at: Date;
 };
 
@@ -18,6 +20,8 @@ export type CreateProgramInput = {
   type: string | null;
   description: string | null;
   level: string | null;
+  objective: string | null;
+  bother: string | null;
 };
 
 export type PatchProgramInput = Partial<{
@@ -27,10 +31,13 @@ export type PatchProgramInput = Partial<{
   type: string | null;
   description: string | null;
   level: string | null;
+  objective: string | null;
+  bother: string | null;
 }>;
 
 export interface IProgramsRepository {
   listPaged(page: number, pageSize: number): Promise<PagedList<ProgramDTO>>;
+  listActive(): Promise<ProgramDTO[]>;
   findById(programId: number): Promise<ProgramDTO | null>;
   create(input: CreateProgramInput): Promise<ProgramDTO>;
   update(programId: number, patch: PatchProgramInput): Promise<ProgramDTO>;

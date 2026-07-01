@@ -7,7 +7,18 @@ import type {
 } from '../../application/ports/programs.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = ['id', 'name', 'photo', 'status', 'type', 'description', 'level', 'created_at'] as const;
+const ATTR = [
+  'id',
+  'name',
+  'photo',
+  'status',
+  'type',
+  'description',
+  'level',
+  'objective',
+  'bother',
+  'created_at',
+] as const;
 
 export class SequelizeProgramsRepository implements IProgramsRepository {
   constructor(private readonly models: Pick<DatabaseModels, 'Program'>) {}
@@ -30,6 +41,19 @@ export class SequelizeProgramsRepository implements IProgramsRepository {
     return { items: rows, total, page, pageSize };
   }
 
+  async listActive(): Promise<ProgramDTO[]> {
+    const rows = await this.models.Program.findAll({
+      attributes: [...ATTR],
+      where: { status: true },
+      order: [
+        ['created_at', 'DESC'],
+        ['id', 'DESC'],
+      ],
+      raw: true,
+    });
+    return rows as ProgramDTO[];
+  }
+
   async findById(programId: number): Promise<ProgramDTO | null> {
     const row = await this.models.Program.findByPk(programId, { attributes: [...ATTR], raw: true });
     return row ? (row as ProgramDTO) : null;
@@ -43,6 +67,8 @@ export class SequelizeProgramsRepository implements IProgramsRepository {
       type: input.type,
       description: input.description,
       level: input.level,
+      objective: input.objective,
+      bother: input.bother,
     });
     return row.get({ plain: true }) as ProgramDTO;
   }

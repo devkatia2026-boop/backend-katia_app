@@ -14,6 +14,12 @@ export function createProgramsRoutes(
   router.get('/', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.list(req, res)
   );
+  router.get('/matched', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
+    controller.listMatchedForStudent(req, res)
+  );
+  router.get('/:programId/match', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
+    controller.getMatchForStudent(req, res)
+  );
   router.get('/:programId/trainings', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.listTrainings(req, res)
   );

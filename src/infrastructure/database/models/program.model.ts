@@ -11,6 +11,8 @@ export class Program extends Model {
   declare type: string | null;
   declare description: string | null;
   declare level: string | null;
+  declare objective: string | null;
+  declare bother: string | null;
   declare readonly created_at: Date;
 }
 
@@ -28,6 +30,8 @@ export function initProgram(sequelize: Sequelize): typeof Program {
       type: DataTypes.STRING,
       description: DataTypes.TEXT,
       level: DataTypes.STRING,
+      objective: DataTypes.STRING,
+      bother: DataTypes.STRING,
     },
     {
       sequelize,

@@ -4,7 +4,7 @@ import type { ExerciseDTO } from './exercises.port';
 
 export type ExerciseToProgramProgram = Pick<
   ProgramDTO,
-  'id' | 'name' | 'photo' | 'status' | 'type' | 'description' | 'level' | 'created_at'
+  'id' | 'name' | 'photo' | 'status' | 'type' | 'description' | 'level' | 'objective' | 'bother' | 'created_at'
 >;
 
 export type ExerciseToProgramExercise = Pick<

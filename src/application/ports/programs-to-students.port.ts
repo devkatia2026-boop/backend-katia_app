@@ -3,7 +3,7 @@ import type { ProgramDTO } from './programs.port';
 
 export type ProgramToStudentProgram = Pick<
   ProgramDTO,
-  'id' | 'name' | 'photo' | 'status' | 'type' | 'description' | 'level' | 'created_at'
+  'id' | 'name' | 'photo' | 'status' | 'type' | 'description' | 'level' | 'objective' | 'bother' | 'created_at'
 >;
 
 export type ProgramToStudentStudentBrief = {

@@ -18,6 +18,8 @@ const PROGRAM_ATTR = [
   'type',
   'description',
   'level',
+  'objective',
+  'bother',
   'created_at',
 ] as const;
 const TRAINING_ATTR = ['id', 'lyric', 'description', 'time', 'type', 'muscles', 'created_at'] as const;
