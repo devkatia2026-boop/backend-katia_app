@@ -36,8 +36,8 @@ export type PatchProgramInput = Partial<{
 }>;
 
 export interface IProgramsRepository {
-  listPaged(page: number, pageSize: number): Promise<PagedList<ProgramDTO>>;
-  listActive(): Promise<ProgramDTO[]>;
+  listPaged(page: number, pageSize: number, search?: string): Promise<PagedList<ProgramDTO>>;
+  listActive(search?: string): Promise<ProgramDTO[]>;
   findById(programId: number): Promise<ProgramDTO | null>;
   create(input: CreateProgramInput): Promise<ProgramDTO>;
   update(programId: number, patch: PatchProgramInput): Promise<ProgramDTO>;

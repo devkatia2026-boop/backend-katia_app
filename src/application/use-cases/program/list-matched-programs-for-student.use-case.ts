@@ -5,6 +5,7 @@ import {
 import type { IProgramsRepository, ProgramDTO } from '../../ports/programs.port';
 import type { AnamnesisDTO, IStudentAnamnesisRepository } from '../../ports/student-anamnesis.port';
 import { parseOptionalUuid } from '../../parsing/program-to-student-body.parsing';
+import { parseOptionalProgramSearch } from '../../parsing/program-search.parsing';
 
 const FORBIDDEN = 'ForbiddenException';
 const NOT_FOUND = 'NotFoundException';
@@ -83,11 +84,13 @@ export class ListMatchedProgramsForStudentUseCase {
 
   async execute(
     rawStudentId: unknown,
+    rawSearch: unknown,
     auth: ProgramMatchAuth
   ): Promise<ListMatchedProgramsForStudentResult> {
     const studentId = resolveStudentId(rawStudentId, auth);
+    const search = parseOptionalProgramSearch(rawSearch);
     const latestAnamnesis = await loadLatestAnamnesis(this.anamnesis, studentId, auth);
-    const activePrograms = await this.programs.listActive();
+    const activePrograms = await this.programs.listActive(search);
 
     const items = sortProgramsByAnamnesisMatch(
       activePrograms.map((program) => {

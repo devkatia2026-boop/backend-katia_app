@@ -195,6 +195,8 @@ import { ListPostLikesUseCase } from './application/use-cases/social/list-post-l
 import { ListPostsUseCase } from './application/use-cases/social/list-posts.use-case';
 import { SequelizeProgramsRepository } from './infrastructure/database/programs.repository';
 import { ListProgramsUseCase } from './application/use-cases/program/list-programs.use-case';
+import { ListMatchedProgramsForStudentUseCase } from './application/use-cases/program/list-matched-programs-for-student.use-case';
+import { GetProgramMatchForStudentUseCase } from './application/use-cases/program/get-program-match-for-student.use-case';
 import { GetProgramUseCase } from './application/use-cases/program/get-program.use-case';
 import { CreateProgramUseCase } from './application/use-cases/trainer/create-program.use-case';
 import { UpdateProgramUseCase } from './application/use-cases/trainer/update-program.use-case';
@@ -352,6 +354,10 @@ app.use(
 const programsRepository = new SequelizeProgramsRepository({
   Program: models.Program,
 });
+const studentAnamnesisRepository = new SequelizeStudentAnamnesisRepository({
+  Anamnesis: models.Anamnesis,
+  Student: models.Student,
+});
 const trainingsToProgramsRepository = new SequelizeTrainingsToProgramsRepository({
   TrainingsToPrograms: models.TrainingsToPrograms,
   Program: models.Program,
@@ -376,6 +382,8 @@ const programsController = new ProgramsController(
   new DeleteProgramUseCase(programsRepository),
   listTrainingsToProgramsUseCase,
   listProgramsToStudentsUseCase,
+  new ListMatchedProgramsForStudentUseCase(programsRepository, studentAnamnesisRepository),
+  new GetProgramMatchForStudentUseCase(programsRepository, studentAnamnesisRepository),
   uploadImageFilesUseCase
 );
 
@@ -519,10 +527,6 @@ app.use(
   )
 );
 
-const studentAnamnesisRepository = new SequelizeStudentAnamnesisRepository({
-  Anamnesis: models.Anamnesis,
-  Student: models.Student,
-});
 const studentPhysicalsRepository = new SequelizeStudentPhysicalsRepository({
   Physical: models.Physical,
   Student: models.Student,

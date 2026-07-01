@@ -5,6 +5,7 @@ import type {
   AnamnesisUpsertValues,
   IStudentAnamnesisRepository,
 } from '../../application/ports/student-anamnesis.port';
+import type { PagedList } from '../../application/ports/social-feed.port';
 
 type AnamnesisRow = {
   id: number;
@@ -60,16 +61,32 @@ export class SequelizeStudentAnamnesisRepository implements IStudentAnamnesisRep
     return rows;
   }
 
-  async listDivisionHistoryByStudentId(studentId: string): Promise<AnamnesisDTO[]> {
-    const rows = await this.models.Anamnesis.findAll({
-      where: {
-        student_id: studentId,
-        bother: { [Op.ne]: null },
-        days_for_week: { [Op.ne]: null },
-      },
-      order: [['id', 'DESC']],
-    });
-    return rows.map((row) => row.toJSON() as AnamnesisDTO);
+  async listDivisionHistoryByStudentId(
+    studentId: string,
+    page: number,
+    pageSize: number
+  ): Promise<PagedList<AnamnesisDTO>> {
+    const offset = (page - 1) * pageSize;
+    const where = {
+      student_id: studentId,
+      bother: { [Op.ne]: null },
+      days_for_week: { [Op.ne]: null },
+    };
+    const [total, rows] = await Promise.all([
+      this.models.Anamnesis.count({ where }),
+      this.models.Anamnesis.findAll({
+        where,
+        order: [['id', 'DESC']],
+        limit: pageSize,
+        offset,
+      }),
+    ]);
+    return {
+      items: rows.map((row) => row.toJSON() as AnamnesisDTO),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async createForStudent(studentId: string, values: AnamnesisUpsertValues): Promise<AnamnesisDTO> {

@@ -1013,7 +1013,7 @@ export const swaggerDocument = {
           'Retorna a grade semanal de treinos da aluna autenticada, com base nos sets com `status=true` e no campo `order`.\n\n' +
           'A semana começa na **segunda-feira** (fuso `America/Sao_Paulo`). Para `order` como `"5,6,7"`: segunda→5, terça→6, quarta→7, quinta→5, sexta→6, sábado→7.\n\n' +
           'Se `order` tiver **6 ids ou menos**, a grade vai de **segunda a sábado**. Se tiver **7 ids ou mais**, inclui também o **domingo** (7º id).\n\n' +
-          'O campo `trained` em cada dia indica se existe registro em `points` naquela data (mesma regra de `/points`).\n\n' +
+          'O campo `trained` em cada dia indica se o treino foi registrado na semana: há `points` na data do dia **ou** existe `name_training` em `points` na semana igual ao `lyric` do treino agendado (comparação case-insensitive). Registros antigos sem `name_training` continuam valendo pela data.\n\n' +
           'Totais por set: `total_trainings`, `completed_trainings`, `pending_trainings`. `next_training` é o próximo treino pendente a partir de hoje (inclusive).',
         security: [{ bearerAuth: [] }],
         responses: {
@@ -1113,7 +1113,7 @@ export const swaggerDocument = {
         summary: 'Calendário mensal de treinos',
         description:
           'Retorna todos os dias do mês informado com base nos registros de `points` da aluna autenticada (fuso `America/Sao_Paulo`).\n\n' +
-          'Cada dia inclui `trained` (se houve treino registrado) e `points` com os registros daquele dia (`time`, `qtt_excercise`, `goal`, …).\n\n' +
+          'Cada dia inclui `trained` (se houve treino registrado) e `points` com os registros daquele dia (`time`, `qtt_excercise`, `goal`, `name_training`, …).\n\n' +
           'Se `month` e/ou `year` forem omitidos, usa o mês/ano atuais no Brasil.',
         security: [{ bearerAuth: [] }],
         parameters: [
@@ -1170,6 +1170,7 @@ export const swaggerDocument = {
                                 time: { type: 'string', nullable: true },
                                 qtt_excercise: { type: 'integer', nullable: true },
                                 goal: { type: 'integer', nullable: true },
+                                name_training: { type: 'string', nullable: true },
                                 created_at: { type: 'string', format: 'date-time' },
                               },
                             },
@@ -1368,6 +1369,13 @@ export const swaggerDocument = {
             in: 'query',
             schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
           },
+          {
+            name: 'search',
+            in: 'query',
+            schema: { type: 'string', maxLength: 200 },
+            description:
+              'Busca em name, type, description, level, objective e bother (unaccent, case-insensitive).',
+          },
         ],
         responses: {
           '200': {
@@ -1389,6 +1397,7 @@ export const swaggerDocument = {
           },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Não cadastrado como aluna nem treinadora' },
+          '400': { description: 'Parâmetro search inválido' },
         },
       },
       post: {
@@ -1445,6 +1454,80 @@ export const swaggerDocument = {
         },
       },
     },
+    '/programs/matched': {
+      get: {
+        summary: 'Listar programas ativos compatíveis com anamnese',
+        description:
+          'Programas com status ativo ranqueados por compatibilidade com a anamnese mais recente da aluna (type, level, objective, bother). **Aluna:** omita `studentId` ou use o próprio UUID. **Treinadora:** informe `studentId`. Opcionalmente filtre com `search` nos campos do programa.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'query',
+            schema: { type: 'string', format: 'uuid' },
+            description: 'Obrigatório para treinadora; opcional para aluna (apenas o próprio UUID).',
+          },
+          {
+            name: 'search',
+            in: 'query',
+            schema: { type: 'string', maxLength: 200 },
+            description:
+              'Busca em name, type, description, level, objective e bother (unaccent, case-insensitive).',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Programas ativos com pontuação de match',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['student_id', 'anamnesis_id', 'items', 'total'],
+                  properties: {
+                    student_id: { type: 'string', format: 'uuid' },
+                    anamnesis_id: { type: 'integer' },
+                    total: { type: 'integer' },
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer' },
+                          name: { type: 'string', nullable: true },
+                          photo: { type: 'string', nullable: true },
+                          status: { type: 'boolean', nullable: true },
+                          type: { type: 'string', nullable: true },
+                          description: { type: 'string', nullable: true },
+                          level: { type: 'string', nullable: true },
+                          objective: { type: 'string', nullable: true },
+                          bother: { type: 'string', nullable: true },
+                          created_at: { type: 'string', format: 'date-time' },
+                          match_count: { type: 'integer' },
+                          total_criteria: { type: 'integer' },
+                          matches: {
+                            type: 'object',
+                            properties: {
+                              type: { type: 'boolean' },
+                              level: { type: 'boolean' },
+                              objective: { type: 'boolean' },
+                              bother: { type: 'boolean' },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Parâmetro inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Acesso negado' },
+          '404': { description: 'Anamnese não encontrada' },
+        },
+      },
+    },
     '/programs-to-students': {
       get: {
         summary: 'Listar vínculos aluna ↔ programa',
@@ -1460,6 +1543,13 @@ export const swaggerDocument = {
           },
           { name: 'studentId', in: 'query', schema: { type: 'string', format: 'uuid' } },
           { name: 'programId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+          {
+            name: 'search',
+            in: 'query',
+            schema: { type: 'string', maxLength: 200 },
+            description:
+              'Busca nos campos do programa (name, type, description, level, objective, bother). Quando a resposta inclui programa aninhado ou lista só programas, filtra por esses campos.',
+          },
         ],
         responses: {
           '200': {
@@ -4072,6 +4162,7 @@ export const swaggerDocument = {
                           time: { type: 'string', nullable: true },
                           qtt_excercise: { type: 'integer', minimum: 0, nullable: true },
                           goal: { type: 'integer', minimum: 0, nullable: true },
+                          name_training: { type: 'string', nullable: true },
                           created_at: { type: 'string', format: 'date-time' },
                           student: {
                             type: 'object',
@@ -4099,7 +4190,7 @@ export const swaggerDocument = {
       post: {
         summary: 'Registrar informações do treino (aluna)',
         description:
-          'Somente aluna. Ao menos um de `time` (texto), `qtt_excercise` (inteiro >= 0) ou `goal` (inteiro >= 0). Grava com `student_id` da autenticação e notifica a treinadora no app (push Expo, se houver token).',
+          'Somente aluna. Ao menos um de `time` (texto), `qtt_excercise` (inteiro >= 0), `goal` (inteiro >= 0) ou `name_training` (texto). Grava com `student_id` da autenticação e notifica a treinadora no app (push Expo, se houver token).',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -4121,6 +4212,11 @@ export const swaggerDocument = {
                     nullable: true,
                     description: 'Meta (inteiro >= 0)',
                   },
+                  name_training: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'Nome do treino registrado',
+                  },
                 },
               },
             },
@@ -4128,7 +4224,7 @@ export const swaggerDocument = {
         },
         responses: {
           '201': { description: 'Criado (student null na resposta)' },
-          '400': { description: 'Corpo inválido; informe time, qtt_excercise e/ou goal válido' },
+          '400': { description: 'Corpo inválido; informe time, qtt_excercise, goal e/ou name_training válido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas alunas' },
         },

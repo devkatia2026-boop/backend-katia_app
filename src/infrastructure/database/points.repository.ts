@@ -13,7 +13,7 @@ import type {
 } from '../../application/ports/points.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = ['id', 'student_id', 'time', 'qtt_excercise', 'goal', 'created_at'] as const;
+const ATTR = ['id', 'student_id', 'time', 'qtt_excercise', 'goal', 'name_training', 'created_at'] as const;
 const STUDENT_LIST_ATTR = ['id', 'full_name'] as const;
 
 function mapRowWithStudent(row: PointDTO & { student?: PointStudentBrief }): PointDTO {
@@ -31,6 +31,7 @@ function toDto(raw: PointDTO & { student?: PointStudentBrief | null }): PointDTO
     time: raw.time,
     qtt_excercise: raw.qtt_excercise,
     goal: raw.goal,
+    name_training: raw.name_training,
     created_at: raw.created_at,
     student: raw.student ?? null,
   };

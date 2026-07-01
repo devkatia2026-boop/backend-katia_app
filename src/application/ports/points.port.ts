@@ -11,6 +11,7 @@ export type PointDTO = {
   time: string | null;
   qtt_excercise: number | null;
   goal: number | null;
+  name_training: string | null;
   created_at: Date;
   student: PointStudentBrief | null;
 };
@@ -20,6 +21,7 @@ export type CreatePointInput = {
   time: string | null;
   qtt_excercise: number | null;
   goal: number | null;
+  name_training: string | null;
 };
 
 export interface IPointsRepository {

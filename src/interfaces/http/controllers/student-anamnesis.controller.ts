@@ -48,8 +48,12 @@ export class StudentAnamnesisController {
   async listHistory(req: Request, res: Response): Promise<void> {
     try {
       const studentId = req.authUser!.sub;
-      const rows = await this.listMyAnamnesisHistory.execute(studentId);
-      res.status(200).json(rows);
+      const result = await this.listMyAnamnesisHistory.execute(
+        studentId,
+        req.query.page,
+        req.query.pageSize
+      );
+      res.status(200).json(result);
     } catch {
       res.status(500).json({ message: 'Erro ao listar histórico de anamnese.' });
     }

@@ -6,6 +6,7 @@ import type {
   ProgramDTO,
 } from '../../application/ports/programs.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
+import { mergeProgramWhere } from './program-search';
 
 const ATTR = [
   'id',
@@ -23,12 +24,14 @@ const ATTR = [
 export class SequelizeProgramsRepository implements IProgramsRepository {
   constructor(private readonly models: Pick<DatabaseModels, 'Program'>) {}
 
-  async listPaged(page: number, pageSize: number): Promise<PagedList<ProgramDTO>> {
+  async listPaged(page: number, pageSize: number, search?: string): Promise<PagedList<ProgramDTO>> {
     const offset = (page - 1) * pageSize;
+    const where = mergeProgramWhere({}, search);
     const [total, rows] = await Promise.all([
-      this.models.Program.count(),
+      this.models.Program.count({ where }),
       this.models.Program.findAll({
         attributes: [...ATTR],
+        where,
         order: [
           ['created_at', 'DESC'],
           ['id', 'DESC'],
@@ -41,10 +44,11 @@ export class SequelizeProgramsRepository implements IProgramsRepository {
     return { items: rows, total, page, pageSize };
   }
 
-  async listActive(): Promise<ProgramDTO[]> {
+  async listActive(search?: string): Promise<ProgramDTO[]> {
+    const where = mergeProgramWhere({ status: true }, search);
     const rows = await this.models.Program.findAll({
       attributes: [...ATTR],
-      where: { status: true },
+      where,
       order: [
         ['created_at', 'DESC'],
         ['id', 'DESC'],

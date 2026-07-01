@@ -37,6 +37,7 @@ export type CreateProgramToStudentInput = {
 export type ListProgramsToStudentsFilters = {
   studentId?: string;
   programId?: number;
+  search?: string;
 };
 
 export interface IProgramsToStudentsRepository {
@@ -48,12 +49,14 @@ export interface IProgramsToStudentsRepository {
   listProgramsByStudent(
     studentId: string,
     page: number,
-    pageSize: number
+    pageSize: number,
+    search?: string
   ): Promise<PagedList<ProgramToStudentProgram>>;
   listStudentsByProgram(
     programId: number,
     page: number,
-    pageSize: number
+    pageSize: number,
+    search?: string
   ): Promise<PagedList<ProgramToStudentStudentBrief>>;
   deleteByProgramAndStudent(studentId: string, programId: number): Promise<boolean>;
   create(input: CreateProgramToStudentInput): Promise<ProgramToStudentDTO>;

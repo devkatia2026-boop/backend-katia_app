@@ -1,14 +1,46 @@
 import {
+  formatBrazilDateFromInstant,
   getBrazilWeekDays,
   parseSetOrder,
   resolveTodayTrainingFromOrder,
 } from '../../parsing/set-order-schedule.parsing';
-import type { IPointsRepository } from '../../ports/points.port';
+import type { IPointsRepository, PointDTO } from '../../ports/points.port';
 import type { ISetsToStudentsRepository, SetToStudentSetNested } from '../../ports/sets-to-students.port';
 import type { ITrainingsRepository, TrainingDTO } from '../../ports/trainings.port';
 
 const NOT_FOUND = 'NotFoundException';
 const VALIDATION = 'ValidationException';
+
+function normalizeTrainingName(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  return trimmed.toLocaleLowerCase('pt-BR');
+}
+
+function buildWeekTrainingCompletion(
+  weekPoints: PointDTO[]
+): { trainingDates: Set<string>; completedTrainingNames: Set<string> } {
+  const trainingDates = new Set<string>();
+  const completedTrainingNames = new Set<string>();
+  for (const point of weekPoints) {
+    trainingDates.add(formatBrazilDateFromInstant(new Date(point.created_at)));
+    const name = normalizeTrainingName(point.name_training);
+    if (name) completedTrainingNames.add(name);
+  }
+  return { trainingDates, completedTrainingNames };
+}
+
+function isDayTrained(
+  date: string,
+  training: TrainingDTO,
+  trainingDates: Set<string>,
+  completedTrainingNames: Set<string>
+): boolean {
+  if (trainingDates.has(date)) return true;
+  const lyricNorm = normalizeTrainingName(training.lyric);
+  return lyricNorm !== null && completedTrainingNames.has(lyricNorm);
+}
 
 export type WeeklyTrainingDayItem = {
   date: string;
@@ -90,9 +122,12 @@ export class GetWeeklyTrainingScheduleUseCase {
       (latest, week) => (week.week_end > latest ? week.week_end : latest),
       weekRanges[0].week_end
     );
-    const trainingDates = new Set(
-      await this.points.listBrazilTrainingDatesForStudent(studentId, weekStart, weekEnd)
+    const weekPoints = await this.points.listByStudentInBrazilDateRange(
+      studentId,
+      weekStart,
+      weekEnd
     );
+    const { trainingDates, completedTrainingNames } = buildWeekTrainingCompletion(weekPoints);
 
     const outerWeek = weekRanges.reduce((current, week) =>
       week.days.length > current.days.length ? week : current
@@ -137,7 +172,7 @@ export class GetWeeklyTrainingScheduleUseCase {
         weekDays.push({
           date: day.date,
           day_of_week: day.day_of_week,
-          trained: trainingDates.has(day.date),
+          trained: isDayTrained(day.date, training, trainingDates, completedTrainingNames),
           kind: 'training',
           training_id: schedule.trainingId,
           order_index: schedule.orderIndex,

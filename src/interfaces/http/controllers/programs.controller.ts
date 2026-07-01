@@ -61,20 +61,28 @@ export class ProgramsController {
 
   async list(req: Request, res: Response): Promise<void> {
     try {
-      const result = await this.listPrograms.execute(firstQuery(req.query.page), firstQuery(req.query.pageSize));
+      const result = await this.listPrograms.execute(
+        firstQuery(req.query.page),
+        firstQuery(req.query.pageSize),
+        firstQuery(req.query.search)
+      );
       res.status(200).json(result);
-    } catch {
-      res.status(500).json({ message: 'Erro ao listar programas.' });
+    } catch (err) {
+      this.handleRead(err, res);
     }
   }
 
   async listMatchedForStudent(req: Request, res: Response): Promise<void> {
     try {
       const authUser = req.authUser!;
-      const result = await this.listMatchedProgramsForStudent.execute(req.query.studentId, {
-        role: authUser.role as 'student' | 'trainer',
-        sub: authUser.sub,
-      });
+      const result = await this.listMatchedProgramsForStudent.execute(
+        req.query.studentId,
+        req.query.search,
+        {
+          role: authUser.role as 'student' | 'trainer',
+          sub: authUser.sub,
+        }
+      );
       res.status(200).json(result);
     } catch (err) {
       this.handleMatch(err, res, 'Erro ao listar programas compatíveis.');

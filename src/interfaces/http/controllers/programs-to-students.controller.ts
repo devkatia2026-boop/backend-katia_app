@@ -33,6 +33,7 @@ export class ProgramsToStudentsController {
         firstQuery(req.query.pageSize),
         firstQuery(req.query.studentId),
         firstQuery(req.query.programId),
+        firstQuery(req.query.search),
         authFrom(req)
       );
       res.status(200).json(result);

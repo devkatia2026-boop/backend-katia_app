@@ -1,3 +1,5 @@
+import type { PagedList } from './social-feed.port';
+
 export type AnamnesisDTO = {
   id: number;
   student_id: string;
@@ -23,7 +25,11 @@ export interface IStudentAnamnesisRepository {
   findLatestForTrainerStudent(trainerId: string, studentId: string): Promise<AnamnesisDTO | null>;
   /** Uma entrada por aluna (última linha) de todas as alunas do treinador que têm anamnese. */
   listLatestForTrainer(trainerId: string): Promise<AnamnesisDTO[]>;
-  listDivisionHistoryByStudentId(studentId: string): Promise<AnamnesisDTO[]>;
+  listDivisionHistoryByStudentId(
+    studentId: string,
+    page: number,
+    pageSize: number
+  ): Promise<PagedList<AnamnesisDTO>>;
   createForStudent(studentId: string, values: AnamnesisUpsertValues): Promise<AnamnesisDTO>;
   updateLatestForStudent(studentId: string, values: AnamnesisUpsertValues): Promise<AnamnesisDTO>;
   /** Apaga todas as linhas de anamnese da aluna, se ela pertencer ao treinador. */

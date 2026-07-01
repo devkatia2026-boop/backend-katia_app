@@ -11,6 +11,7 @@ import {
   parseOptionalProgramId,
   parseOptionalUuid,
 } from '../../parsing/program-to-student-body.parsing';
+import { parseOptionalProgramSearch } from '../../parsing/program-search.parsing';
 
 const FORBIDDEN = 'ForbiddenException';
 
@@ -36,20 +37,22 @@ export class ListProgramsToStudentsUseCase {
     pageSize: unknown,
     rawStudentId: unknown,
     rawProgramId: unknown,
+    rawSearch: unknown,
     auth: ListProgramsToStudentsAuth
   ): Promise<ListProgramsToStudentsResult> {
     const p = normalizePagination(page, pageSize);
     const studentId = parseOptionalUuid(rawStudentId, 'studentId');
     const programId = parseOptionalProgramId(rawProgramId, 'programId');
+    const search = parseOptionalProgramSearch(rawSearch);
 
     if (auth.role === 'trainer') {
       if (studentId !== undefined && programId === undefined) {
-        return this.repo.listProgramsByStudent(studentId, p.page, p.pageSize);
+        return this.repo.listProgramsByStudent(studentId, p.page, p.pageSize, search);
       }
       if (programId !== undefined && studentId === undefined) {
-        return this.repo.listStudentsByProgram(programId, p.page, p.pageSize);
+        return this.repo.listStudentsByProgram(programId, p.page, p.pageSize, search);
       }
-      const filters: ListProgramsToStudentsFilters = { studentId, programId };
+      const filters: ListProgramsToStudentsFilters = { studentId, programId, search };
       return this.repo.listPaged(p.page, p.pageSize, filters);
     }
 
@@ -59,11 +62,11 @@ export class ListProgramsToStudentsUseCase {
         err.name = FORBIDDEN;
         throw err;
       }
-      return this.repo.listProgramsByStudent(studentId, p.page, p.pageSize);
+      return this.repo.listProgramsByStudent(studentId, p.page, p.pageSize, search);
     }
 
     if (programId !== undefined && studentId === undefined) {
-      return this.repo.listStudentsByProgram(programId, p.page, p.pageSize);
+      return this.repo.listStudentsByProgram(programId, p.page, p.pageSize, search);
     }
 
     if (studentId !== undefined && programId !== undefined) {
@@ -72,12 +75,12 @@ export class ListProgramsToStudentsUseCase {
         err.name = FORBIDDEN;
         throw err;
       }
-      const filters: ListProgramsToStudentsFilters = { studentId, programId };
+      const filters: ListProgramsToStudentsFilters = { studentId, programId, search };
       return this.repo.listPaged(p.page, p.pageSize, filters);
     }
 
     const selfId = auth.sub.toLowerCase();
-    return this.repo.listProgramsByStudent(selfId, p.page, p.pageSize);
+    return this.repo.listProgramsByStudent(selfId, p.page, p.pageSize, search);
   }
 
   executeByProgramId(
