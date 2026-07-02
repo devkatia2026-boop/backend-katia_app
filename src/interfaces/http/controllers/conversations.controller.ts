@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import type { GetConversationPartnerUseCase } from '../../../application/use-cases/conversations/get-conversation-partner.use-case';
 import type { ListConversationMessagesUseCase } from '../../../application/use-cases/conversations/list-conversation-messages.use-case';
 
 const VALIDATION = 'ValidationException';
@@ -15,7 +16,22 @@ function authFrom(req: Request): { role: 'student' | 'trainer'; sub: string } {
 }
 
 export class ConversationsController {
-  constructor(private readonly listMsgs: ListConversationMessagesUseCase) {}
+  constructor(
+    private readonly listMsgs: ListConversationMessagesUseCase,
+    private readonly getPartnerUseCase: GetConversationPartnerUseCase
+  ) {}
+
+  async getPartner(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await this.getPartnerUseCase.execute(
+        firstQuery(req.query.studentId),
+        authFrom(req)
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      this.handle(err, res, 'Erro ao obter parceiro da conversa.');
+    }
+  }
 
   async listMessages(req: Request, res: Response): Promise<void> {
     try {

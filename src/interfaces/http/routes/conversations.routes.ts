@@ -9,6 +9,10 @@ export function createConversationsRoutes(
 ): Router {
   const router = Router();
 
+  router.get('/partner', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
+    controller.getPartner(req, res)
+  );
+
   router.get('/messages', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.listMessages(req, res)
   );

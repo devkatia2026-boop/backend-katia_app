@@ -24,6 +24,7 @@ import { initRepsToExercises, RepsToExercises } from './reps-to-exercises.model'
 import { initObsToTrainings, ObsToTrainings } from './obs-to-trainings.model';
 import { initPoint, Point } from './point.model';
 import { initFeedback, Feedback } from './feedback.model';
+import { initResponsesFeedback, ResponsesFeedback } from './responses-feedback.model';
 import { initNotification, Notification } from './notification.model';
 import { initCoupon, Coupon } from './coupon.model';
 import { initWellbeing, Wellbeing } from './wellbeing.model';
@@ -55,6 +56,7 @@ export type DatabaseModels = {
   ObsToTrainings: typeof ObsToTrainings;
   Point: typeof Point;
   Feedback: typeof Feedback;
+  ResponsesFeedback: typeof ResponsesFeedback;
   Notification: typeof Notification;
   Coupon: typeof Coupon;
   Wellbeing: typeof Wellbeing;
@@ -88,6 +90,7 @@ function associate(models: DatabaseModels): void {
     ObsToTrainings,
     Point,
     Feedback,
+    ResponsesFeedback,
     Notification,
     Wellbeing,
     Well,
@@ -209,6 +212,9 @@ function associate(models: DatabaseModels): void {
   Student.hasMany(Feedback, { foreignKey: 'student_id', as: 'feedbacks' });
   Feedback.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
 
+  Feedback.hasMany(ResponsesFeedback, { foreignKey: 'feedback_id', as: 'responses' });
+  ResponsesFeedback.belongsTo(Feedback, { foreignKey: 'feedback_id', as: 'feedback' });
+
   Trainer.hasMany(Notification, { foreignKey: 'trainer_id', as: 'notifications' });
   Notification.belongsTo(Trainer, { foreignKey: 'trainer_id', as: 'trainer' });
 
@@ -245,6 +251,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const ObsToTrainingsModel = initObsToTrainings(sequelize);
   const PointModel = initPoint(sequelize);
   const FeedbackModel = initFeedback(sequelize);
+  const ResponsesFeedbackModel = initResponsesFeedback(sequelize);
   const NotificationModel = initNotification(sequelize);
   const CouponModel = initCoupon(sequelize);
   const WellbeingModel = initWellbeing(sequelize);
@@ -276,6 +283,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     ObsToTrainings: ObsToTrainingsModel,
     Point: PointModel,
     Feedback: FeedbackModel,
+    ResponsesFeedback: ResponsesFeedbackModel,
     Notification: NotificationModel,
     Coupon: CouponModel,
     Wellbeing: WellbeingModel,
@@ -313,6 +321,7 @@ export {
   ObsToTrainings,
   Point,
   Feedback,
+  ResponsesFeedback,
   Notification,
   Coupon,
   Wellbeing,

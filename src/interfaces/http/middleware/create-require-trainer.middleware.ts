@@ -6,7 +6,8 @@ import type { NextFunction, Request, RequestHandler, Response } from 'express';
 export function createRequireTrainer(isTrainer: (cognitoSub: string) => Promise<boolean>): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const sub = req.authUser?.sub;
-    if (!sub) {
+    const accessToken = req.authUser?.accessToken;
+    if (!sub || !accessToken) {
       res.status(401).json({ message: 'Usuário não autenticado.', code: 'TOKEN_MISSING' });
       return;
     }
@@ -14,6 +15,7 @@ export function createRequireTrainer(isTrainer: (cognitoSub: string) => Promise<
       res.status(403).json({ message: 'Acesso permitido apenas para treinadores.', code: 'FORBIDDEN_NOT_TRAINER' });
       return;
     }
+    req.authUser = { sub, accessToken, role: 'trainer' };
     next();
   };
 }

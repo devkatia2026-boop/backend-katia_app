@@ -5,6 +5,7 @@ import type {
   TrainingFeedbackDTO,
   TrainingFeedbackStudentBrief,
 } from '../../application/ports/feedbacks.port';
+import type { FeedbackResponseDTO } from '../../application/ports/feedback-responses.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
 const ATTR = ['id', 'student_id', 'effort', 'feedback', 'created_at'] as const;
@@ -21,7 +22,7 @@ function mapRowWithStudent(
 }
 
 function toDto(
-  raw: TrainingFeedbackDTO & { student?: TrainingFeedbackStudentBrief | null }
+  raw: TrainingFeedbackDTO & { student?: TrainingFeedbackStudentBrief | null; responses?: FeedbackResponseDTO[] }
 ): TrainingFeedbackDTO {
   return {
     id: raw.id,
@@ -30,6 +31,7 @@ function toDto(
     feedback: raw.feedback,
     created_at: raw.created_at,
     student: raw.student ?? null,
+    responses: raw.responses ?? [],
   };
 }
 
@@ -63,7 +65,7 @@ export class SequelizeFeedbacksRepository implements IFeedbacksRepository {
         }) as unknown as Promise<TrainingFeedbackDTO[]>,
       ]);
       return {
-        items: rows.map((r) => ({ ...r, student: null })),
+        items: rows.map((r) => ({ ...r, student: null, responses: [] })),
         total,
         page,
         pageSize,
@@ -109,7 +111,7 @@ export class SequelizeFeedbacksRepository implements IFeedbacksRepository {
     ]);
 
     return {
-      items: rows.map((r) => mapRowWithStudent(r)),
+      items: rows.map((r) => mapRowWithStudent({ ...r, responses: [] })),
       total,
       page,
       pageSize,

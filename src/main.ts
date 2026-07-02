@@ -157,6 +157,14 @@ import { SequelizeStudentTrainingFeedbackNotifier } from './infrastructure/datab
 import { ListFeedbacksUseCase } from './application/use-cases/feedbacks/list-feedbacks.use-case';
 import { GetFeedbackUseCase } from './application/use-cases/feedbacks/get-feedback.use-case';
 import { CreateFeedbackUseCase } from './application/use-cases/feedbacks/create-feedback.use-case';
+import { CreateFeedbackResponseUseCase } from './application/use-cases/feedbacks/create-feedback-response.use-case';
+import {
+  DeleteFeedbackResponseUseCase,
+  ListFeedbackResponsesUseCase,
+  UpdateFeedbackResponseUseCase,
+} from './application/use-cases/feedbacks/feedback-response.use-cases';
+import { SequelizeFeedbackResponsesRepository } from './infrastructure/database/feedback-responses.repository';
+import { SequelizeFeedbackResponseNotifier } from './infrastructure/database/feedback-response.notifier';
 import { FeedbacksController } from './interfaces/http/controllers/feedbacks.controller';
 import { createFeedbacksRoutes } from './interfaces/http/routes/feedbacks.routes';
 import { SequelizeCouponsRepository } from './infrastructure/database/coupons.repository';
@@ -200,9 +208,11 @@ import { RankingsController } from './interfaces/http/controllers/rankings.contr
 import { createRankingsRoutes } from './interfaces/http/routes/rankings.routes';
 import { startRankingChampionNotificationScheduler } from './infrastructure/scheduling/ranking-champion-notification.scheduler';
 import { SequelizeConversationsRepository } from './infrastructure/database/conversations.repository';
+import { SequelizeConversationMessageNotifier } from './infrastructure/database/conversation-message.notifier';
 import { ConversationRealtimeHub } from './infrastructure/realtime/conversation-realtime.hub';
 import { attachConversationWebSocket } from './infrastructure/realtime/attach-conversation-ws';
 import { AppendConversationTurnUseCase } from './application/use-cases/conversations/append-conversation-turn.use-case';
+import { GetConversationPartnerUseCase } from './application/use-cases/conversations/get-conversation-partner.use-case';
 import { ListConversationMessagesUseCase } from './application/use-cases/conversations/list-conversation-messages.use-case';
 import { ConversationsController } from './interfaces/http/controllers/conversations.controller';
 import { createConversationsRoutes } from './interfaces/http/routes/conversations.routes';
@@ -776,18 +786,39 @@ const feedbacksRepository = new SequelizeFeedbacksRepository({
   Feedback: models.Feedback,
   Student: models.Student,
 });
+const feedbackResponsesRepository = new SequelizeFeedbackResponsesRepository({
+  ResponsesFeedback: models.ResponsesFeedback,
+});
 const studentTrainingFeedbackNotifier = new SequelizeStudentTrainingFeedbackNotifier({
   Notification: models.Notification,
   Trainer: models.Trainer,
 });
+const feedbackResponseNotifier = new SequelizeFeedbackResponseNotifier({
+  Notification: models.Notification,
+  Student: models.Student,
+});
 const feedbacksController = new FeedbacksController(
-  new ListFeedbacksUseCase(feedbacksRepository),
-  new GetFeedbackUseCase(feedbacksRepository),
-  new CreateFeedbackUseCase(feedbacksRepository, studentTrainingFeedbackNotifier)
+  new ListFeedbacksUseCase(feedbacksRepository, feedbackResponsesRepository),
+  new GetFeedbackUseCase(feedbacksRepository, feedbackResponsesRepository),
+  new CreateFeedbackUseCase(feedbacksRepository, studentTrainingFeedbackNotifier),
+  new ListFeedbackResponsesUseCase(feedbacksRepository, feedbackResponsesRepository),
+  new CreateFeedbackResponseUseCase(
+    feedbacksRepository,
+    feedbackResponsesRepository,
+    feedbackResponseNotifier
+  ),
+  new UpdateFeedbackResponseUseCase(feedbacksRepository, feedbackResponsesRepository),
+  new DeleteFeedbackResponseUseCase(feedbacksRepository, feedbackResponsesRepository)
 );
 app.use(
   '/feedbacks',
-  createFeedbacksRoutes(feedbacksController, requireAuth, requireStudentOrTrainer, requireStudent)
+  createFeedbacksRoutes(
+    feedbacksController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireStudent,
+    requireTrainer
+  )
 );
 
 const couponsRepository = new SequelizeCouponsRepository({ Coupon: models.Coupon });
@@ -900,16 +931,30 @@ app.use(
 const conversationsRepository = new SequelizeConversationsRepository({
   Conversation: models.Conversation,
   Student: models.Student,
+  Trainer: models.Trainer,
 });
 const conversationRealtimeHub = new ConversationRealtimeHub();
+const conversationMessageNotifier = new SequelizeConversationMessageNotifier({
+  Notification: models.Notification,
+  Student: models.Student,
+  Trainer: models.Trainer,
+});
 const appendConversationTurnUseCase = new AppendConversationTurnUseCase(
   conversationsRepository,
+  conversationRealtimeHub,
+  conversationMessageNotifier,
   conversationRealtimeHub
 );
 const listConversationMessagesUseCase = new ListConversationMessagesUseCase(
   conversationsRepository
 );
-const conversationsController = new ConversationsController(listConversationMessagesUseCase);
+const getConversationPartnerUseCase = new GetConversationPartnerUseCase(
+  conversationsRepository
+);
+const conversationsController = new ConversationsController(
+  listConversationMessagesUseCase,
+  getConversationPartnerUseCase
+);
 app.use(
   '/conversations',
   createConversationsRoutes(conversationsController, requireAuth, requireStudentOrTrainer)

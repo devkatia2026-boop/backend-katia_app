@@ -1,4 +1,5 @@
 import type { PagedList } from './social-feed.port';
+import type { FeedbackResponseDTO } from './feedback-responses.port';
 
 export type TrainingFeedbackStudentBrief = {
   id: string;
@@ -13,6 +14,7 @@ export type TrainingFeedbackDTO = {
   feedback: string | null;
   created_at: Date;
   student: TrainingFeedbackStudentBrief | null;
+  responses: FeedbackResponseDTO[];
 };
 
 export type CreateTrainingFeedbackInput = {

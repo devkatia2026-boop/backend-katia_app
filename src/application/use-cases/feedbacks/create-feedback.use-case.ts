@@ -23,6 +23,6 @@ export class CreateFeedbackUseCase {
         feedbackId: created.id,
       });
     }
-    return { ...created, student: null };
+    return { ...created, student: null, responses: [] };
   }
 }

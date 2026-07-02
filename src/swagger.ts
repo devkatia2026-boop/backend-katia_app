@@ -8,7 +8,7 @@ export const swaggerDocument = {
     {
       name: 'Conversas',
       description:
-        '**Histórico (REST):** `GET /conversations/messages`. Aluna só vê a própria thread; treinadora envia obrigatoriamente `studentId`. **Ao vivo:** WebSocket upgrade em `/ws/conversations?token=<access JWT Cognito>`. Fluxo cliente: ligar WebSocket → evento servidor `connected` → treinadora envia `{ "type":"join", "studentId":"<uuid aluna>" }` e recebe `joined` → qualquer lado envia `{ "type":"message", "text":"..." }`; broadcast para quem está na sala: `{ "type":"conversation:message", "payload":{...} }`. Aluna já entra na sala da própria conversa ao conectar.',
+        '**Histórico (REST):** `GET /conversations/messages`. **Parceiro da conversa:** `GET /conversations/partner`. Aluna só vê a própria thread; treinadora envia obrigatoriamente `studentId`. **Ao vivo:** WebSocket upgrade em `/ws/conversations?token=<access JWT Cognito>`. Fluxo cliente: ligar WebSocket → evento servidor `connected` → treinadora envia `{ "type":"join", "studentId":"<uuid aluna>" }` e recebe `joined` → qualquer lado envia `{ "type":"message", "text":"..." }` ou `{ "type":"typing", "active": true|false }`; broadcast: `conversation:message`, `conversation:typing`, `conversation:presence`. Aluna já entra na sala da própria conversa ao conectar. Push `CONVERSATION_NEW_MESSAGE` quando o destinatário está offline.',
     },
     {
       name: 'Rankings',
@@ -106,6 +106,15 @@ export const swaggerDocument = {
           student: { $ref: '#/components/schemas/RankingStudentBrief' },
           trainings_count: { type: 'integer', minimum: 0 },
           points: { type: 'integer', minimum: 0 },
+        },
+      },
+      FeedbackResponse: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          feedback_id: { type: 'integer' },
+          response: { type: 'string', nullable: true },
+          created_at: { type: 'string', format: 'date-time' },
         },
       },
       Coupon: {
@@ -4357,7 +4366,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar feedbacks de treino',
         description:
-          '**Aluna:** histórico próprio (`student` null). **Treinadora:** obrigatório `studentId` (UUID de aluna dela); histórico dessa aluna com resumo em `student`.',
+          '**Aluna:** histórico próprio com array `responses` em cada item (`student` null). **Treinadora:** obrigatório `studentId` (UUID de aluna dela); histórico dessa aluna com resumo em `student` e respostas em `responses`.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -4398,6 +4407,10 @@ export const swaggerDocument = {
                               id: { type: 'string', format: 'uuid' },
                               full_name: { type: 'string' },
                             },
+                          },
+                          responses: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/FeedbackResponse' },
                           },
                         },
                       },
@@ -4449,17 +4462,106 @@ export const swaggerDocument = {
     '/feedbacks/{id}': {
       get: {
         summary: 'Obter feedback por id',
-        description: 'Aluna se for dela; treinadora se a aluna for sua (resposta inclui `student`).',
+        description:
+          'Aluna se for dela; treinadora se a aluna for sua. Inclui array `responses` com respostas da treinadora.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
         ],
         responses: {
-          '200': { description: 'Registro' },
+          '200': { description: 'Feedback com responses' },
           '400': { description: 'ID inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Sem permissão' },
           '404': { description: 'Não encontrado' },
+        },
+      },
+    },
+    '/feedbacks/{feedbackId}/responses': {
+      get: {
+        summary: 'Listar respostas de um feedback',
+        description: 'Aluna dona do feedback ou treinadora da aluna. Retorna `{ feedback_id, items }`.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'feedbackId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': { description: 'Lista de respostas' },
+          '403': { description: 'Sem permissão' },
+          '404': { description: 'Feedback não encontrado' },
+        },
+      },
+      post: {
+        summary: 'Responder feedback (treinadora)',
+        description:
+          'Somente treinadora, para feedback de aluna sua. Notifica a aluna (tipo `FEEDBACK_RESPONSE_CREATED`; `data.feedbackId`).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'feedbackId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['response'],
+                properties: {
+                  response: { type: 'string', description: 'Texto da resposta' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Resposta criada',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/FeedbackResponse' } },
+            },
+          },
+          '403': { description: 'Somente treinadora ou feedback de outra aluna' },
+          '404': { description: 'Feedback não encontrado' },
+        },
+      },
+    },
+    '/feedbacks/{feedbackId}/responses/{responseId}': {
+      patch: {
+        summary: 'Editar resposta (treinadora)',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'feedbackId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+          { name: 'responseId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['response'],
+                properties: { response: { type: 'string' } },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Resposta atualizada' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Resposta não encontrada' },
+        },
+      },
+      delete: {
+        summary: 'Excluir resposta (treinadora)',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'feedbackId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+          { name: 'responseId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Excluída' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Resposta não encontrada' },
         },
       },
     },
@@ -4967,7 +5069,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar minhas notificações',
         description:
-          '**Aluna:** notificações em que `student_id` é ela (inbox própria). **Treinadora:** notificações em que `trainer_id` é ela (inbox própria; `student_id` pode ser null em eventos do feed direcionados só à treinadora). Ordem: `created_at` desc. Paginação `page`, `pageSize` (máx. 100). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `COUPON_CREATED`, `WELLBEING_CREATED`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; cupom usa `couponId`; wellbeing usa `wellbeingId`.',
+          'Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `COUPON_CREATED`, `WELLBEING_CREATED`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; cupom usa `couponId`; wellbeing usa `wellbeingId`.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -5002,7 +5104,7 @@ export const swaggerDocument = {
                             additionalProperties: true,
                             nullable: true,
                             description:
-                              'Payload contextual. Feed: `postId`. Cupom: `couponId`. Wellbeing: `wellbeingId`.',
+                              'Payload contextual. Feed: `postId`. Feedback respondido: `feedbackId`. Cupom: `couponId`. Wellbeing: `wellbeingId`.',
                           },
                           created_at: { type: 'string', format: 'date-time' },
                         },
@@ -5079,6 +5181,45 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Sem permissão' },
           '404': { description: 'Não encontrado ou não é sua inbox' },
+        },
+      },
+    },
+    '/conversations/partner': {
+      get: {
+        summary: 'Obter parceiro da conversa',
+        description:
+          'Aluna recebe dados da treinadora vinculada. Treinadora deve enviar `studentId` e recebe dados da aluna.',
+        tags: ['Conversas'],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'query',
+            schema: { type: 'string', format: 'uuid' },
+            description: 'Obrigatório para treinadora; ignorado para aluna',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Parceiro da conversa',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    full_name: { type: 'string' },
+                    photo_perfil: { type: 'string', nullable: true },
+                    role: { type: 'string', enum: ['trainer', 'student'] },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Treinadora sem studentId' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Sem permissão nesta conversa' },
+          '404': { description: 'Parceiro não encontrado' },
         },
       },
     },

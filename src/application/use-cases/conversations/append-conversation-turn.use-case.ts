@@ -1,7 +1,9 @@
+import type { IConversationMessageNotifier } from '../../ports/conversation-message-notifier.port';
 import type {
   ConversationMessageDTO,
   ConversationSenderRole,
   IConversationBroadcastPublisher,
+  IConversationPresenceReader,
   IConversationsRepository,
 } from '../../ports/conversations.port';
 
@@ -26,12 +28,11 @@ function expectTrimmedNonEmpty(text: unknown, field: string): string {
 export class AppendConversationTurnUseCase {
   constructor(
     private readonly repo: IConversationsRepository,
-    private readonly broadcast: IConversationBroadcastPublisher
+    private readonly broadcast: IConversationBroadcastPublisher,
+    private readonly notifier: IConversationMessageNotifier,
+    private readonly presence: IConversationPresenceReader
   ) {}
 
-  /**
-   * @param payload.studentConversationId Room da conversa (id da aluna no par fixo treinadora–aluna).
-   */
   async execute(
     actor: { role: ConversationSenderRole; sub: string },
     payload: { studentConversationId: string; text: unknown }
@@ -69,6 +70,24 @@ export class AppendConversationTurnUseCase {
     });
 
     this.broadcast.publishNewMessage(sid, created);
+
+    const trainerId = await this.repo.getTrainerIdForStudent(sid);
+    if (trainerId) {
+      const recipientRole: ConversationSenderRole =
+        senderRole === 'trainer' ? 'student' : 'trainer';
+
+      if (!this.presence.isOnline(sid, recipientRole)) {
+        void this.notifier.notifyNewMessage({
+          senderRole,
+          recipientRole,
+          studentId: sid,
+          trainerId,
+          body: bodyText,
+          messageId: created.id,
+        });
+      }
+    }
+
     return created;
   }
 }

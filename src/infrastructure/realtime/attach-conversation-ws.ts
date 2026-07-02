@@ -10,7 +10,8 @@ type RawData = Buffer | ArrayBuffer | Buffer[];
 
 type ClientInbound =
   | { type: 'join'; studentId?: unknown }
-  | { type: 'message'; text?: unknown };
+  | { type: 'message'; text?: unknown }
+  | { type: 'typing'; active?: unknown };
 
 function rawToUtf8(raw: RawData): string {
   if (typeof raw === 'string') return raw;
@@ -116,7 +117,7 @@ export function attachConversationWebSocket(opts: AttachConversationWsDeps): Web
         send(ws, { type: 'error', code: 'FORBIDDEN', message: msg });
         return false;
       }
-      hub.subscribeRoom(studentIdForRoom, ws);
+      hub.subscribeRoom(studentIdForRoom, ws, authCtx.role);
       joinedRoomStudentId = studentIdForRoom;
       send(ws, { type: 'joined', payload: { studentId: joinedRoomStudentId } });
       return true;
@@ -179,6 +180,21 @@ export function attachConversationWebSocket(opts: AttachConversationWsDeps): Web
             message: e.message ?? 'Erro ao gravar mensagem.',
           });
         }
+        return;
+      }
+
+      if (msg.type === 'typing') {
+        if (joinedRoomStudentId === null) {
+          send(ws, { type: 'error', code: 'NOT_JOINED', message: 'Entre na conversa primeiro (join).' });
+          return;
+        }
+
+        hub.publishTyping(
+          joinedRoomStudentId,
+          authCtx.role,
+          msg.active === true,
+          ws
+        );
         return;
       }
 

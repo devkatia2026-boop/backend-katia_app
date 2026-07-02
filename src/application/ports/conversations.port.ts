@@ -11,6 +11,13 @@ export type ConversationMessageDTO = {
   created_at: Date;
 };
 
+export type ConversationPartnerDTO = {
+  id: string;
+  full_name: string;
+  photo_perfil: string | null;
+  role: ConversationSenderRole;
+};
+
 export interface IConversationsRepository {
   appendMessage(input: {
     student_id: string;
@@ -23,9 +30,21 @@ export interface IConversationsRepository {
     pageSize: number
   ): Promise<PagedList<ConversationMessageDTO>>;
   getTrainerIdForStudent(studentId: string): Promise<string | null>;
+  getPartnerForStudent(studentId: string): Promise<ConversationPartnerDTO | null>;
+  getStudentPartner(studentId: string): Promise<ConversationPartnerDTO | null>;
 }
 
 export interface IConversationBroadcastPublisher {
-  /** Room = student_id da conversa (par fixo treinadora–aluna). */
   publishNewMessage(roomStudentId: string, message: ConversationMessageDTO): void;
+  publishPresence(roomStudentId: string): void;
+  publishTyping(
+    roomStudentId: string,
+    senderRole: ConversationSenderRole,
+    active: boolean,
+    senderWs: unknown
+  ): void;
+}
+
+export interface IConversationPresenceReader {
+  isOnline(roomStudentId: string, role: ConversationSenderRole): boolean;
 }

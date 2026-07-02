@@ -2,6 +2,7 @@ import type { Conversation } from './models/conversation.model';
 import type { DatabaseModels } from './models';
 import type {
   ConversationMessageDTO,
+  ConversationPartnerDTO,
   ConversationSenderRole,
   IConversationsRepository,
 } from '../../application/ports/conversations.port';
@@ -34,7 +35,7 @@ function rowToDto(row: Conversation): ConversationMessageDTO {
 
 export class SequelizeConversationsRepository implements IConversationsRepository {
   constructor(
-    private readonly models: Pick<DatabaseModels, 'Conversation' | 'Student'>
+    private readonly models: Pick<DatabaseModels, 'Conversation' | 'Student' | 'Trainer'>
   ) {}
 
   async appendMessage(input: {
@@ -90,5 +91,55 @@ export class SequelizeConversationsRepository implements IConversationsRepositor
       raw: true,
     });
     return row ? (row as { trainer_id: string }).trainer_id : null;
+  }
+
+  async getPartnerForStudent(studentId: string): Promise<ConversationPartnerDTO | null> {
+    const student = await this.models.Student.findByPk(studentId, {
+      attributes: ['trainer_id'],
+      raw: true,
+    });
+
+    if (!student) {
+      return null;
+    }
+
+    const trainerId = (student as { trainer_id: string }).trainer_id;
+    const trainer = await this.models.Trainer.findByPk(trainerId, {
+      attributes: ['id', 'full_name', 'photo_perfil'],
+      raw: true,
+    });
+
+    if (!trainer) {
+      return null;
+    }
+
+    const row = trainer as { id: string; full_name: string; photo_perfil: string | null };
+
+    return {
+      id: row.id,
+      full_name: row.full_name,
+      photo_perfil: row.photo_perfil,
+      role: 'trainer',
+    };
+  }
+
+  async getStudentPartner(studentId: string): Promise<ConversationPartnerDTO | null> {
+    const student = await this.models.Student.findByPk(studentId, {
+      attributes: ['id', 'full_name', 'photo_perfil'],
+      raw: true,
+    });
+
+    if (!student) {
+      return null;
+    }
+
+    const row = student as { id: string; full_name: string; photo_perfil: string | null };
+
+    return {
+      id: row.id,
+      full_name: row.full_name,
+      photo_perfil: row.photo_perfil,
+      role: 'student',
+    };
   }
 }
