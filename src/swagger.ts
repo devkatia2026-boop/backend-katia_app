@@ -15,6 +15,21 @@ export const swaggerDocument = {
       description:
         'Ranking mensal por plano (`comum` / `exclusive`) no fuso `America/Sao_Paulo`. Cada registro em `points` no mês vale 10 pontos. Notificações de campeã do mês passado são enviadas automaticamente no dia 1 às 06:00 (horário de Brasília).',
     },
+    {
+      name: 'Cupons',
+      description:
+        'Cupons de parceiros. **Treinadora:** CRUD completo; listagem inclui ativos e inativos. **Aluna e treinadora:** leitura de cupons com `status: true`.',
+    },
+    {
+      name: 'Wellbeing',
+      description:
+        'Conteúdos de wellbeing. **Treinadora:** CRUD completo; listagem inclui ativos e inativos. **Aluna e treinadora:** leitura de registros com `status: true`.',
+    },
+    {
+      name: 'Wells',
+      description:
+        'Itens vinculados a um wellbeing (`wellbeing_id`). **Treinadora:** CRUD completo. **Aluna:** vê apenas wells ativos cujo wellbeing pai também está ativo. Filtro opcional `wellbeingId` na listagem.',
+    },
   ],
   info: {
     title: 'API Backend Reta AI',
@@ -91,6 +106,44 @@ export const swaggerDocument = {
           student: { $ref: '#/components/schemas/RankingStudentBrief' },
           trainings_count: { type: 'integer', minimum: 0 },
           points: { type: 'integer', minimum: 0 },
+        },
+      },
+      Coupon: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          status: { type: 'boolean', nullable: true },
+          photo: { type: 'string', nullable: true },
+          site: { type: 'string', nullable: true },
+          code: { type: 'string', nullable: true },
+          site_name: { type: 'string', nullable: true },
+          description: { type: 'string', nullable: true },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      WellbeingItem: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          status: { type: 'boolean', nullable: true },
+          photo: { type: 'string', nullable: true },
+          tittle: { type: 'string', nullable: true },
+          tags: { type: 'string', nullable: true },
+          description: { type: 'string', nullable: true },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      Well: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          wellbeing_id: { type: 'integer' },
+          status: { type: 'boolean', nullable: true },
+          photo: { type: 'string', nullable: true },
+          video_link: { type: 'string', nullable: true },
+          tittle: { type: 'string', nullable: true },
+          description: { type: 'string', nullable: true },
+          created_at: { type: 'string', format: 'date-time' },
         },
       },
       AnamnesisExclusive: {
@@ -4509,6 +4562,392 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não é aluna nem treinadora' },
           '404': { description: 'Nenhuma aluna pontuou no mês anterior' },
+        },
+      },
+    },
+    '/coupons': {
+      get: {
+        tags: ['Cupons'],
+        summary: 'Listar cupons',
+        description:
+          'Paginação `page`, `pageSize` (máx. 100). **Aluna:** somente cupons com `status: true`. **Treinadora:** todos (ativos e inativos).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+        ],
+        responses: {
+          '200': { description: 'Lista paginada de cupons' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+        },
+      },
+      post: {
+        tags: ['Cupons'],
+        summary: 'Criar cupom',
+        description: 'Somente treinadora. `photo` pode ser URL (JSON) ou arquivo multipart.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'boolean', nullable: true },
+                  photo: { type: 'string', nullable: true },
+                  site: { type: 'string', nullable: true },
+                  code: { type: 'string', nullable: true },
+                  site_name: { type: 'string', nullable: true },
+                  description: { type: 'string', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string' },
+                  photo: { type: 'string', format: 'binary' },
+                  site: { type: 'string' },
+                  code: { type: 'string' },
+                  site_name: { type: 'string' },
+                  description: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Cupom criado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Coupon' } } } },
+          '400': { description: 'Corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Somente treinadora' },
+          '503': { description: 'Armazenamento S3 indisponível' },
+        },
+      },
+    },
+    '/coupons/{couponId}': {
+      get: {
+        tags: ['Cupons'],
+        summary: 'Obter cupom',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'couponId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
+        responses: {
+          '200': { description: 'Cupom', content: { 'application/json': { schema: { $ref: '#/components/schemas/Coupon' } } } },
+          '404': { description: 'Cupom não encontrado ou inativo (aluna)' },
+        },
+      },
+      patch: {
+        tags: ['Cupons'],
+        summary: 'Atualizar cupom',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'couponId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  status: { type: 'boolean', nullable: true },
+                  photo: { type: 'string', nullable: true },
+                  site: { type: 'string', nullable: true },
+                  code: { type: 'string', nullable: true },
+                  site_name: { type: 'string', nullable: true },
+                  description: { type: 'string', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  status: { type: 'string' },
+                  photo: { type: 'string', format: 'binary' },
+                  site: { type: 'string' },
+                  code: { type: 'string' },
+                  site_name: { type: 'string' },
+                  description: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Cupom atualizado' },
+          '400': { description: 'Corpo inválido' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Cupom não encontrado' },
+        },
+      },
+      delete: {
+        tags: ['Cupons'],
+        summary: 'Excluir cupom',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'couponId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
+        responses: {
+          '204': { description: 'Excluído' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Cupom não encontrado' },
+        },
+      },
+    },
+    '/wellbeing': {
+      get: {
+        tags: ['Wellbeing'],
+        summary: 'Listar wellbeing',
+        description:
+          'Paginação `page`, `pageSize`. **Aluna:** somente `status: true`. **Treinadora:** todos.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+        ],
+        responses: {
+          '200': { description: 'Lista paginada' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+        },
+      },
+      post: {
+        tags: ['Wellbeing'],
+        summary: 'Criar wellbeing',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'boolean', nullable: true },
+                  photo: { type: 'string', nullable: true },
+                  tittle: { type: 'string', nullable: true },
+                  tags: { type: 'string', nullable: true },
+                  description: { type: 'string', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string' },
+                  photo: { type: 'string', format: 'binary' },
+                  tittle: { type: 'string' },
+                  tags: { type: 'string' },
+                  description: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Wellbeing criado', content: { 'application/json': { schema: { $ref: '#/components/schemas/WellbeingItem' } } } },
+          '403': { description: 'Somente treinadora' },
+        },
+      },
+    },
+    '/wellbeing/{wellbeingId}': {
+      get: {
+        tags: ['Wellbeing'],
+        summary: 'Obter wellbeing',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'wellbeingId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
+        responses: {
+          '200': { description: 'Wellbeing', content: { 'application/json': { schema: { $ref: '#/components/schemas/WellbeingItem' } } } },
+          '404': { description: 'Não encontrado ou inativo (aluna)' },
+        },
+      },
+      patch: {
+        tags: ['Wellbeing'],
+        summary: 'Atualizar wellbeing',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'wellbeingId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  status: { type: 'boolean', nullable: true },
+                  photo: { type: 'string', nullable: true },
+                  tittle: { type: 'string', nullable: true },
+                  tags: { type: 'string', nullable: true },
+                  description: { type: 'string', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  status: { type: 'string' },
+                  photo: { type: 'string', format: 'binary' },
+                  tittle: { type: 'string' },
+                  tags: { type: 'string' },
+                  description: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Wellbeing atualizado' },
+          '400': { description: 'Corpo inválido' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Não encontrado' },
+        },
+      },
+      delete: {
+        tags: ['Wellbeing'],
+        summary: 'Excluir wellbeing',
+        description: 'Somente treinadora. Retorna 400 se existirem wells vinculados.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'wellbeingId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
+        responses: {
+          '204': { description: 'Excluído' },
+          '400': { description: 'Existem wells vinculados' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Não encontrado' },
+        },
+      },
+    },
+    '/wells': {
+      get: {
+        tags: ['Wells'],
+        summary: 'Listar wells',
+        description:
+          'Paginação `page`, `pageSize`. Filtro opcional `wellbeingId`. **Aluna:** somente wells ativos com wellbeing pai ativo. **Treinadora:** todos.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+          { name: 'wellbeingId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': { description: 'Lista paginada' },
+          '400': { description: 'wellbeingId inválido' },
+        },
+      },
+      post: {
+        tags: ['Wells'],
+        summary: 'Criar well',
+        description: 'Somente treinadora. Campo `wellbeing_id` obrigatório.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['wellbeing_id'],
+                properties: {
+                  wellbeing_id: { type: 'integer', minimum: 1 },
+                  status: { type: 'boolean', nullable: true },
+                  photo: { type: 'string', nullable: true },
+                  video_link: { type: 'string', nullable: true },
+                  tittle: { type: 'string', nullable: true },
+                  description: { type: 'string', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['wellbeing_id'],
+                properties: {
+                  wellbeing_id: { type: 'string' },
+                  status: { type: 'string' },
+                  photo: { type: 'string', format: 'binary' },
+                  video_link: { type: 'string' },
+                  tittle: { type: 'string' },
+                  description: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Well criado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Well' } } } },
+          '404': { description: 'Wellbeing não encontrado' },
+        },
+      },
+    },
+    '/wells/{wellId}': {
+      get: {
+        tags: ['Wells'],
+        summary: 'Obter well',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'wellId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
+        responses: {
+          '200': { description: 'Well', content: { 'application/json': { schema: { $ref: '#/components/schemas/Well' } } } },
+          '404': { description: 'Não encontrado ou inativo (aluna)' },
+        },
+      },
+      patch: {
+        tags: ['Wells'],
+        summary: 'Atualizar well',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'wellId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  wellbeing_id: { type: 'integer', minimum: 1 },
+                  status: { type: 'boolean', nullable: true },
+                  photo: { type: 'string', nullable: true },
+                  video_link: { type: 'string', nullable: true },
+                  tittle: { type: 'string', nullable: true },
+                  description: { type: 'string', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  wellbeing_id: { type: 'string' },
+                  status: { type: 'string' },
+                  photo: { type: 'string', format: 'binary' },
+                  video_link: { type: 'string' },
+                  tittle: { type: 'string' },
+                  description: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Well atualizado' },
+          '404': { description: 'Well ou wellbeing não encontrado' },
+        },
+      },
+      delete: {
+        tags: ['Wells'],
+        summary: 'Excluir well',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'wellId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
+        responses: {
+          '204': { description: 'Excluído' },
+          '404': { description: 'Well não encontrado' },
         },
       },
     },

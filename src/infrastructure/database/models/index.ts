@@ -25,6 +25,9 @@ import { initObsToTrainings, ObsToTrainings } from './obs-to-trainings.model';
 import { initPoint, Point } from './point.model';
 import { initFeedback, Feedback } from './feedback.model';
 import { initNotification, Notification } from './notification.model';
+import { initCoupon, Coupon } from './coupon.model';
+import { initWellbeing, Wellbeing } from './wellbeing.model';
+import { initWell, Well } from './well.model';
 
 export type DatabaseModels = {
   Trainer: typeof Trainer;
@@ -53,6 +56,9 @@ export type DatabaseModels = {
   Point: typeof Point;
   Feedback: typeof Feedback;
   Notification: typeof Notification;
+  Coupon: typeof Coupon;
+  Wellbeing: typeof Wellbeing;
+  Well: typeof Well;
 };
 
 function associate(models: DatabaseModels): void {
@@ -83,6 +89,8 @@ function associate(models: DatabaseModels): void {
     Point,
     Feedback,
     Notification,
+    Wellbeing,
+    Well,
   } = models;
 
   Trainer.hasMany(Student, { foreignKey: 'trainer_id', as: 'students' });
@@ -206,6 +214,9 @@ function associate(models: DatabaseModels): void {
 
   Student.hasMany(Notification, { foreignKey: 'student_id', as: 'notifications' });
   Notification.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
+
+  Wellbeing.hasMany(Well, { foreignKey: 'wellbeing_id', as: 'wells' });
+  Well.belongsTo(Wellbeing, { foreignKey: 'wellbeing_id', as: 'wellbeing' });
 }
 
 export function initModels(sequelize: Sequelize): DatabaseModels {
@@ -235,6 +246,9 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const PointModel = initPoint(sequelize);
   const FeedbackModel = initFeedback(sequelize);
   const NotificationModel = initNotification(sequelize);
+  const CouponModel = initCoupon(sequelize);
+  const WellbeingModel = initWellbeing(sequelize);
+  const WellModel = initWell(sequelize);
 
   const models: DatabaseModels = {
     Trainer: TrainerModel,
@@ -263,6 +277,9 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     Point: PointModel,
     Feedback: FeedbackModel,
     Notification: NotificationModel,
+    Coupon: CouponModel,
+    Wellbeing: WellbeingModel,
+    Well: WellModel,
   };
 
   associate(models);
@@ -297,4 +314,7 @@ export {
   Point,
   Feedback,
   Notification,
+  Coupon,
+  Wellbeing,
+  Well,
 };

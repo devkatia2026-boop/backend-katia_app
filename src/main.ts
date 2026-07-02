@@ -159,6 +159,30 @@ import { GetFeedbackUseCase } from './application/use-cases/feedbacks/get-feedba
 import { CreateFeedbackUseCase } from './application/use-cases/feedbacks/create-feedback.use-case';
 import { FeedbacksController } from './interfaces/http/controllers/feedbacks.controller';
 import { createFeedbacksRoutes } from './interfaces/http/routes/feedbacks.routes';
+import { SequelizeCouponsRepository } from './infrastructure/database/coupons.repository';
+import { SequelizeWellbeingRepository } from './infrastructure/database/wellbeing.repository';
+import { SequelizeWellsRepository } from './infrastructure/database/wells.repository';
+import { ListCouponsUseCase } from './application/use-cases/coupons/list-coupons.use-case';
+import { GetCouponUseCase } from './application/use-cases/coupons/get-coupon.use-case';
+import { CreateCouponUseCase } from './application/use-cases/coupons/create-coupon.use-case';
+import { UpdateCouponUseCase } from './application/use-cases/coupons/update-coupon.use-case';
+import { DeleteCouponUseCase } from './application/use-cases/coupons/delete-coupon.use-case';
+import { ListWellbeingUseCase } from './application/use-cases/wellbeing/list-wellbeing.use-case';
+import { GetWellbeingUseCase } from './application/use-cases/wellbeing/get-wellbeing.use-case';
+import { CreateWellbeingUseCase } from './application/use-cases/wellbeing/create-wellbeing.use-case';
+import { UpdateWellbeingUseCase } from './application/use-cases/wellbeing/update-wellbeing.use-case';
+import { DeleteWellbeingUseCase } from './application/use-cases/wellbeing/delete-wellbeing.use-case';
+import { ListWellsUseCase } from './application/use-cases/wells/list-wells.use-case';
+import { GetWellUseCase } from './application/use-cases/wells/get-well.use-case';
+import { CreateWellUseCase } from './application/use-cases/wells/create-well.use-case';
+import { UpdateWellUseCase } from './application/use-cases/wells/update-well.use-case';
+import { DeleteWellUseCase } from './application/use-cases/wells/delete-well.use-case';
+import { CouponsController } from './interfaces/http/controllers/coupons.controller';
+import { WellbeingController } from './interfaces/http/controllers/wellbeing.controller';
+import { WellsController } from './interfaces/http/controllers/wells.controller';
+import { createCouponsRoutes } from './interfaces/http/routes/coupons.routes';
+import { createWellbeingRoutes } from './interfaces/http/routes/wellbeing.routes';
+import { createWellsRoutes } from './interfaces/http/routes/wells.routes';
 import { SequelizeNotificationsRepository } from './infrastructure/database/notifications.repository';
 import { ListNotificationsUseCase } from './application/use-cases/notifications/list-notifications.use-case';
 import { GetNotificationUseCase } from './application/use-cases/notifications/get-notification.use-case';
@@ -243,6 +267,9 @@ const uploadImageFilesUseCase = new UploadImageFilesUseCase(objectStorage);
 const profileImageUploadMiddleware = createImageUploadMiddleware(['photo_perfil']);
 const postImageUploadMiddleware = createImageUploadMiddleware(['image']);
 const programImageUploadMiddleware = createImageUploadMiddleware(['photo']);
+const couponImageUploadMiddleware = createImageUploadMiddleware(['photo']);
+const wellbeingImageUploadMiddleware = createImageUploadMiddleware(['photo']);
+const wellImageUploadMiddleware = createImageUploadMiddleware(['photo']);
 const evolutionImageUploadMiddleware = createImageUploadMiddleware([
   'original_photo',
   'current_photo',
@@ -760,6 +787,70 @@ const feedbacksController = new FeedbacksController(
 app.use(
   '/feedbacks',
   createFeedbacksRoutes(feedbacksController, requireAuth, requireStudentOrTrainer, requireStudent)
+);
+
+const couponsRepository = new SequelizeCouponsRepository({ Coupon: models.Coupon });
+const wellbeingRepository = new SequelizeWellbeingRepository({ Wellbeing: models.Wellbeing });
+const wellsRepository = new SequelizeWellsRepository({
+  Well: models.Well,
+  Wellbeing: models.Wellbeing,
+});
+
+const couponsController = new CouponsController(
+  new ListCouponsUseCase(couponsRepository),
+  new GetCouponUseCase(couponsRepository),
+  new CreateCouponUseCase(couponsRepository),
+  new UpdateCouponUseCase(couponsRepository),
+  new DeleteCouponUseCase(couponsRepository),
+  uploadImageFilesUseCase
+);
+app.use(
+  '/coupons',
+  createCouponsRoutes(
+    couponsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer,
+    couponImageUploadMiddleware
+  )
+);
+
+const wellbeingController = new WellbeingController(
+  new ListWellbeingUseCase(wellbeingRepository),
+  new GetWellbeingUseCase(wellbeingRepository),
+  new CreateWellbeingUseCase(wellbeingRepository),
+  new UpdateWellbeingUseCase(wellbeingRepository),
+  new DeleteWellbeingUseCase(wellbeingRepository, wellsRepository),
+  uploadImageFilesUseCase
+);
+app.use(
+  '/wellbeing',
+  createWellbeingRoutes(
+    wellbeingController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer,
+    wellbeingImageUploadMiddleware
+  )
+);
+
+const wellsController = new WellsController(
+  new ListWellsUseCase(wellsRepository),
+  new GetWellUseCase(wellsRepository, wellbeingRepository),
+  new CreateWellUseCase(wellsRepository, wellbeingRepository),
+  new UpdateWellUseCase(wellsRepository, wellbeingRepository),
+  new DeleteWellUseCase(wellsRepository),
+  uploadImageFilesUseCase
+);
+app.use(
+  '/wells',
+  createWellsRoutes(
+    wellsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer,
+    wellImageUploadMiddleware
+  )
 );
 
 const notificationsRepository = new SequelizeNotificationsRepository({
