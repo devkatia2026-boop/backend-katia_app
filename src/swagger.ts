@@ -5069,7 +5069,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar minhas notificações',
         description:
-          'Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `COUPON_CREATED`, `WELLBEING_CREATED`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; cupom usa `couponId`; wellbeing usa `wellbeingId`.',
+          'Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `COUPON_CREATED`, `WELLBEING_CREATED`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; cupom usa `couponId`; wellbeing usa `wellbeingId`; conversa usa `studentId` e `messageId`.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -5130,6 +5130,29 @@ export const swaggerDocument = {
         summary: 'Marcar todas as notificações como lidas',
         description:
           'Marca como lidas todas as notificações não lidas da inbox da aluna (`student_id`) ou da treinadora (`trainer_id`) autenticada.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Quantidade atualizada',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { updated: { type: 'integer' } },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Sem permissão' },
+        },
+      },
+    },
+    '/notifications/conversation/read': {
+      patch: {
+        summary: 'Marcar notificações de conversa como lidas',
+        description:
+          'Marca como lidas todas as notificações não lidas do tipo `CONVERSATION_NEW_MESSAGE` da inbox da aluna ou da treinadora autenticada.',
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {

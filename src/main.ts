@@ -197,6 +197,7 @@ import { ListNotificationsUseCase } from './application/use-cases/notifications/
 import { GetNotificationUseCase } from './application/use-cases/notifications/get-notification.use-case';
 import { MarkNotificationReadUseCase } from './application/use-cases/notifications/mark-notification-read.use-case';
 import { MarkAllNotificationsReadUseCase } from './application/use-cases/notifications/mark-all-notifications-read.use-case';
+import { MarkConversationNotificationsReadUseCase } from './application/use-cases/notifications/mark-conversation-notifications-read.use-case';
 import { NotificationsController } from './interfaces/http/controllers/notifications.controller';
 import { createNotificationsRoutes } from './interfaces/http/routes/notifications.routes';
 import { SequelizeRankingsRepository } from './infrastructure/database/rankings.repository';
@@ -921,7 +922,8 @@ const notificationsController = new NotificationsController(
   new ListNotificationsUseCase(notificationsRepository),
   new GetNotificationUseCase(notificationsRepository),
   new MarkNotificationReadUseCase(notificationsRepository),
-  new MarkAllNotificationsReadUseCase(notificationsRepository)
+  new MarkAllNotificationsReadUseCase(notificationsRepository),
+  new MarkConversationNotificationsReadUseCase(notificationsRepository)
 );
 app.use(
   '/notifications',

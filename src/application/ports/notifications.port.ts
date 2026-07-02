@@ -30,4 +30,8 @@ export interface INotificationsRepository {
   ): Promise<NotificationDTO | null>;
   /** Marca todas as não lidas do destinatário; retorna a quantidade atualizada. */
   markAllReadForViewer(viewer: { role: 'student' | 'trainer'; sub: string }): Promise<number>;
+  markReadByTypeForViewer(
+    type: string,
+    viewer: { role: 'student' | 'trainer'; sub: string }
+  ): Promise<number>;
 }

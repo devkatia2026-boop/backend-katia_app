@@ -3,6 +3,7 @@ import type { ListNotificationsUseCase } from '../../../application/use-cases/no
 import type { GetNotificationUseCase } from '../../../application/use-cases/notifications/get-notification.use-case';
 import type { MarkNotificationReadUseCase } from '../../../application/use-cases/notifications/mark-notification-read.use-case';
 import type { MarkAllNotificationsReadUseCase } from '../../../application/use-cases/notifications/mark-all-notifications-read.use-case';
+import type { MarkConversationNotificationsReadUseCase } from '../../../application/use-cases/notifications/mark-conversation-notifications-read.use-case';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -37,7 +38,8 @@ export class NotificationsController {
     private readonly listRows: ListNotificationsUseCase,
     private readonly getRow: GetNotificationUseCase,
     private readonly markRow: MarkNotificationReadUseCase,
-    private readonly markAllRows: MarkAllNotificationsReadUseCase
+    private readonly markAllRows: MarkAllNotificationsReadUseCase,
+    private readonly markConversationRows: MarkConversationNotificationsReadUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -79,6 +81,15 @@ export class NotificationsController {
       res.status(200).json(result);
     } catch (err) {
       this.handle(err, res, 'Erro ao atualizar notificações.');
+    }
+  }
+
+  async markConversationRead(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await this.markConversationRows.execute(authFrom(req));
+      res.status(200).json(result);
+    } catch (err) {
+      this.handle(err, res, 'Erro ao atualizar notificações de conversa.');
     }
   }
 

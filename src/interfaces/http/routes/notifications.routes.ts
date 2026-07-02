@@ -15,6 +15,9 @@ export function createNotificationsRoutes(
   router.patch('/read-all', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.markAllRead(req, res)
   );
+  router.patch('/conversation/read', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
+    controller.markConversationRead(req, res)
+  );
   router.patch('/:id/read', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.markRead(req, res)
   );

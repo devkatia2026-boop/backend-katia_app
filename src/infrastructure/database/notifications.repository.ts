@@ -76,4 +76,17 @@ export class SequelizeNotificationsRepository implements INotificationsRepositor
     const [count] = await this.models.Notification.update({ read: true }, { where });
     return count;
   }
+
+  async markReadByTypeForViewer(
+    type: string,
+    viewer: { role: 'student' | 'trainer'; sub: string }
+  ): Promise<number> {
+    const where =
+      viewer.role === 'student'
+        ? { student_id: viewer.sub, read: false, type }
+        : { trainer_id: viewer.sub, read: false, type };
+
+    const [count] = await this.models.Notification.update({ read: true }, { where });
+    return count;
+  }
 }

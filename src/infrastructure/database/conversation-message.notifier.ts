@@ -25,8 +25,8 @@ export class SequelizeConversationMessageNotifier implements IConversationMessag
         : `${senderName}: ${input.body}`;
 
     await this.models.Notification.create({
-      student_id: input.studentId,
-      trainer_id: input.trainerId,
+      student_id: input.recipientRole === 'student' ? input.studentId : null,
+      trainer_id: input.recipientRole === 'trainer' ? input.trainerId : null,
       title,
       message,
       read: false,
