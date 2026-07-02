@@ -15,6 +15,7 @@ export class S3ObjectStorageAdapter implements IObjectStorage {
   }
 
   async putObject(input: StoredObjectInput): Promise<string> {
+    const url = this.buildPublicUrl(input.key);
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.config.bucket,
@@ -23,7 +24,14 @@ export class S3ObjectStorageAdapter implements IObjectStorage {
         ContentType: input.contentType,
       })
     );
-    return this.buildPublicUrl(input.key);
+    console.log('[s3] PutObject', {
+      bucket: this.config.bucket,
+      key: input.key,
+      contentType: input.contentType,
+      bytes: input.body.length,
+      url,
+    });
+    return url;
   }
 
   private buildPublicUrl(key: string): string {

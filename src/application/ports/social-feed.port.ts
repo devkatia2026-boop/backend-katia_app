@@ -33,6 +33,34 @@ export type PagedList<T> = {
   pageSize: number;
 };
 
+export type FeedAuthor = {
+  id: string | null;
+  name: string;
+  photo: string | null;
+  type: AuthorRole | null;
+  plan: string | null;
+};
+
+export type FeedViewer = {
+  id: string;
+  type: AuthorRole;
+};
+
+export type FeedPostDTO = PostDTO & {
+  author: FeedAuthor;
+  likes_count: number;
+  comments_count: number;
+  liked_by_me: boolean;
+};
+
+export type FeedCommentDTO = CommentDTO & {
+  author: FeedAuthor;
+};
+
+export type FeedLikeDTO = LikeDTO & {
+  author: FeedAuthor;
+};
+
 export type CreatePostInput = {
   authorId: string;
   authorType: AuthorRole;
@@ -58,8 +86,12 @@ export type PatchCommentInput = {
 
 export interface ISocialFeedRepository {
   createPost(input: CreatePostInput): Promise<PostDTO>;
-  /** Feed global: posts mais recentes primeiro. */
-  listPosts(page: number, pageSize: number): Promise<PagedList<PostDTO>>;
+  /** Feed global: posts mais recentes primeiro, enriquecidos com autor e métricas. */
+  listPosts(
+    page: number,
+    pageSize: number,
+    viewer: FeedViewer
+  ): Promise<PagedList<FeedPostDTO>>;
   findPostById(postId: number): Promise<PostDTO | null>;
   updatePostByOwner(
     postId: number,
@@ -73,8 +105,12 @@ export interface ISocialFeedRepository {
     postId: number,
     page: number,
     pageSize: number
-  ): Promise<PagedList<CommentDTO>>;
-  listLikesByPostId(postId: number, page: number, pageSize: number): Promise<PagedList<LikeDTO>>;
+  ): Promise<PagedList<FeedCommentDTO>>;
+  listLikesByPostId(
+    postId: number,
+    page: number,
+    pageSize: number
+  ): Promise<PagedList<FeedLikeDTO>>;
   createComment(input: CreateCommentInput): Promise<CommentDTO>;
   findCommentById(commentId: number): Promise<CommentDTO | null>;
   updateCommentByOwner(

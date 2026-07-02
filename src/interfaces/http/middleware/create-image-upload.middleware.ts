@@ -21,6 +21,7 @@ export function createImageUploadMiddleware(fieldNames: string[]): RequestHandle
         return;
       }
       if (err instanceof multer.MulterError) {
+        console.warn('[image-upload] multer:', err.code, err.message, { fields: fieldNames });
         const message =
           err.code === 'LIMIT_FILE_SIZE'
             ? `Arquivo excede o limite de ${IMAGE_UPLOAD_MAX_BYTES / (1024 * 1024)} MB.`

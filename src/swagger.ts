@@ -1925,7 +1925,8 @@ export const swaggerDocument = {
       post: {
         summary: 'Criar post',
         description:
-          'Aluna ou treinadora autenticada. Exige ao menos `content` ou `image`. `image` pode ser URL ou arquivo multipart (S3). O autor é inferido do token.',
+          'Aluna ou treinadora autenticada. Exige ao menos `content` ou `image`. `image` pode ser URL ou arquivo multipart (S3). O autor é inferido do token.\n\n' +
+          '**Notificações (push Expo + inbox):** todo novo post notifica **todas as alunas** e **todas as treinadoras** cadastradas, exceto o autor. Tipo: `FEED_NEW_POST`. Notificações para treinadoras usam `student_id` null (requer migration de destinatários nullable).',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -2070,6 +2071,8 @@ export const swaggerDocument = {
       },
       post: {
         summary: 'Comentar post',
+        description:
+          'Notifica o **dono do post** (push Expo + inbox), exceto se o comentarista for o próprio dono. Tipo `FEED_NEW_COMMENT`. Dono treinadora → `student_id` null na notificação.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'postId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
@@ -4361,7 +4364,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar minhas notificações',
         description:
-          '**Aluna:** notificações em que `student_id` é ela (inbox própria). **Treinadora:** notificações em que `trainer_id` é ela. Ordem: `created_at` desc. Paginação `page`, `pageSize` (máx. 100).',
+          '**Aluna:** notificações em que `student_id` é ela (inbox própria). **Treinadora:** notificações em que `trainer_id` é ela (inbox própria; `student_id` pode ser null em eventos do feed direcionados só à treinadora). Ordem: `created_at` desc. Paginação `page`, `pageSize` (máx. 100). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },

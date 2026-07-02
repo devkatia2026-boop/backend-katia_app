@@ -1,4 +1,4 @@
-import type { ISocialFeedRepository, PagedList, CommentDTO } from '../../ports/social-feed.port';
+import type { ISocialFeedRepository, PagedList, FeedCommentDTO } from '../../ports/social-feed.port';
 import { normalizePagination } from '../../parsing/pagination.parsing';
 
 const NOT_FOUND = 'NotFoundException';
@@ -10,7 +10,7 @@ export class ListPostCommentsUseCase {
     postId: number,
     page: unknown,
     pageSize: unknown
-  ): Promise<PagedList<CommentDTO>> {
+  ): Promise<PagedList<FeedCommentDTO>> {
     const post = await this.repo.findPostById(postId);
     if (!post) {
       const err = new Error('Post não encontrado.');

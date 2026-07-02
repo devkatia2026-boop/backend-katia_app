@@ -240,7 +240,10 @@ const evolutionImageUploadMiddleware = createImageUploadMiddleware([
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, Cache-Control, Pragma'
+  );
 
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
@@ -321,6 +324,7 @@ const socialFeedRepository = new SequelizeSocialFeedRepository({
   Comment: models.Comment,
   Like: models.Like,
   Student: models.Student,
+  Trainer: models.Trainer,
 });
 const feedNotificationPublisher = new SequelizeFeedNotificationPublisher({
   Notification: models.Notification,

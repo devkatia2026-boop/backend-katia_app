@@ -15,12 +15,29 @@ export async function mergeImageUploadsIntoBody(
   fieldConfig: ImageUploadFieldConfig
 ): Promise<Record<string, unknown>> {
   const body = requestBodyRecord(req);
-  if (!isMultipartRequest(req)) return body;
+  if (!isMultipartRequest(req)) {
+    console.log('[image-upload] merge: JSON (sem multipart)', { storagePrefix, scopeId });
+    return body;
+  }
 
   const allowedFields = Object.keys(fieldConfig);
   const files = extractUploadedImageFiles(req, allowedFields);
-  if (files.length === 0) return body;
+  console.log('[image-upload] merge: multipart', {
+    storagePrefix,
+    scopeId,
+    fileCount: files.length,
+    files: files.map((f) => ({ field: f.field, mimeType: f.mimeType, bytes: f.buffer.length })),
+  });
+  if (files.length === 0) {
+    console.warn('[image-upload] merge: multipart sem arquivo nos campos', {
+      storagePrefix,
+      allowedFields,
+      bodyKeys: Object.keys(body),
+    });
+    return body;
+  }
 
   const urls = await upload.execute(scopeId.toLowerCase(), storagePrefix, files, fieldConfig);
+  console.log('[image-upload] merge: urls retornadas', { storagePrefix, scopeId, urls });
   return { ...body, ...urls };
 }

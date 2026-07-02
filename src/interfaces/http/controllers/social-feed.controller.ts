@@ -20,6 +20,7 @@ import {
   S3_PREFIX_POST,
 } from '../../../application/media/image-upload.config';
 import { mergeImageUploadsIntoBody } from '../helpers/merge-image-uploads';
+import { isMultipartRequest } from '../parsing/image-multipart.parsing';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -68,9 +69,11 @@ export class SocialFeedController {
 
   async postList(req: Request, res: Response): Promise<void> {
     try {
+      const a = actor(req);
       const result = await this.listPosts.execute(
         firstQuery(req.query.page),
-        firstQuery(req.query.pageSize)
+        firstQuery(req.query.pageSize),
+        { id: a.id, type: a.role }
       );
       res.status(200).json(result);
     } catch (err) {
@@ -81,6 +84,12 @@ export class SocialFeedController {
   async postCreate(req: Request, res: Response): Promise<void> {
     try {
       const a = actor(req);
+      console.log('[posts] create iniciado', {
+        authorId: a.id,
+        authorRole: a.role,
+        multipart: isMultipartRequest(req),
+        contentType: req.headers['content-type'] ?? null,
+      });
       const body = await mergeImageUploadsIntoBody(
         req,
         this.uploadImages,
@@ -88,9 +97,21 @@ export class SocialFeedController {
         S3_PREFIX_POST,
         POST_IMAGE_FIELDS
       );
+      console.log('[posts] create corpo', {
+        authorId: a.id,
+        hasContent: typeof body.content === 'string' && body.content.trim().length > 0,
+        hasImage: typeof body.image === 'string' && body.image.trim().length > 0,
+        imageUrl: typeof body.image === 'string' ? body.image : null,
+      });
       const created = await this.createPost.execute(a.id, a.role, body);
+      console.log('[posts] create ok', {
+        postId: created.id,
+        image: created.image,
+        hasContent: created.content !== null && created.content.trim().length > 0,
+      });
       res.status(201).json(created);
     } catch (err) {
+      console.error('[posts] create falhou:', err);
       this.handle(err, res, 'Erro ao criar post.');
     }
   }

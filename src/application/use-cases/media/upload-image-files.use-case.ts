@@ -27,6 +27,7 @@ export class UploadImageFilesUseCase {
   ): Promise<Record<string, string>> {
     if (files.length === 0) return {};
     if (!this.storage) {
+      console.error('[image-upload] S3_BUCKET não configurado', { storagePrefix, scopeId });
       const err = new Error('Armazenamento de arquivos não configurado (S3_BUCKET).');
       err.name = OBJECT_STORAGE_EXCEPTION;
       throw err;
@@ -51,12 +52,29 @@ export class UploadImageFilesUseCase {
       this.assertImageMime(file);
       const key = this.buildObjectKey(storagePrefix, scopeId, field, file.originalName);
       try {
-        out[field] = await this.storage.putObject({
+        const url = await this.storage.putObject({
           key,
           body: file.buffer,
           contentType: file.mimeType || 'application/octet-stream',
         });
+        out[field] = url;
+        console.log('[image-upload] S3 ok', {
+          storagePrefix,
+          scopeId,
+          field,
+          key,
+          url,
+          bytes: file.buffer.length,
+          mimeType: file.mimeType,
+        });
       } catch (uploadErr) {
+        console.error('[image-upload] S3 falhou', {
+          storagePrefix,
+          scopeId,
+          field,
+          key,
+          err: uploadErr,
+        });
         throw this.toStorageError(uploadErr, storagePrefix);
       }
     }

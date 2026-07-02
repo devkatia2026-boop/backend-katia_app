@@ -20,58 +20,58 @@ export class SequelizeFeedNotificationPublisher implements IFeedNotificationPubl
     const authorName = await this.displayName(authorRole, authorId);
     const title = 'Novo post no feed';
     const message = `${authorName} publicou um novo post.`;
+    const data = { postId: post.id };
 
-    if (authorRole === 'student') {
-      const student = await this.models.Student.findByPk(authorId);
-      if (!student) return;
-      const trainerId = student.trainer_id;
-      await this.persistAndPush(
-        {
-          student_id: null,
-          trainer_id: trainerId,
-          title,
-          message,
-          type: TYPE_NEW_POST,
-          data: { postId: post.id },
-        },
-        () => this.pushTokenForTrainer(trainerId)
-      );
-      const peers = await this.models.Student.findAll({
-        where: { trainer_id: trainerId, id: { [Op.ne]: authorId } },
+    const studentWhere =
+      authorRole === 'student' ? { id: { [Op.ne]: authorId } } : undefined;
+    const trainerWhere =
+      authorRole === 'trainer' ? { id: { [Op.ne]: authorId } } : undefined;
+
+    const [students, trainers] = await Promise.all([
+      this.models.Student.findAll({
+        where: studentWhere,
+        attributes: ['id', 'trainer_id', 'expo_push_token'],
+      }),
+      this.models.Trainer.findAll({
+        where: trainerWhere,
         attributes: ['id', 'expo_push_token'],
-      });
-      for (const p of peers) {
+      }),
+    ]);
+
+    for (const student of students) {
+      try {
         await this.persistAndPush(
           {
-            student_id: p.id,
-            trainer_id: trainerId,
+            student_id: student.id,
+            trainer_id: student.trainer_id,
             title,
             message,
             type: TYPE_NEW_POST,
-            data: { postId: post.id },
+            data,
           },
-          () => Promise.resolve(p.expo_push_token?.trim() ?? null)
+          () => Promise.resolve(student.expo_push_token?.trim() ?? null)
         );
+      } catch (err) {
+        console.error('[feed-notifications] notifyNewPost student:', student.id, err);
       }
-      return;
     }
 
-    const students = await this.models.Student.findAll({
-      where: { trainer_id: authorId },
-      attributes: ['id', 'expo_push_token'],
-    });
-    for (const s of students) {
-      await this.persistAndPush(
-        {
-          student_id: s.id,
-          trainer_id: authorId,
-          title,
-          message,
-          type: TYPE_NEW_POST,
-          data: { postId: post.id },
-        },
-        () => Promise.resolve(s.expo_push_token?.trim() ?? null)
-      );
+    for (const trainer of trainers) {
+      try {
+        await this.persistAndPush(
+          {
+            student_id: null,
+            trainer_id: trainer.id,
+            title,
+            message,
+            type: TYPE_NEW_POST,
+            data,
+          },
+          () => Promise.resolve(trainer.expo_push_token?.trim() ?? null)
+        );
+      } catch (err) {
+        console.error('[feed-notifications] notifyNewPost trainer:', trainer.id, err);
+      }
     }
   }
 
@@ -117,31 +117,39 @@ export class SequelizeFeedNotificationPublisher implements IFeedNotificationPubl
         attributes: ['id', 'trainer_id', 'expo_push_token'],
       });
       if (!owner) return;
+      try {
+        await this.persistAndPush(
+          {
+            student_id: owner.id,
+            trainer_id: owner.trainer_id,
+            title,
+            message,
+            type,
+            data: { ...data, postId: post.id },
+          },
+          () => Promise.resolve(owner.expo_push_token?.trim() ?? null)
+        );
+      } catch (err) {
+        console.error('[feed-notifications] notifyPostOwner student:', owner.id, err);
+      }
+      return;
+    }
+
+    try {
       await this.persistAndPush(
         {
-          student_id: owner.id,
-          trainer_id: owner.trainer_id,
+          student_id: null,
+          trainer_id: ownerId,
           title,
           message,
           type,
           data: { ...data, postId: post.id },
         },
-        () => Promise.resolve(owner.expo_push_token?.trim() ?? null)
+        () => this.pushTokenForTrainer(ownerId)
       );
-      return;
+    } catch (err) {
+      console.error('[feed-notifications] notifyPostOwner trainer:', ownerId, err);
     }
-
-    await this.persistAndPush(
-      {
-        student_id: null,
-        trainer_id: ownerId,
-        title,
-        message,
-        type,
-        data: { ...data, postId: post.id },
-      },
-      () => this.pushTokenForTrainer(ownerId)
-    );
   }
 
   private async persistAndPush(
