@@ -4587,7 +4587,8 @@ export const swaggerDocument = {
         tags: ['Cupons'],
         summary: 'Criar cupom',
         description:
-          'Somente treinadora. Campo `photo`: URL (JSON) ou arquivo `multipart/form-data` → gravado no S3 em `coupons/{trainerId}/photo/...` e a URL pública retornada no registro. Campo `site` é link externo (não vai ao S3).',
+          'Somente treinadora. Campo `photo`: URL (JSON) ou arquivo `multipart/form-data` → gravado no S3 em `coupons/{trainerId}/photo/...` e a URL pública retornada no registro. Campo `site` é link externo (não vai ao S3).\n\n' +
+          '**Notificações:** ao criar, todas as alunas recebem inbox + push Expo (se houver token). Tipo `COUPON_CREATED`; `data.couponId` para navegação no app.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -4725,7 +4726,8 @@ export const swaggerDocument = {
         tags: ['Wellbeing'],
         summary: 'Criar wellbeing',
         description:
-          'Somente treinadora. Campo `photo`: URL (JSON) ou multipart → S3 em `wellbeing/{trainerId}/photo/...`; a URL pública fica no registro.',
+          'Somente treinadora. Campo `photo`: URL (JSON) ou multipart → S3 em `wellbeing/{trainerId}/photo/...`; a URL pública fica no registro.\n\n' +
+          '**Notificações:** ao criar, todas as alunas recebem inbox + push Expo (se houver token). Tipo `WELLBEING_CREATED`; `data.wellbeingId` para navegação no app.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -4965,7 +4967,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar minhas notificações',
         description:
-          '**Aluna:** notificações em que `student_id` é ela (inbox própria). **Treinadora:** notificações em que `trainer_id` é ela (inbox própria; `student_id` pode ser null em eventos do feed direcionados só à treinadora). Ordem: `created_at` desc. Paginação `page`, `pageSize` (máx. 100). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`.',
+          '**Aluna:** notificações em que `student_id` é ela (inbox própria). **Treinadora:** notificações em que `trainer_id` é ela (inbox própria; `student_id` pode ser null em eventos do feed direcionados só à treinadora). Ordem: `created_at` desc. Paginação `page`, `pageSize` (máx. 100). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `COUPON_CREATED`, `WELLBEING_CREATED`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; cupom usa `couponId`; wellbeing usa `wellbeingId`.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -5000,7 +5002,7 @@ export const swaggerDocument = {
                             additionalProperties: true,
                             nullable: true,
                             description:
-                              'Payload contextual. Em notificações de feed inclui `postId` para abrir o post.',
+                              'Payload contextual. Feed: `postId`. Cupom: `couponId`. Wellbeing: `wellbeingId`.',
                           },
                           created_at: { type: 'string', format: 'date-time' },
                         },

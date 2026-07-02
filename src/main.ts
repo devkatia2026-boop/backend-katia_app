@@ -183,6 +183,7 @@ import { WellsController } from './interfaces/http/controllers/wells.controller'
 import { createCouponsRoutes } from './interfaces/http/routes/coupons.routes';
 import { createWellbeingRoutes } from './interfaces/http/routes/wellbeing.routes';
 import { createWellsRoutes } from './interfaces/http/routes/wells.routes';
+import { SequelizeContentStudentsNotifier } from './infrastructure/database/content-students-notifier';
 import { SequelizeNotificationsRepository } from './infrastructure/database/notifications.repository';
 import { ListNotificationsUseCase } from './application/use-cases/notifications/list-notifications.use-case';
 import { GetNotificationUseCase } from './application/use-cases/notifications/get-notification.use-case';
@@ -795,11 +796,15 @@ const wellsRepository = new SequelizeWellsRepository({
   Well: models.Well,
   Wellbeing: models.Wellbeing,
 });
+const contentStudentsNotifier = new SequelizeContentStudentsNotifier({
+  Notification: models.Notification,
+  Student: models.Student,
+});
 
 const couponsController = new CouponsController(
   new ListCouponsUseCase(couponsRepository),
   new GetCouponUseCase(couponsRepository),
-  new CreateCouponUseCase(couponsRepository),
+  new CreateCouponUseCase(couponsRepository, contentStudentsNotifier),
   new UpdateCouponUseCase(couponsRepository),
   new DeleteCouponUseCase(couponsRepository),
   uploadImageFilesUseCase
@@ -818,7 +823,7 @@ app.use(
 const wellbeingController = new WellbeingController(
   new ListWellbeingUseCase(wellbeingRepository),
   new GetWellbeingUseCase(wellbeingRepository),
-  new CreateWellbeingUseCase(wellbeingRepository),
+  new CreateWellbeingUseCase(wellbeingRepository, contentStudentsNotifier),
   new UpdateWellbeingUseCase(wellbeingRepository),
   new DeleteWellbeingUseCase(wellbeingRepository, wellsRepository),
   uploadImageFilesUseCase
