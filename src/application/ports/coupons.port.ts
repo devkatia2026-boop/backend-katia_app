@@ -7,6 +7,7 @@ export type CouponDTO = {
   site: string | null;
   code: string | null;
   site_name: string | null;
+  percentage: string | null;
   description: string | null;
   created_at: Date;
 };
@@ -17,6 +18,7 @@ export type CreateCouponInput = {
   site: string | null;
   code: string | null;
   site_name: string | null;
+  percentage: string | null;
   description: string | null;
 };
 

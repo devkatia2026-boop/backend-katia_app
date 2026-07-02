@@ -16,6 +16,7 @@ const ATTR = [
   'site',
   'code',
   'site_name',
+  'percentage',
   'description',
   'created_at',
 ] as const;

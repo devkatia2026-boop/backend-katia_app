@@ -7,6 +7,7 @@ export class Coupon extends Model {
   declare site: string | null;
   declare code: string | null;
   declare site_name: string | null;
+  declare percentage: string | null;
   declare description: string | null;
   declare readonly created_at: Date;
 }
@@ -24,6 +25,7 @@ export function initCoupon(sequelize: Sequelize): typeof Coupon {
       site: DataTypes.TEXT,
       code: DataTypes.STRING,
       site_name: DataTypes.STRING,
+      percentage: DataTypes.STRING,
       description: DataTypes.TEXT,
     },
     {

@@ -117,6 +117,7 @@ export const swaggerDocument = {
           site: { type: 'string', nullable: true },
           code: { type: 'string', nullable: true },
           site_name: { type: 'string', nullable: true },
+          percentage: { type: 'string', nullable: true, example: '10%' },
           description: { type: 'string', nullable: true },
           created_at: { type: 'string', format: 'date-time' },
         },
@@ -4585,7 +4586,8 @@ export const swaggerDocument = {
       post: {
         tags: ['Cupons'],
         summary: 'Criar cupom',
-        description: 'Somente treinadora. `photo` pode ser URL (JSON) ou arquivo multipart.',
+        description:
+          'Somente treinadora. Campo `photo`: URL (JSON) ou arquivo `multipart/form-data` → gravado no S3 em `coupons/{trainerId}/photo/...` e a URL pública retornada no registro. Campo `site` é link externo (não vai ao S3).',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -4599,6 +4601,7 @@ export const swaggerDocument = {
                   site: { type: 'string', nullable: true },
                   code: { type: 'string', nullable: true },
                   site_name: { type: 'string', nullable: true },
+                  percentage: { type: 'string', nullable: true, example: '10%' },
                   description: { type: 'string', nullable: true },
                 },
               },
@@ -4612,6 +4615,7 @@ export const swaggerDocument = {
                   site: { type: 'string' },
                   code: { type: 'string' },
                   site_name: { type: 'string' },
+                  percentage: { type: 'string' },
                   description: { type: 'string' },
                 },
               },
@@ -4641,7 +4645,8 @@ export const swaggerDocument = {
       patch: {
         tags: ['Cupons'],
         summary: 'Atualizar cupom',
-        description: 'Somente treinadora.',
+        description:
+          'Somente treinadora. PATCH parcial. Campo `photo`: URL ou multipart → S3 (`coupons/*`). Campo `site` é link externo.',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'couponId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
         requestBody: {
@@ -4657,6 +4662,7 @@ export const swaggerDocument = {
                   site: { type: 'string', nullable: true },
                   code: { type: 'string', nullable: true },
                   site_name: { type: 'string', nullable: true },
+                  percentage: { type: 'string', nullable: true, example: '10%' },
                   description: { type: 'string', nullable: true },
                 },
               },
@@ -4671,6 +4677,7 @@ export const swaggerDocument = {
                   site: { type: 'string' },
                   code: { type: 'string' },
                   site_name: { type: 'string' },
+                  percentage: { type: 'string' },
                   description: { type: 'string' },
                 },
               },
@@ -4717,7 +4724,8 @@ export const swaggerDocument = {
       post: {
         tags: ['Wellbeing'],
         summary: 'Criar wellbeing',
-        description: 'Somente treinadora.',
+        description:
+          'Somente treinadora. Campo `photo`: URL (JSON) ou multipart → S3 em `wellbeing/{trainerId}/photo/...`; a URL pública fica no registro.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -4768,7 +4776,7 @@ export const swaggerDocument = {
       patch: {
         tags: ['Wellbeing'],
         summary: 'Atualizar wellbeing',
-        description: 'Somente treinadora.',
+        description: 'Somente treinadora. Campo `photo`: URL ou multipart → S3 (`wellbeing/*`).',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'wellbeingId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
         requestBody: {
@@ -4843,7 +4851,8 @@ export const swaggerDocument = {
       post: {
         tags: ['Wells'],
         summary: 'Criar well',
-        description: 'Somente treinadora. Campo `wellbeing_id` obrigatório.',
+        description:
+          'Somente treinadora. Campo `wellbeing_id` obrigatório. Campo `photo`: URL ou multipart → S3 em `wells/{trainerId}/photo/...`. Campo `video_link` é URL externa (YouTube etc.), não vai ao S3.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -4898,7 +4907,8 @@ export const swaggerDocument = {
       patch: {
         tags: ['Wells'],
         summary: 'Atualizar well',
-        description: 'Somente treinadora.',
+        description:
+          'Somente treinadora. Campo `photo`: URL ou multipart → S3 (`wells/*`). Campo `video_link` é URL externa.',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'wellId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
         requestBody: {

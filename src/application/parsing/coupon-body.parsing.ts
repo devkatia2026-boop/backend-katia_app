@@ -19,6 +19,8 @@ export function parseCouponCreateBody(body: unknown): CreateCouponInput {
     site: 'site' in body ? expectNullableTrimmed(body.site ?? null, 'site') : null,
     code: 'code' in body ? expectNullableTrimmed(body.code ?? null, 'code') : null,
     site_name: 'site_name' in body ? expectNullableTrimmed(body.site_name ?? null, 'site_name') : null,
+    percentage:
+      'percentage' in body ? expectNullableTrimmed(body.percentage ?? null, 'percentage') : null,
     description:
       'description' in body ? expectNullableTrimmed(body.description ?? null, 'description') : null,
   };
@@ -52,6 +54,10 @@ export function parseCouponPatchBody(body: unknown): PatchCouponInput {
   }
   if ('site_name' in body) {
     patch.site_name = expectNullableTrimmed(body.site_name, 'site_name');
+    n++;
+  }
+  if ('percentage' in body) {
+    patch.percentage = expectNullableTrimmed(body.percentage, 'percentage');
     n++;
   }
   if ('description' in body) {
