@@ -2,7 +2,7 @@ import type { DatabaseModels } from './models';
 import type { INotificationsRepository, NotificationDTO } from '../../application/ports/notifications.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = ['id', 'student_id', 'trainer_id', 'title', 'message', 'read', 'type', 'created_at'] as const;
+const ATTR = ['id', 'student_id', 'trainer_id', 'title', 'message', 'read', 'type', 'data', 'created_at'] as const;
 
 export class SequelizeNotificationsRepository implements INotificationsRepository {
   constructor(private readonly models: Pick<DatabaseModels, 'Notification'>) {}
@@ -52,5 +52,28 @@ export class SequelizeNotificationsRepository implements INotificationsRepositor
       raw: true,
     });
     return (row as NotificationDTO | null) ?? null;
+  }
+
+  async markReadForViewer(
+    id: number,
+    viewer: { role: 'student' | 'trainer'; sub: string }
+  ): Promise<NotificationDTO | null> {
+    const where =
+      viewer.role === 'student'
+        ? { id, student_id: viewer.sub }
+        : { id, trainer_id: viewer.sub };
+
+    await this.models.Notification.update({ read: true }, { where });
+    return this.findByIdForViewer(id, viewer);
+  }
+
+  async markAllReadForViewer(viewer: { role: 'student' | 'trainer'; sub: string }): Promise<number> {
+    const where =
+      viewer.role === 'student'
+        ? { student_id: viewer.sub, read: false }
+        : { trainer_id: viewer.sub, read: false };
+
+    const [count] = await this.models.Notification.update({ read: true }, { where });
+    return count;
   }
 }

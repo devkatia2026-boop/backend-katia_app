@@ -10,6 +10,11 @@ export const swaggerDocument = {
       description:
         '**Histórico (REST):** `GET /conversations/messages`. Aluna só vê a própria thread; treinadora envia obrigatoriamente `studentId`. **Ao vivo:** WebSocket upgrade em `/ws/conversations?token=<access JWT Cognito>`. Fluxo cliente: ligar WebSocket → evento servidor `connected` → treinadora envia `{ "type":"join", "studentId":"<uuid aluna>" }` e recebe `joined` → qualquer lado envia `{ "type":"message", "text":"..." }`; broadcast para quem está na sala: `{ "type":"conversation:message", "payload":{...} }`. Aluna já entra na sala da própria conversa ao conectar.',
     },
+    {
+      name: 'Rankings',
+      description:
+        'Ranking mensal por plano (`comum` / `exclusive`) no fuso `America/Sao_Paulo`. Cada registro em `points` no mês vale 10 pontos. Notificações de campeã do mês passado são enviadas automaticamente no dia 1 às 06:00 (horário de Brasília).',
+    },
   ],
   info: {
     title: 'API Backend Reta AI',
@@ -65,6 +70,27 @@ export const swaggerDocument = {
           },
           muscles: { type: 'string', nullable: true },
           created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      RankingStudentBrief: {
+        type: 'object',
+        required: ['id', 'full_name', 'photo_perfil', 'trainer_id', 'type_plan'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          full_name: { type: 'string' },
+          photo_perfil: { type: 'string', nullable: true },
+          trainer_id: { type: 'string', format: 'uuid' },
+          type_plan: { type: 'string', nullable: true },
+        },
+      },
+      RankingEntry: {
+        type: 'object',
+        required: ['rank', 'student', 'trainings_count', 'points'],
+        properties: {
+          rank: { type: 'integer', minimum: 1 },
+          student: { $ref: '#/components/schemas/RankingStudentBrief' },
+          trainings_count: { type: 'integer', minimum: 0 },
+          points: { type: 'integer', minimum: 0 },
         },
       },
       AnamnesisExclusive: {
@@ -459,7 +485,8 @@ export const swaggerDocument = {
                         role: { type: 'string', enum: ['trainer'] },
                         profile: {
                           type: 'object',
-                          description: 'Campos da tabela trainers (sem refresh_token nem expo_push_token)',
+                          description:
+                            'Campos da tabela trainers (sem refresh_token nem expo_push_token), incluindo `check_winner` (boolean ou null).',
                         },
                       },
                     },
@@ -470,7 +497,8 @@ export const swaggerDocument = {
                         role: { type: 'string', enum: ['student'] },
                         profile: {
                           type: 'object',
-                          description: 'Campos da tabela students (sem refresh_token nem expo_push_token)',
+                          description:
+                            'Campos da tabela students (sem refresh_token nem expo_push_token), incluindo `check_winner` (boolean ou null).',
                         },
                       },
                     },
@@ -486,7 +514,7 @@ export const swaggerDocument = {
       patch: {
         summary: 'Atualizar perfil autenticado',
         description:
-          'Atualiza parcialmente o perfil. Para campos de identidade (name/email/phone) o backend sincroniza também com o Cognito via access token; os demais campos permanecem apenas no banco. Envie apenas os campos a alterar. `photo_perfil` pode ser URL, enviada como arquivo em `multipart/form-data` (campo `photo_perfil`, gravado no S3) ou null para limpar. Treinador e aluna. Campos `birth`, `cpf`, `type_plan`, `height` e `weight` são exclusivos de aluno. O token de push Expo não é retornado no GET /auth/me.',
+          'Atualiza parcialmente o perfil. Para campos de identidade (name/email/phone) o backend sincroniza também com o Cognito via access token; os demais campos permanecem apenas no banco. Envie apenas os campos a alterar. `photo_perfil` pode ser URL, enviada como arquivo em `multipart/form-data` (campo `photo_perfil`, gravado no S3) ou null para limpar. Treinador e aluna. Campos `birth`, `cpf`, `type_plan`, `height` e `weight` são exclusivos de aluno. `check_winner` (boolean ou null) disponível para aluna e treinadora. O token de push Expo não é retornado no GET /auth/me.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -518,6 +546,11 @@ export const swaggerDocument = {
                   type_plan: { type: 'string', nullable: true, description: 'Apenas student' },
                   height: { type: 'number', nullable: true, description: 'Apenas student' },
                   weight: { type: 'number', nullable: true, description: 'Apenas student' },
+                  check_winner: {
+                    type: 'boolean',
+                    nullable: true,
+                    description: 'Flag de modal/vitória no app; null = padrão',
+                  },
                 },
               },
             },
@@ -536,6 +569,7 @@ export const swaggerDocument = {
                   type_plan: { type: 'string' },
                   height: { type: 'string' },
                   weight: { type: 'string' },
+                  check_winner: { type: 'string', description: 'true, false ou vazio/null' },
                 },
               },
             },
@@ -1962,6 +1996,21 @@ export const swaggerDocument = {
       },
     },
     '/posts/{postId}': {
+      get: {
+        summary: 'Obter um post por id (enriquecido)',
+        description:
+          'Retorna o post com autor, `likes_count`, `comments_count` e `liked_by_me` para o usuário autenticado. Usado para abrir um post específico vindo de uma notificação.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'postId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': { description: 'Post enriquecido' },
+          '400': { description: 'postId inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '404': { description: 'Post não encontrado' },
+        },
+      },
       patch: {
         summary: 'Editar post (apenas dono)',
         description: 'PATCH parcial; `image` aceita URL ou arquivo multipart (S3).',
@@ -4360,11 +4409,114 @@ export const swaggerDocument = {
         },
       },
     },
+    '/rankings/current/{plan}': {
+      get: {
+        tags: ['Rankings'],
+        summary: 'Ranking do mês atual por plano',
+        description:
+          'Lista alunas do plano (`comum` ou `exclusive`) ranqueadas pelo mês corrente (fuso `America/Sao_Paulo`). Cada registro em `points` no mês vale **10 pontos**. Campo `leader` traz a líder atual (1º lugar com treinos no mês).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'plan',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', enum: ['comum', 'exclusive'] },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Ranking mensal',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: [
+                    'plan',
+                    'month',
+                    'year',
+                    'month_start',
+                    'month_end',
+                    'points_per_training',
+                    'leader',
+                    'items',
+                  ],
+                  properties: {
+                    plan: { type: 'string', enum: ['comum', 'exclusive'] },
+                    month: { type: 'integer', minimum: 1, maximum: 12 },
+                    year: { type: 'integer' },
+                    month_start: { type: 'string', format: 'date' },
+                    month_end: { type: 'string', format: 'date' },
+                    points_per_training: { type: 'integer', example: 10 },
+                    leader: { nullable: true, allOf: [{ $ref: '#/components/schemas/RankingEntry' }] },
+                    items: { type: 'array', items: { $ref: '#/components/schemas/RankingEntry' } },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Plano inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+        },
+      },
+    },
+    '/rankings/last-month/{plan}/champion': {
+      get: {
+        tags: ['Rankings'],
+        summary: 'Campeã do mês passado',
+        description:
+          'Retorna a campeã do **mês anterior** (fuso `America/Sao_Paulo`) para o plano informado (`comum` ou `exclusive`). Somente leitura; **não envia notificações**. As notificações são disparadas automaticamente pelo scheduler interno **uma vez por dia às 06:00** (horário de Brasília); no **dia 1** do mês envia para os planos `comum` e `exclusive` (idempotente por tipo `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'plan',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', enum: ['comum', 'exclusive'] },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Campeã do mês passado',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: [
+                    'plan',
+                    'month',
+                    'year',
+                    'month_start',
+                    'month_end',
+                    'points_per_training',
+                    'champion',
+                  ],
+                  properties: {
+                    plan: { type: 'string', enum: ['comum', 'exclusive'] },
+                    month: { type: 'integer' },
+                    year: { type: 'integer' },
+                    month_start: { type: 'string', format: 'date' },
+                    month_end: { type: 'string', format: 'date' },
+                    points_per_training: { type: 'integer', example: 10 },
+                    champion: { nullable: true, allOf: [{ $ref: '#/components/schemas/RankingEntry' }] },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Plano inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+          '404': { description: 'Nenhuma aluna pontuou no mês anterior' },
+        },
+      },
+    },
     '/notifications': {
       get: {
         summary: 'Listar minhas notificações',
         description:
-          '**Aluna:** notificações em que `student_id` é ela (inbox própria). **Treinadora:** notificações em que `trainer_id` é ela (inbox própria; `student_id` pode ser null em eventos do feed direcionados só à treinadora). Ordem: `created_at` desc. Paginação `page`, `pageSize` (máx. 100). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`.',
+          '**Aluna:** notificações em que `student_id` é ela (inbox própria). **Treinadora:** notificações em que `trainer_id` é ela (inbox própria; `student_id` pode ser null em eventos do feed direcionados só à treinadora). Ordem: `created_at` desc. Paginação `page`, `pageSize` (máx. 100). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -4394,6 +4546,13 @@ export const swaggerDocument = {
                           message: { type: 'string' },
                           read: { type: 'boolean' },
                           type: { type: 'string' },
+                          data: {
+                            type: 'object',
+                            additionalProperties: true,
+                            nullable: true,
+                            description:
+                              'Payload contextual. Em notificações de feed inclui `postId` para abrir o post.',
+                          },
                           created_at: { type: 'string', format: 'date-time' },
                         },
                       },
@@ -4410,6 +4569,47 @@ export const swaggerDocument = {
           '403': {
             description: 'Usuário não é aluna nem treinadora cadastrado no sistema',
           },
+        },
+      },
+    },
+    '/notifications/read-all': {
+      patch: {
+        summary: 'Marcar todas as notificações como lidas',
+        description:
+          'Marca como lidas todas as notificações não lidas da inbox da aluna (`student_id`) ou da treinadora (`trainer_id`) autenticada.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Quantidade atualizada',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { updated: { type: 'integer' } },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Sem permissão' },
+        },
+      },
+    },
+    '/notifications/{id}/read': {
+      patch: {
+        summary: 'Marcar uma notificação como lida',
+        description:
+          'Marca como lida se a notificação pertencer à inbox da aluna ou da treinadora autenticada. Retorna a notificação atualizada.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': { description: 'Notificação atualizada (`read: true`)' },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Sem permissão' },
+          '404': { description: 'Não encontrada ou não é sua inbox' },
         },
       },
     },
@@ -4752,7 +4952,7 @@ export const swaggerDocument = {
       patch: {
         summary: 'Atualizar dados da aluna',
         description:
-          'Mesmos campos opcionais do PATCH /auth/me para aluna (`name`, `photo_perfil`, `phone`, `email`, `expo_push_token`, `birth`, `cpf`, `type_plan`, `height`, `weight`).',
+          'Mesmos campos opcionais do PATCH /auth/me para aluna (`name`, `photo_perfil`, `phone`, `email`, `expo_push_token`, `birth`, `cpf`, `type_plan`, `height`, `weight`, `check_winner`).',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -4779,6 +4979,7 @@ export const swaggerDocument = {
                   type_plan: { type: 'string', nullable: true },
                   height: { type: 'number', nullable: true },
                   weight: { type: 'number', nullable: true },
+                  check_winner: { type: 'boolean', nullable: true },
                 },
               },
             },

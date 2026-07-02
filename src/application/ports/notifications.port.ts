@@ -8,6 +8,7 @@ export type NotificationDTO = {
   message: string;
   read: boolean;
   type: string;
+  data: Record<string, unknown> | null;
   created_at: Date;
 };
 
@@ -22,4 +23,11 @@ export interface INotificationsRepository {
     id: number,
     viewer: { role: 'student' | 'trainer'; sub: string }
   ): Promise<NotificationDTO | null>;
+  /** Marca como lida respeitando o destinatário; retorna a notificação atualizada ou `null`. */
+  markReadForViewer(
+    id: number,
+    viewer: { role: 'student' | 'trainer'; sub: string }
+  ): Promise<NotificationDTO | null>;
+  /** Marca todas as não lidas do destinatário; retorna a quantidade atualizada. */
+  markAllReadForViewer(viewer: { role: 'student' | 'trainer'; sub: string }): Promise<number>;
 }

@@ -12,6 +12,12 @@ export function createNotificationsRoutes(
   router.get('/', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.list(req, res)
   );
+  router.patch('/read-all', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
+    controller.markAllRead(req, res)
+  );
+  router.patch('/:id/read', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
+    controller.markRead(req, res)
+  );
   router.get('/:id', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.getById(req, res)
   );

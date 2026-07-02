@@ -8,6 +8,7 @@ export class Trainer extends Model {
   declare email: string;
   declare refresh_token: string | null;
   declare expo_push_token: string | null;
+  declare check_winner: boolean | null;
   declare readonly created_at: Date;
 }
 
@@ -31,6 +32,7 @@ export function initTrainer(sequelize: Sequelize): typeof Trainer {
       },
       refresh_token: DataTypes.TEXT,
       expo_push_token: DataTypes.TEXT,
+      check_winner: DataTypes.BOOLEAN,
     },
     {
       sequelize,

@@ -162,8 +162,18 @@ import { createFeedbacksRoutes } from './interfaces/http/routes/feedbacks.routes
 import { SequelizeNotificationsRepository } from './infrastructure/database/notifications.repository';
 import { ListNotificationsUseCase } from './application/use-cases/notifications/list-notifications.use-case';
 import { GetNotificationUseCase } from './application/use-cases/notifications/get-notification.use-case';
+import { MarkNotificationReadUseCase } from './application/use-cases/notifications/mark-notification-read.use-case';
+import { MarkAllNotificationsReadUseCase } from './application/use-cases/notifications/mark-all-notifications-read.use-case';
 import { NotificationsController } from './interfaces/http/controllers/notifications.controller';
 import { createNotificationsRoutes } from './interfaces/http/routes/notifications.routes';
+import { SequelizeRankingsRepository } from './infrastructure/database/rankings.repository';
+import { SequelizeRankingChampionNotifier } from './infrastructure/database/ranking-champion.notifier';
+import { GetCurrentMonthRankingUseCase } from './application/use-cases/rankings/get-current-month-ranking.use-case';
+import { GetLastMonthRankingChampionUseCase } from './application/use-cases/rankings/get-last-month-ranking-champion.use-case';
+import { SendLastMonthRankingChampionNotificationsUseCase } from './application/use-cases/rankings/send-last-month-ranking-champion-notifications.use-case';
+import { RankingsController } from './interfaces/http/controllers/rankings.controller';
+import { createRankingsRoutes } from './interfaces/http/routes/rankings.routes';
+import { startRankingChampionNotificationScheduler } from './infrastructure/scheduling/ranking-champion-notification.scheduler';
 import { SequelizeConversationsRepository } from './infrastructure/database/conversations.repository';
 import { ConversationRealtimeHub } from './infrastructure/realtime/conversation-realtime.hub';
 import { attachConversationWebSocket } from './infrastructure/realtime/attach-conversation-ws';
@@ -193,6 +203,7 @@ import { UnlikePostUseCase } from './application/use-cases/social/unlike-post.us
 import { ListPostCommentsUseCase } from './application/use-cases/social/list-post-comments.use-case';
 import { ListPostLikesUseCase } from './application/use-cases/social/list-post-likes.use-case';
 import { ListPostsUseCase } from './application/use-cases/social/list-posts.use-case';
+import { GetPostUseCase } from './application/use-cases/social/get-post.use-case';
 import { SequelizeProgramsRepository } from './infrastructure/database/programs.repository';
 import { ListProgramsUseCase } from './application/use-cases/program/list-programs.use-case';
 import { ListMatchedProgramsForStudentUseCase } from './application/use-cases/program/list-matched-programs-for-student.use-case';
@@ -343,7 +354,8 @@ const socialFeedController = new SocialFeedController(
   new UnlikePostUseCase(socialFeedRepository),
   new ListPostCommentsUseCase(socialFeedRepository),
   new ListPostLikesUseCase(socialFeedRepository),
-  uploadImageFilesUseCase
+  uploadImageFilesUseCase,
+  new GetPostUseCase(socialFeedRepository)
 );
 app.use(
   '/posts',
@@ -753,9 +765,36 @@ app.use(
 const notificationsRepository = new SequelizeNotificationsRepository({
   Notification: models.Notification,
 });
+const rankingsRepository = new SequelizeRankingsRepository({
+  Student: models.Student,
+  Point: models.Point,
+  Notification: models.Notification,
+});
+const rankingChampionNotifier = new SequelizeRankingChampionNotifier({
+  Notification: models.Notification,
+  Trainer: models.Trainer,
+  Student: models.Student,
+});
+const rankingsController = new RankingsController(
+  new GetCurrentMonthRankingUseCase(rankingsRepository),
+  new GetLastMonthRankingChampionUseCase(rankingsRepository)
+);
+app.use(
+  '/rankings',
+  createRankingsRoutes(rankingsController, requireAuth, requireStudentOrTrainer)
+);
+
+const sendLastMonthRankingChampionNotifications = new SendLastMonthRankingChampionNotificationsUseCase(
+  rankingsRepository,
+  rankingChampionNotifier
+);
+startRankingChampionNotificationScheduler(sendLastMonthRankingChampionNotifications);
+
 const notificationsController = new NotificationsController(
   new ListNotificationsUseCase(notificationsRepository),
-  new GetNotificationUseCase(notificationsRepository)
+  new GetNotificationUseCase(notificationsRepository),
+  new MarkNotificationReadUseCase(notificationsRepository),
+  new MarkAllNotificationsReadUseCase(notificationsRepository)
 );
 app.use(
   '/notifications',

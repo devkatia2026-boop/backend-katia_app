@@ -170,6 +170,7 @@ export class SequelizeFeedNotificationPublisher implements IFeedNotificationPubl
       message: row.message,
       read: false,
       type: row.type,
+      data: row.data,
     });
     const token = await getToken();
     if (!token) return;

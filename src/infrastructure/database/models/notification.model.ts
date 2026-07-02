@@ -8,6 +8,7 @@ export class Notification extends Model {
   declare message: string;
   declare read: boolean;
   declare type: string;
+  declare data: Record<string, unknown> | null;
   declare readonly created_at: Date;
 }
 
@@ -43,6 +44,10 @@ export function initNotification(sequelize: Sequelize): typeof Notification {
       type: {
         type: DataTypes.STRING,
         allowNull: false,
+      },
+      data: {
+        type: DataTypes.JSONB,
+        allowNull: true,
       },
     },
     {

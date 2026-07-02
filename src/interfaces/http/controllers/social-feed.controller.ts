@@ -11,6 +11,7 @@ import type { UnlikePostUseCase } from '../../../application/use-cases/social/un
 import type { ListPostCommentsUseCase } from '../../../application/use-cases/social/list-post-comments.use-case';
 import type { ListPostLikesUseCase } from '../../../application/use-cases/social/list-post-likes.use-case';
 import type { ListPostsUseCase } from '../../../application/use-cases/social/list-posts.use-case';
+import type { GetPostUseCase } from '../../../application/use-cases/social/get-post.use-case';
 import {
   OBJECT_STORAGE_EXCEPTION,
   type UploadImageFilesUseCase,
@@ -64,7 +65,8 @@ export class SocialFeedController {
     private readonly unlikePost: UnlikePostUseCase,
     private readonly listPostComments: ListPostCommentsUseCase,
     private readonly listPostLikes: ListPostLikesUseCase,
-    private readonly uploadImages: UploadImageFilesUseCase
+    private readonly uploadImages: UploadImageFilesUseCase,
+    private readonly getPost: GetPostUseCase
   ) {}
 
   async postList(req: Request, res: Response): Promise<void> {
@@ -78,6 +80,17 @@ export class SocialFeedController {
       res.status(200).json(result);
     } catch (err) {
       this.handle(err, res, 'Erro ao listar posts.');
+    }
+  }
+
+  async postGet(req: Request, res: Response): Promise<void> {
+    try {
+      const a = actor(req);
+      const postId = parsePositiveInt(firstParam(req.params.postId), 'postId');
+      const post = await this.getPost.execute(postId, { id: a.id, type: a.role });
+      res.status(200).json(post);
+    } catch (err) {
+      this.handle(err, res, 'Erro ao obter post.');
     }
   }
 

@@ -12,6 +12,7 @@ export type TrainerStudentPublic = {
   type_plan: string | null;
   height: number | null;
   weight: number | null;
+  check_winner: boolean | null;
   created_at: Date;
 };
 

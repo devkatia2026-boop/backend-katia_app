@@ -93,6 +93,8 @@ export interface ISocialFeedRepository {
     viewer: FeedViewer
   ): Promise<PagedList<FeedPostDTO>>;
   findPostById(postId: number): Promise<PostDTO | null>;
+  /** Post único enriquecido com autor, métricas e `liked_by_me` para o viewer. */
+  findFeedPostById(postId: number, viewer: FeedViewer): Promise<FeedPostDTO | null>;
   updatePostByOwner(
     postId: number,
     authorId: string,

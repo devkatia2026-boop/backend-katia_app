@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import type { ListNotificationsUseCase } from '../../../application/use-cases/notifications/list-notifications.use-case';
 import type { GetNotificationUseCase } from '../../../application/use-cases/notifications/get-notification.use-case';
+import type { MarkNotificationReadUseCase } from '../../../application/use-cases/notifications/mark-notification-read.use-case';
+import type { MarkAllNotificationsReadUseCase } from '../../../application/use-cases/notifications/mark-all-notifications-read.use-case';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -33,7 +35,9 @@ function authFrom(req: Request): { role: 'student' | 'trainer'; sub: string } {
 export class NotificationsController {
   constructor(
     private readonly listRows: ListNotificationsUseCase,
-    private readonly getRow: GetNotificationUseCase
+    private readonly getRow: GetNotificationUseCase,
+    private readonly markRow: MarkNotificationReadUseCase,
+    private readonly markAllRows: MarkAllNotificationsReadUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -56,6 +60,25 @@ export class NotificationsController {
       res.status(200).json(row);
     } catch (err) {
       this.handle(err, res, 'Erro ao obter notificação.');
+    }
+  }
+
+  async markRead(req: Request, res: Response): Promise<void> {
+    try {
+      const id = parseId(firstParam(req.params.id));
+      const row = await this.markRow.execute(id, authFrom(req));
+      res.status(200).json(row);
+    } catch (err) {
+      this.handle(err, res, 'Erro ao atualizar notificação.');
+    }
+  }
+
+  async markAllRead(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await this.markAllRows.execute(authFrom(req));
+      res.status(200).json(result);
+    } catch (err) {
+      this.handle(err, res, 'Erro ao atualizar notificações.');
     }
   }
 

@@ -192,6 +192,35 @@ export class SequelizeSocialFeedRepository implements ISocialFeedRepository {
     return row ? (row.toJSON() as PostDTO) : null;
   }
 
+  async findFeedPostById(postId: number, viewer: FeedViewer): Promise<FeedPostDTO | null> {
+    const row = (await this.models.Post.findByPk(postId, {
+      attributes: ['id', 'author_id', 'author_type', 'image', 'content', 'created_at'],
+      raw: true,
+    })) as PostDTO | null;
+
+    if (!row) {
+      return null;
+    }
+
+    const [authorMap, likesCount, commentsCount, myLike] = await Promise.all([
+      this.buildAuthorMap([row]),
+      this.models.Like.count({ where: { post_id: postId } }),
+      this.models.Comment.count({ where: { post_id: postId } }),
+      this.models.Like.findOne({
+        where: { post_id: postId, author_id: viewer.id, author_type: viewer.type },
+        raw: true,
+      }),
+    ]);
+
+    return {
+      ...row,
+      author: resolveAuthor(authorMap, row.author_id, row.author_type),
+      likes_count: likesCount,
+      comments_count: commentsCount,
+      liked_by_me: myLike !== null,
+    };
+  }
+
   async updatePostByOwner(
     postId: number,
     authorId: string,

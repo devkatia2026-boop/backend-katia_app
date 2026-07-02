@@ -44,6 +44,14 @@ export function parseCalendarMonthYear(
   return { month, year };
 }
 
+export function getPreviousBrazilMonth(now = new Date()): { month: number; year: number } {
+  const { month, year } = parseCalendarMonthYear(undefined, undefined, now);
+  if (month === 1) {
+    return { month: 12, year: year - 1 };
+  }
+  return { month: month - 1, year };
+}
+
 export function getBrazilDayOfWeek(isoDate: string): number {
   const [year, month, day] = isoDate.split('-').map(Number);
   const instant = new Date(Date.UTC(year, month - 1, day, 15, 0, 0, 0));
@@ -72,4 +80,49 @@ export function getBrazilMonthDays(year: number, month: number): {
     total_days: totalDays,
     days,
   };
+}
+
+export function getBrazilDateTimeParts(now = new Date()): {
+  day: number;
+  hour: number;
+  minute: number;
+} {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  }).formatToParts(now);
+
+  const day = Number(parts.find((p) => p.type === 'day')?.value ?? '0');
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
+  return { day, hour, minute };
+}
+
+export function isBrazilFirstDayOnOrAfterHour(hour: number, now = new Date()): boolean {
+  const { day, hour: currentHour } = getBrazilDateTimeParts(now);
+  return day === 1 && currentHour >= hour;
+}
+
+const ONE_MINUTE_MS = 60_000;
+
+export function msUntilNextBrazilTime(
+  targetHour: number,
+  targetMinute = 0,
+  now = new Date()
+): number {
+  const nowMs = now.getTime();
+  const maxMinutes = 48 * 60;
+
+  for (let minutes = 1; minutes <= maxMinutes; minutes++) {
+    const candidateMs = nowMs + minutes * ONE_MINUTE_MS;
+    const { hour, minute } = getBrazilDateTimeParts(new Date(candidateMs));
+    if (hour === targetHour && minute === targetMinute) {
+      return minutes * ONE_MINUTE_MS;
+    }
+  }
+
+  return 24 * 60 * ONE_MINUTE_MS;
 }

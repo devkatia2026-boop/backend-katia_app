@@ -14,6 +14,7 @@ export function createSocialRoutes(
   router.get('/', ...chain, (req, res) => controller.postList(req, res));
   router.get('/:postId/comments', ...chain, (req, res) => controller.commentList(req, res));
   router.get('/:postId/likes', ...chain, (req, res) => controller.likeList(req, res));
+  router.get('/:postId', ...chain, (req, res) => controller.postGet(req, res));
   router.post('/', ...chain, postImageUpload, (req, res) => controller.postCreate(req, res));
   router.post('/:postId/comments', ...chain, (req, res) => controller.commentCreate(req, res));
   router.patch('/:postId/comments/:commentId', ...chain, (req, res) => controller.commentPatch(req, res));

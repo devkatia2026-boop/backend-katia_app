@@ -51,6 +51,14 @@ function expectNullableNumber(value: unknown, field: string): number | null {
   throw err;
 }
 
+function expectNullableBoolean(value: unknown, field: string): boolean | null {
+  if (value === null) return null;
+  if (typeof value === 'boolean') return value;
+  const err = new Error(`Campo "${field}" deve ser boolean ou null.`);
+  err.name = VALIDATION;
+  throw err;
+}
+
 /**
  * Campos comuns + exclusivos de aluno (mesma regra do PATCH /auth/me para student).
  */
@@ -81,6 +89,9 @@ export function parseMyProfileBody(body: unknown): {
   }
   if ('expo_push_token' in body) {
     common.expo_push_token = expectNullableString(body.expo_push_token, 'expo_push_token');
+  }
+  if ('check_winner' in body) {
+    common.check_winner = expectNullableBoolean(body.check_winner, 'check_winner');
   }
   if ('birth' in body) {
     studentExtra.birth = expectNullableString(body.birth, 'birth');

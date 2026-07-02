@@ -4,6 +4,7 @@ export type TrainerProfileUpdateValues = Partial<{
   phone: string | null;
   email: string;
   expo_push_token: string | null;
+  check_winner: boolean | null;
 }>;
 
 export type StudentProfileUpdateValues = Partial<{
@@ -17,6 +18,7 @@ export type StudentProfileUpdateValues = Partial<{
   height: number | null;
   weight: number | null;
   expo_push_token: string | null;
+  check_winner: boolean | null;
 }>;
 
 export interface IUserProfileUpdater {
