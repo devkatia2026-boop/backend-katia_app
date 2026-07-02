@@ -988,6 +988,20 @@ export const swaggerDocument = {
         },
       },
     },
+    '/student/account': {
+      delete: {
+        summary: 'Excluir conta da aluna',
+        description:
+          'Remove todos os dados da aluna autenticada nas tabelas do sistema e exclui o usuário no Cognito. Ação irreversível.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '204': { description: 'Conta excluída' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Somente alunas podem excluir a própria conta' },
+          '500': { description: 'Erro ao excluir conta' },
+        },
+      },
+    },
     '/student/training/today': {
       get: {
         summary: 'Treino de hoje',
@@ -5681,6 +5695,44 @@ export const swaggerDocument = {
             },
           },
           '400': { description: 'Código inválido, expirado ou senha fora do padrão' },
+        },
+      },
+    },
+    '/auth/change-password': {
+      post: {
+        summary: 'Alterar senha autenticada',
+        description:
+          'Altera a senha da usuária autenticada via Cognito `ChangePassword`, usando o access token JWT no header Authorization.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['currentPassword', 'newPassword'],
+                properties: {
+                  currentPassword: { type: 'string' },
+                  newPassword: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Senha alterada com sucesso.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { message: { type: 'string' } },
+                },
+              },
+            },
+          },
+          '400': { description: 'Senha atual incorreta ou nova senha inválida' },
+          '401': { description: 'Token ausente ou inválido' },
         },
       },
     },

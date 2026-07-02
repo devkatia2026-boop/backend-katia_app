@@ -5,6 +5,7 @@ import type { AnamnesisExclusiveController } from '../controllers/anamnesis-excl
 import type { StudentPhysicalsController } from '../controllers/student-physicals.controller';
 import type { StudentEvolutionsController } from '../controllers/student-evolutions.controller';
 import type { StudentTrainingController } from '../controllers/student-training.controller';
+import type { StudentAccountController } from '../controllers/student-account.controller';
 import { createAnamnesisExclusiveUploadMiddleware } from '../middleware/anamnesis-exclusive-upload.middleware';
 
 export function createStudentRoutes(
@@ -13,6 +14,7 @@ export function createStudentRoutes(
   physicalsController: StudentPhysicalsController,
   evolutionsController: StudentEvolutionsController,
   trainingController: StudentTrainingController,
+  accountController: StudentAccountController,
   requireAuth: RequestHandler,
   requireStudent: RequestHandler,
   anamnesisExclusiveUpload: RequestHandler,
@@ -49,6 +51,8 @@ export function createStudentRoutes(
   router.get('/training/today', ...asStudent, (req, res) => trainingController.getToday(req, res));
   router.get('/training/week', ...asStudent, (req, res) => trainingController.getWeek(req, res));
   router.get('/training/calendar', ...asStudent, (req, res) => trainingController.getCalendar(req, res));
+
+  router.delete('/account', ...asStudent, (req, res) => accountController.deleteMe(req, res));
 
   return router;
 }

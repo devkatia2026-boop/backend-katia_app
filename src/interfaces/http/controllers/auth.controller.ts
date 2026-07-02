@@ -8,6 +8,7 @@ import type { ForgotPasswordUseCase } from '../../../application/use-cases/auth/
 import type { ResetPasswordUseCase } from '../../../application/use-cases/auth/reset-password.use-case';
 import type { ResolveGoogleAuthUseCase } from '../../../application/use-cases/auth/resolve-google-auth.use-case';
 import type { ResendSignUpConfirmationUseCase } from '../../../application/use-cases/auth/resend-sign-up-confirmation.use-case';
+import type { ChangePasswordUseCase } from '../../../application/use-cases/auth/change-password.use-case';
 
 const COGNITO_ERROR_STATUS: Record<string, number> = {
   NotAuthorizedException: 401,
@@ -49,7 +50,8 @@ export class AuthController {
     private readonly forgotPasswordUseCase: ForgotPasswordUseCase,
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
     private readonly resendSignUpConfirmationUseCase: ResendSignUpConfirmationUseCase,
-    private readonly resolveGoogleAuthUseCase: ResolveGoogleAuthUseCase
+    private readonly resolveGoogleAuthUseCase: ResolveGoogleAuthUseCase,
+    private readonly changePasswordUseCase: ChangePasswordUseCase
   ) {}
 
   private handleError(err: unknown, res: Response, defaultMessage: string): void {
@@ -257,6 +259,21 @@ export class AuthController {
       res.status(200).json({ message: 'Senha alterada com sucesso.' });
     } catch (err) {
       this.handleError(err, res, 'Erro ao redefinir senha.');
+    }
+  }
+
+  async changePassword(req: Request, res: Response): Promise<void> {
+    try {
+      const accessToken = req.authUser?.accessToken;
+      if (!accessToken) {
+        res.status(401).json({ message: 'Usuário não autenticado.' });
+        return;
+      }
+
+      await this.changePasswordUseCase.execute(accessToken, req.body);
+      res.status(200).json({ message: 'Senha alterada com sucesso.' });
+    } catch (err) {
+      this.handleError(err, res, 'Erro ao alterar senha.');
     }
   }
 

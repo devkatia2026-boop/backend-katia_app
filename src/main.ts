@@ -10,7 +10,7 @@ import { createRequireAuth } from './interfaces/http/middleware/create-require-a
 import { CognitoAuthAdapter } from './infrastructure/auth/cognito/cognito-auth.adapter';
 import { CognitoAccessTokenVerifier } from './infrastructure/auth/cognito/cognito-access-token.verifier';
 import { CognitoUserAttributesUpdater } from './infrastructure/auth/cognito/cognito-user-attributes.updater';
-import { models } from './infrastructure/database';
+import { models, sequelize } from './infrastructure/database';
 import { SequelizeUserProfileWriter } from './infrastructure/database/user-profile.writer';
 import { SequelizeNewStudentRegistrationNotifier } from './infrastructure/database/new-student-registration.notifier';
 import { ResolveGoogleAuthUseCase } from './application/use-cases/auth/resolve-google-auth.use-case';
@@ -24,11 +24,15 @@ import { RefreshSessionUseCase } from './application/use-cases/auth/refresh-sess
 import { ForgotPasswordUseCase } from './application/use-cases/auth/forgot-password.use-case';
 import { ResetPasswordUseCase } from './application/use-cases/auth/reset-password.use-case';
 import { ResendSignUpConfirmationUseCase } from './application/use-cases/auth/resend-sign-up-confirmation.use-case';
+import { ChangePasswordUseCase } from './application/use-cases/auth/change-password.use-case';
 import { GetMeUseCase } from './application/use-cases/auth/get-me.use-case';
 import { UpdateMyProfileUseCase } from './application/use-cases/auth/update-my-profile.use-case';
 import { swaggerDocument } from './swagger';
 import { createTrainerRoutes } from './interfaces/http/routes/trainer.routes';
 import { createRequireTrainer } from './interfaces/http/middleware/create-require-trainer.middleware';
+import { DeleteStudentAccountUseCase } from './application/use-cases/student/delete-student-account.use-case';
+import { StudentAccountController } from './interfaces/http/controllers/student-account.controller';
+import { SequelizeStudentAccountRepository } from './infrastructure/database/student-account.repository';
 import { createStudentRoutes } from './interfaces/http/routes/student.routes';
 import { createRequireStudent } from './interfaces/http/middleware/create-require-student.middleware';
 import { SequelizeTrainerStudentsRepository } from './infrastructure/database/trainer-students.repository';
@@ -354,7 +358,8 @@ const authController = new AuthController(
   new ForgotPasswordUseCase(authProvider),
   new ResetPasswordUseCase(authProvider),
   new ResendSignUpConfirmationUseCase(authProvider),
-  resolveGoogleAuthUseCase
+  resolveGoogleAuthUseCase,
+  new ChangePasswordUseCase()
 );
 
 app.use(
@@ -754,6 +759,10 @@ const studentTrainingController = new StudentTrainingController(
   ),
   new GetMonthlyTrainingCalendarUseCase(pointsRepository)
 );
+const studentAccountRepository = new SequelizeStudentAccountRepository(sequelize, models);
+const studentAccountController = new StudentAccountController(
+  new DeleteStudentAccountUseCase(studentAccountRepository)
+);
 app.use(
   '/student',
   createStudentRoutes(
@@ -762,6 +771,7 @@ app.use(
     studentPhysicalsController,
     studentEvolutionsController,
     studentTrainingController,
+    studentAccountController,
     requireAuth,
     requireStudent,
     anamnesisExclusiveUploadMiddleware,
