@@ -19,6 +19,7 @@ export type StudentProfileUpdateValues = Partial<{
   weight: number | null;
   expo_push_token: string | null;
   check_winner: boolean | null;
+  validation: string | null;
 }>;
 
 export interface IUserProfileUpdater {

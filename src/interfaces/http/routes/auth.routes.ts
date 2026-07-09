@@ -27,7 +27,10 @@ export function createAuthRoutes(
   router.post('/google/resolve', requireAuth, (req, res) => controller.resolveGoogleAuth(req, res));
 
   router.get('/me', requireAuth, (req, res) => meController.getMe(req, res));
-  router.patch('/me', requireAuth, profileImageUpload, (req, res) => meController.patchMe(req, res));
+  router.patch('/me', requireAuth, (req, res) => meController.patchMe(req, res));
+  router.patch('/me/photo', requireAuth, profileImageUpload, (req, res) =>
+    meController.patchMePhoto(req, res)
+  );
 
   return router;
 }

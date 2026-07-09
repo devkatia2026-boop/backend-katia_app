@@ -561,7 +561,7 @@ export const swaggerDocument = {
                         profile: {
                           type: 'object',
                           description:
-                            'Campos da tabela students (sem refresh_token nem expo_push_token), incluindo `check_winner` (boolean ou null).',
+                            'Campos da tabela students (sem refresh_token nem expo_push_token), incluindo `check_winner` e `validation` (boolean/string ou null).',
                         },
                       },
                     },
@@ -577,7 +577,7 @@ export const swaggerDocument = {
       patch: {
         summary: 'Atualizar perfil autenticado',
         description:
-          'Atualiza parcialmente o perfil. Para campos de identidade (name/email/phone) o backend sincroniza também com o Cognito via access token; os demais campos permanecem apenas no banco. Envie apenas os campos a alterar. `photo_perfil` pode ser URL, enviada como arquivo em `multipart/form-data` (campo `photo_perfil`, gravado no S3) ou null para limpar. Treinador e aluna. Campos `birth`, `cpf`, `type_plan`, `height` e `weight` são exclusivos de aluno. `check_winner` (boolean ou null) disponível para aluna e treinadora. O token de push Expo não é retornado no GET /auth/me.',
+          'Atualiza parcialmente o perfil em JSON. Para campos de identidade (name/email/phone) o backend sincroniza também com o Cognito via access token; os demais campos permanecem apenas no banco. Envie apenas os campos a alterar. Para foto de perfil use PATCH /auth/me/photo. Treinador e aluna. Campos `birth`, `cpf`, `type_plan`, `height`, `weight` e `validation` são exclusivos de aluno. `check_winner` (boolean ou null) disponível para aluna e treinadora. O token de push Expo não é retornado no GET /auth/me.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -588,12 +588,7 @@ export const swaggerDocument = {
                 minProperties: 1,
                 properties: {
                   name: { type: 'string', description: 'Nome completo (mapeado para full_name)' },
-                  photo_perfil: {
-                    type: 'string',
-                    nullable: true,
-                    description: 'URL da foto no S3; null remove. Ou envie arquivo multipart no campo photo_perfil.',
-                  },
-                  phone: { type: 'string', nullable: true, description: 'Telefone ou null para limpar' },
+                  phone: { type: 'string', nullable: true, description: 'Telefone BR (DDD) número ou null para limpar' },
                   email: { type: 'string', format: 'email' },
                   expo_push_token: {
                     type: 'string',
@@ -609,30 +604,12 @@ export const swaggerDocument = {
                   type_plan: { type: 'string', nullable: true, description: 'Apenas student' },
                   height: { type: 'number', nullable: true, description: 'Apenas student' },
                   weight: { type: 'number', nullable: true, description: 'Apenas student' },
+                  validation: { type: 'string', nullable: true, description: 'Apenas student' },
                   check_winner: {
                     type: 'boolean',
                     nullable: true,
                     description: 'Flag de modal/vitória no app; null = padrão',
                   },
-                },
-              },
-            },
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                minProperties: 1,
-                properties: {
-                  name: { type: 'string' },
-                  photo_perfil: { type: 'string', format: 'binary' },
-                  phone: { type: 'string' },
-                  email: { type: 'string', format: 'email' },
-                  expo_push_token: { type: 'string' },
-                  birth: { type: 'string' },
-                  cpf: { type: 'string' },
-                  type_plan: { type: 'string' },
-                  height: { type: 'string' },
-                  weight: { type: 'string' },
-                  check_winner: { type: 'string', description: 'true, false ou vazio/null' },
                 },
               },
             },
@@ -666,10 +643,78 @@ export const swaggerDocument = {
               },
             },
           },
-          '400': { description: 'Corpo vazio, campos inválidos ou campos de aluno em perfil de treinador' },
+          '400': { description: 'Corpo vazio, campos inválidos, multipart ou photo_perfil (use /auth/me/photo)' },
           '401': { description: 'Token ausente ou inválido' },
           '404': { description: 'Perfil não encontrado' },
           '409': { description: 'Conflito no banco (ex.: e-mail duplicado)' },
+        },
+      },
+    },
+    '/auth/me/photo': {
+      patch: {
+        summary: 'Atualizar foto de perfil autenticado',
+        description:
+          'Envia a foto de perfil como arquivo multipart (`photo_perfil`, gravado no S3) ou `photo_perfil: null` em JSON para remover. Retorna o perfil atualizado (mesmo formato do GET /auth/me). Treinador e aluna.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['photo_perfil'],
+                properties: {
+                  photo_perfil: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'null remove a foto atual',
+                  },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['photo_perfil'],
+                properties: {
+                  photo_perfil: { type: 'string', format: 'binary' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Foto atualizada; corpo igual ao GET /auth/me.',
+            content: {
+              'application/json': {
+                schema: {
+                  oneOf: [
+                    {
+                      type: 'object',
+                      required: ['role', 'profile'],
+                      properties: {
+                        role: { type: 'string', enum: ['trainer'] },
+                        profile: { type: 'object' },
+                      },
+                    },
+                    {
+                      type: 'object',
+                      required: ['role', 'profile'],
+                      properties: {
+                        role: { type: 'string', enum: ['student'] },
+                        profile: { type: 'object' },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          '400': { description: 'Arquivo ausente ou corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '404': { description: 'Perfil não encontrado' },
+          '409': { description: 'Conflito no banco' },
           '503': { description: 'S3 não configurado ao enviar arquivo' },
         },
       },
@@ -5581,7 +5626,7 @@ export const swaggerDocument = {
       patch: {
         summary: 'Atualizar dados da aluna',
         description:
-          'Mesmos campos opcionais do PATCH /auth/me para aluna (`name`, `photo_perfil`, `phone`, `email`, `expo_push_token`, `birth`, `cpf`, `type_plan`, `height`, `weight`, `check_winner`).',
+          'Mesmos campos opcionais do PATCH /auth/me para aluna (`name`, `photo_perfil`, `phone`, `email`, `expo_push_token`, `birth`, `cpf`, `type_plan`, `height`, `weight`, `validation`, `check_winner`).',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -5608,6 +5653,7 @@ export const swaggerDocument = {
                   type_plan: { type: 'string', nullable: true },
                   height: { type: 'number', nullable: true },
                   weight: { type: 'number', nullable: true },
+                  validation: { type: 'string', nullable: true },
                   check_winner: { type: 'boolean', nullable: true },
                 },
               },

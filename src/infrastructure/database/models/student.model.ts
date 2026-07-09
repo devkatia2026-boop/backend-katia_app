@@ -15,6 +15,7 @@ export class Student extends Model {
   declare refresh_token: string | null;
   declare expo_push_token: string | null;
   declare check_winner: boolean | null;
+  declare validation: string | null;
   declare readonly created_at: Date;
 }
 
@@ -48,6 +49,7 @@ export function initStudent(sequelize: Sequelize): typeof Student {
       refresh_token: DataTypes.TEXT,
       expo_push_token: DataTypes.TEXT,
       check_winner: DataTypes.BOOLEAN,
+      validation: DataTypes.STRING,
     },
     {
       sequelize,

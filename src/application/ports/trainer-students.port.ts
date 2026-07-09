@@ -13,6 +13,7 @@ export type TrainerStudentPublic = {
   height: number | null;
   weight: number | null;
   check_winner: boolean | null;
+  validation: string | null;
   created_at: Date;
 };
 

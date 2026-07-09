@@ -2,6 +2,7 @@ import type {
   StudentProfileUpdateValues,
   TrainerProfileUpdateValues,
 } from '../ports/user-profile-updater.port';
+import { parseOptionalBrazilDisplayPhone } from './register-phone.parsing';
 
 const VALIDATION = 'ValidationException';
 
@@ -82,7 +83,11 @@ export function parseMyProfileBody(body: unknown): {
     common.photo_perfil = expectNullableString(body.photo_perfil, 'photo_perfil');
   }
   if ('phone' in body) {
-    common.phone = expectNullableString(body.phone, 'phone');
+    if (body.phone === null) {
+      common.phone = null;
+    } else {
+      common.phone = parseOptionalBrazilDisplayPhone(body.phone);
+    }
   }
   if ('email' in body) {
     common.email = expectEmail(body.email, 'email');
@@ -107,6 +112,9 @@ export function parseMyProfileBody(body: unknown): {
   }
   if ('weight' in body) {
     studentExtra.weight = expectNullableNumber(body.weight, 'weight');
+  }
+  if ('validation' in body) {
+    studentExtra.validation = expectNullableString(body.validation, 'validation');
   }
 
   return { common, studentExtra };

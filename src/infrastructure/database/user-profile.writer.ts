@@ -50,6 +50,7 @@ export class SequelizeUserProfileWriter implements IUserProfileWriter {
       type_plan: null,
       height: null,
       weight: null,
+      validation: null,
     });
   }
 }
