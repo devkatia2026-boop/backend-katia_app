@@ -4,6 +4,7 @@ import type { GetExerciseUseCase } from '../../../application/use-cases/trainer/
 import type { CreateExerciseUseCase } from '../../../application/use-cases/trainer/create-exercise.use-case';
 import type { UpdateExerciseUseCase } from '../../../application/use-cases/trainer/update-exercise.use-case';
 import type { DeleteExerciseUseCase } from '../../../application/use-cases/trainer/delete-exercise.use-case';
+import type { SearchExercisesUseCase } from '../../../application/use-cases/trainer/search-exercises.use-case';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -35,7 +36,8 @@ export class TrainerExercisesController {
     private readonly getExercise: GetExerciseUseCase,
     private readonly createExercise: CreateExerciseUseCase,
     private readonly updateExercise: UpdateExerciseUseCase,
-    private readonly deleteExercise: DeleteExerciseUseCase
+    private readonly deleteExercise: DeleteExerciseUseCase,
+    private readonly searchExercises: SearchExercisesUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -44,6 +46,24 @@ export class TrainerExercisesController {
       res.status(200).json(result);
     } catch {
       res.status(500).json({ message: 'Erro ao listar exercícios.' });
+    }
+  }
+
+  async search(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await this.searchExercises.execute(
+        firstQuery(req.query.q),
+        firstQuery(req.query.page),
+        firstQuery(req.query.pageSize)
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      const error = err as { name?: string; message?: string };
+      if (error.name === VALIDATION) {
+        res.status(400).json({ message: error.message ?? 'Parâmetros inválidos.' });
+        return;
+      }
+      res.status(500).json({ message: 'Erro ao pesquisar exercícios.' });
     }
   }
 

@@ -50,6 +50,9 @@ export function createTrainerRoutes(
     setsToTrainingsController.delete(req, res)
   );
 
+  router.get('/exercises/search', ...asTrainer, (req: Request, res: Response) =>
+    exercisesController.search(req, res)
+  );
   router.get('/exercises', ...asTrainer, (req: Request, res: Response) =>
     exercisesController.list(req, res)
   );
@@ -66,6 +69,9 @@ export function createTrainerRoutes(
     exercisesController.delete(req, res)
   );
 
+  router.get('/trainings/search', ...asTrainer, (req: Request, res: Response) =>
+    trainingsController.search(req, res)
+  );
   router.get('/trainings', ...asTrainer, (req: Request, res: Response) =>
     trainingsController.list(req, res)
   );
@@ -83,6 +89,9 @@ export function createTrainerRoutes(
   );
 
   router.get('/students/search', ...asTrainer, (req, res) => studentsController.search(req, res));
+  router.get('/students/validation', ...asTrainer, (req, res) =>
+    studentsController.validationSummary(req, res)
+  );
   router.get('/anamneses', ...asTrainer, (req, res) => studentsController.listAnamneses(req, res));
   router.get('/students', ...asTrainer, (req, res) => studentsController.list(req, res));
   router.get(

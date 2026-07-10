@@ -26,14 +26,28 @@ export type PaginatedTrainerStudents = {
 
 export type TrainerStudentSearchField = 'name' | 'email';
 
+export type TrainerStudentValidationFilter = 'sim' | 'nao';
+
+export type TrainerStudentsValidationSummary = {
+  sim: number;
+  nao: number;
+};
+
 export interface ITrainerStudentsRepository {
-  listPaged(trainerId: string, page: number, pageSize: number): Promise<PaginatedTrainerStudents>;
+  countValidationSummary(trainerId: string): Promise<TrainerStudentsValidationSummary>;
+  listPaged(
+    trainerId: string,
+    page: number,
+    pageSize: number,
+    validation?: TrainerStudentValidationFilter
+  ): Promise<PaginatedTrainerStudents>;
   searchPaged(
     trainerId: string,
     field: TrainerStudentSearchField,
     term: string,
     page: number,
-    pageSize: number
+    pageSize: number,
+    validation?: TrainerStudentValidationFilter
   ): Promise<PaginatedTrainerStudents>;
   findOneForTrainer(trainerId: string, studentId: string): Promise<TrainerStudentPublic | null>;
   updateStudentForTrainer(

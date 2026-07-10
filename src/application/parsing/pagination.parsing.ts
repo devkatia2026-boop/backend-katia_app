@@ -29,3 +29,23 @@ export function normalizePagination(
 
   return { page: p, pageSize: ps };
 }
+
+export function computeTotalPages(total: number, pageSize: number): number {
+  if (total <= 0 || pageSize <= 0) return 0;
+  return Math.ceil(total / pageSize);
+}
+
+export function toPagedResult<T>(
+  items: T[],
+  total: number,
+  page: number,
+  pageSize: number
+): { total: number; totalPage: number; items: T[]; page: number; pageSize: number } {
+  return {
+    total,
+    totalPage: computeTotalPages(total, pageSize),
+    items,
+    page,
+    pageSize,
+  };
+}

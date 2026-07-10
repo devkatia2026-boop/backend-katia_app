@@ -4,15 +4,17 @@ import type {
   ITrainingsRepository,
   PatchTrainingInput,
   TrainingDTO,
+  TrainingPagedList,
 } from '../../application/ports/trainings.port';
-import type { PagedList } from '../../application/ports/social-feed.port';
+import { toPagedResult } from '../../application/parsing/pagination.parsing';
+import { buildCatalogNameSearchWhere } from './catalog-name-search';
 
 const ATTR = ['id', 'lyric', 'description', 'time', 'type', 'muscles', 'created_at'] as const;
 
 export class SequelizeTrainingsRepository implements ITrainingsRepository {
   constructor(private readonly models: Pick<DatabaseModels, 'Training'>) {}
 
-  async listPaged(page: number, pageSize: number): Promise<PagedList<TrainingDTO>> {
+  async listPaged(page: number, pageSize: number): Promise<TrainingPagedList> {
     const offset = (page - 1) * pageSize;
     const [total, rows] = await Promise.all([
       this.models.Training.count(),
@@ -27,7 +29,31 @@ export class SequelizeTrainingsRepository implements ITrainingsRepository {
         raw: true,
       }) as Promise<TrainingDTO[]>,
     ]);
-    return { items: rows, total, page, pageSize };
+    return toPagedResult(rows, total, page, pageSize);
+  }
+
+  async searchByNamePaged(
+    term: string,
+    page: number,
+    pageSize: number
+  ): Promise<TrainingPagedList> {
+    const offset = (page - 1) * pageSize;
+    const whereName = buildCatalogNameSearchWhere('lyric', term);
+    const [total, rows] = await Promise.all([
+      this.models.Training.count({ where: whereName }),
+      this.models.Training.findAll({
+        attributes: [...ATTR],
+        where: whereName,
+        order: [
+          ['created_at', 'DESC'],
+          ['id', 'DESC'],
+        ],
+        limit: pageSize,
+        offset,
+        raw: true,
+      }) as Promise<TrainingDTO[]>,
+    ]);
+    return toPagedResult(rows, total, page, pageSize);
   }
 
   async findById(trainingId: number): Promise<TrainingDTO | null> {

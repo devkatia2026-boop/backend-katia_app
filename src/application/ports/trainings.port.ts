@@ -26,8 +26,13 @@ export type PatchTrainingInput = Partial<{
   muscles: string | null;
 }>;
 
+export type TrainingPagedList = PagedList<TrainingDTO> & {
+  totalPage: number;
+};
+
 export interface ITrainingsRepository {
-  listPaged(page: number, pageSize: number): Promise<PagedList<TrainingDTO>>;
+  listPaged(page: number, pageSize: number): Promise<TrainingPagedList>;
+  searchByNamePaged(term: string, page: number, pageSize: number): Promise<TrainingPagedList>;
   findById(trainingId: number): Promise<TrainingDTO | null>;
   findByIds(trainingIds: number[]): Promise<TrainingDTO[]>;
   create(input: CreateTrainingInput): Promise<TrainingDTO>;

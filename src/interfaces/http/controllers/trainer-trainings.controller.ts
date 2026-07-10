@@ -4,6 +4,7 @@ import type { GetTrainingUseCase } from '../../../application/use-cases/trainer/
 import type { CreateTrainingUseCase } from '../../../application/use-cases/trainer/create-training.use-case';
 import type { UpdateTrainingUseCase } from '../../../application/use-cases/trainer/update-training.use-case';
 import type { DeleteTrainingUseCase } from '../../../application/use-cases/trainer/delete-training.use-case';
+import type { SearchTrainingsUseCase } from '../../../application/use-cases/trainer/search-trainings.use-case';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -35,7 +36,8 @@ export class TrainerTrainingsController {
     private readonly getTraining: GetTrainingUseCase,
     private readonly createTraining: CreateTrainingUseCase,
     private readonly updateTraining: UpdateTrainingUseCase,
-    private readonly deleteTraining: DeleteTrainingUseCase
+    private readonly deleteTraining: DeleteTrainingUseCase,
+    private readonly searchTrainings: SearchTrainingsUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -44,6 +46,24 @@ export class TrainerTrainingsController {
       res.status(200).json(result);
     } catch {
       res.status(500).json({ message: 'Erro ao listar treinos.' });
+    }
+  }
+
+  async search(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await this.searchTrainings.execute(
+        firstQuery(req.query.q),
+        firstQuery(req.query.page),
+        firstQuery(req.query.pageSize)
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      const error = err as { name?: string; message?: string };
+      if (error.name === VALIDATION) {
+        res.status(400).json({ message: error.message ?? 'Parâmetros inválidos.' });
+        return;
+      }
+      res.status(500).json({ message: 'Erro ao pesquisar treinos.' });
     }
   }
 

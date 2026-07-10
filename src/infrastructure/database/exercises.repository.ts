@@ -2,17 +2,19 @@ import type { DatabaseModels } from './models';
 import type {
   CreateExerciseInput,
   ExerciseDTO,
+  ExercisePagedList,
   IExercisesRepository,
   PatchExerciseInput,
 } from '../../application/ports/exercises.port';
-import type { PagedList } from '../../application/ports/social-feed.port';
+import { toPagedResult } from '../../application/parsing/pagination.parsing';
+import { buildCatalogNameSearchWhere } from './catalog-name-search';
 
 const ATTR = ['id', 'name', 'video', 'type', 'description', 'level', 'created_at'] as const;
 
 export class SequelizeExercisesRepository implements IExercisesRepository {
   constructor(private readonly models: Pick<DatabaseModels, 'Exercise'>) {}
 
-  async listPaged(page: number, pageSize: number): Promise<PagedList<ExerciseDTO>> {
+  async listPaged(page: number, pageSize: number): Promise<ExercisePagedList> {
     const offset = (page - 1) * pageSize;
     const [total, rows] = await Promise.all([
       this.models.Exercise.count(),
@@ -27,7 +29,31 @@ export class SequelizeExercisesRepository implements IExercisesRepository {
         raw: true,
       }) as Promise<ExerciseDTO[]>,
     ]);
-    return { items: rows, total, page, pageSize };
+    return toPagedResult(rows, total, page, pageSize);
+  }
+
+  async searchByNamePaged(
+    term: string,
+    page: number,
+    pageSize: number
+  ): Promise<ExercisePagedList> {
+    const offset = (page - 1) * pageSize;
+    const whereName = buildCatalogNameSearchWhere('name', term);
+    const [total, rows] = await Promise.all([
+      this.models.Exercise.count({ where: whereName }),
+      this.models.Exercise.findAll({
+        attributes: [...ATTR],
+        where: whereName,
+        order: [
+          ['created_at', 'DESC'],
+          ['id', 'DESC'],
+        ],
+        limit: pageSize,
+        offset,
+        raw: true,
+      }) as Promise<ExerciseDTO[]>,
+    ]);
+    return toPagedResult(rows, total, page, pageSize);
   }
 
   findById(exerciseId: number): Promise<ExerciseDTO | null> {

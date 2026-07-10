@@ -35,8 +35,31 @@ export type PatchProgramInput = Partial<{
   bother: string | null;
 }>;
 
+export type ProgramListFilters = {
+  search?: string;
+  activeOnly?: boolean;
+  type?: ProgramTypeFilter;
+};
+
+export type ProgramTypeFilter = 'casa' | 'academia' | 'ambos';
+
+export type ProgramTypeCounts = {
+  Casa: number;
+  Academia: number;
+  'Casa/Academia': number;
+};
+
+export type ProgramPagedList = {
+  total: number;
+  totalPage: number;
+  typeCounts: ProgramTypeCounts;
+  items: ProgramDTO[];
+  page: number;
+  pageSize: number;
+};
+
 export interface IProgramsRepository {
-  listPaged(page: number, pageSize: number, search?: string): Promise<PagedList<ProgramDTO>>;
+  listPaged(page: number, pageSize: number, filters?: ProgramListFilters): Promise<ProgramPagedList>;
   listActive(search?: string): Promise<ProgramDTO[]>;
   findById(programId: number): Promise<ProgramDTO | null>;
   create(input: CreateProgramInput): Promise<ProgramDTO>;

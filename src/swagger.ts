@@ -8,7 +8,7 @@ export const swaggerDocument = {
     {
       name: 'Conversas',
       description:
-        '**Histórico (REST):** `GET /conversations/messages`. **Parceiro da conversa:** `GET /conversations/partner`. Aluna só vê a própria thread; treinadora envia obrigatoriamente `studentId`. **Ao vivo:** WebSocket upgrade em `/ws/conversations?token=<access JWT Cognito>`. Fluxo cliente: ligar WebSocket → evento servidor `connected` → treinadora envia `{ "type":"join", "studentId":"<uuid aluna>" }` e recebe `joined` → qualquer lado envia `{ "type":"message", "text":"..." }` ou `{ "type":"typing", "active": true|false }`; broadcast: `conversation:message`, `conversation:typing`, `conversation:presence`. Aluna já entra na sala da própria conversa ao conectar. Push `CONVERSATION_NEW_MESSAGE` quando o destinatário está offline.',
+        '**Histórico (REST):** `GET /conversations/messages`. **Parceiro da conversa:** `GET /conversations/partner`. Aluna só vê a própria thread; treinadora envia obrigatoriamente `studentId`. **Ao vivo:** WebSocket upgrade em `/ws/conversations?token=<access JWT Cognito>`. Fluxo cliente: ligar WebSocket → evento servidor `connected` → treinadora envia `{ "type":"join", "studentId":"<uuid aluna>" }` e recebe `joined` → qualquer lado envia `{ "type":"message", "text":"..." }` ou `{ "type":"typing", "active": true|false }`; broadcast: `conversation:message`, `conversation:typing`, `conversation:presence`. Aluna já entra na sala da própria conversa ao conectar. Push `CONVERSATION_NEW_MESSAGE` quando o destinatário está offline (`title` = nome de quem enviou, `message` = texto; `data.studentId` e `data.messageId`).',
     },
     {
       name: 'Rankings',
@@ -86,6 +86,46 @@ export const swaggerDocument = {
           muscles: { type: 'string', nullable: true },
           created_at: { type: 'string', format: 'date-time' },
         },
+      },
+      CatalogPagedList: {
+        type: 'object',
+        required: ['total', 'totalPage', 'items', 'page', 'pageSize'],
+        properties: {
+          total: {
+            type: 'integer',
+            minimum: 0,
+            description: 'Quantidade total de registros (não paginada)',
+          },
+          totalPage: {
+            type: 'integer',
+            minimum: 0,
+            description: 'Quantidade total de páginas com o pageSize informado',
+          },
+          items: { type: 'array', items: { type: 'object' } },
+          page: { type: 'integer', minimum: 1 },
+          pageSize: { type: 'integer', minimum: 1, maximum: 100 },
+        },
+      },
+      ProgramTypeCounts: {
+        type: 'object',
+        required: ['Casa', 'Academia', 'Casa/Academia'],
+        properties: {
+          Casa: { type: 'integer', minimum: 0 },
+          Academia: { type: 'integer', minimum: 0 },
+          'Casa/Academia': { type: 'integer', minimum: 0 },
+        },
+      },
+      ProgramPagedList: {
+        allOf: [
+          { $ref: '#/components/schemas/CatalogPagedList' },
+          {
+            type: 'object',
+            required: ['typeCounts'],
+            properties: {
+              typeCounts: { $ref: '#/components/schemas/ProgramTypeCounts' },
+            },
+          },
+        ],
       },
       RankingStudentBrief: {
         type: 'object',
@@ -577,7 +617,7 @@ export const swaggerDocument = {
       patch: {
         summary: 'Atualizar perfil autenticado',
         description:
-          'Atualiza parcialmente o perfil em JSON. Para campos de identidade (name/email/phone) o backend sincroniza também com o Cognito via access token; os demais campos permanecem apenas no banco. Envie apenas os campos a alterar. Para foto de perfil use PATCH /auth/me/photo. Treinador e aluna. Campos `birth`, `cpf`, `type_plan`, `height`, `weight` e `validation` são exclusivos de aluno. `check_winner` (boolean ou null) disponível para aluna e treinadora. O token de push Expo não é retornado no GET /auth/me.',
+          'Atualiza parcialmente o perfil em JSON. `name` e `email` sincronizam com o Cognito via access token; `phone` permanece apenas na base local (formato BR). Os demais campos permanecem apenas no banco. Envie apenas os campos a alterar. Para foto de perfil use PATCH /auth/me/photo. Treinador e aluna. Campos `birth`, `cpf`, `type_plan`, `height`, `weight` e `validation` são exclusivos de aluno. `check_winner` (boolean ou null) disponível para aluna e treinadora. O token de push Expo não é retornado no GET /auth/me.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -588,7 +628,12 @@ export const swaggerDocument = {
                 minProperties: 1,
                 properties: {
                   name: { type: 'string', description: 'Nome completo (mapeado para full_name)' },
-                  phone: { type: 'string', nullable: true, description: 'Telefone BR (DDD) número ou null para limpar' },
+                  phone: {
+                    type: 'string',
+                    nullable: true,
+                    description:
+                      'Telefone BR (DDD) número ou null para limpar; gravado apenas na base local',
+                  },
                   email: { type: 'string', format: 'email' },
                   expo_push_token: {
                     type: 'string',
@@ -1516,7 +1561,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar programas',
         description:
-          'Catálogo paginado; mais recentes primeiro. Alunas e treinadoras autenticadas.',
+          'Catálogo paginado; mais recentes primeiro. **Aluna:** somente programas com `status: true`. **Treinadora:** todos (ativos e inativos). Inclui `total`, `totalPage` e `typeCounts` por tipo (`Casa`, `Academia`, `Casa/Academia`).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -1532,28 +1577,26 @@ export const swaggerDocument = {
             description:
               'Busca em name, type, description, level, objective e bother (unaccent, case-insensitive).',
           },
+          {
+            name: 'type',
+            in: 'query',
+            schema: { type: 'string', enum: ['Casa', 'Academia', 'Casa/Academia'] },
+            description:
+              'Filtra pela coluna `type` (`Casa` → casa; `Academia` → academia; `Casa/Academia` → ambos ou casa/academia).',
+          },
         ],
         responses: {
           '200': {
-            description: 'Lista paginada em items, total, page, pageSize',
+            description: 'Lista paginada com totais por tipo',
             content: {
               'application/json': {
-                schema: {
-                  type: 'object',
-                  required: ['items', 'total', 'page', 'pageSize'],
-                  properties: {
-                    items: { type: 'array', items: { type: 'object' } },
-                    total: { type: 'integer' },
-                    page: { type: 'integer' },
-                    pageSize: { type: 'integer' },
-                  },
-                },
+                schema: { $ref: '#/components/schemas/ProgramPagedList' },
               },
             },
           },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Não cadastrado como aluna nem treinadora' },
-          '400': { description: 'Parâmetro search inválido' },
+          '400': { description: 'Parâmetro search ou type inválido' },
         },
       },
       post: {
@@ -1607,6 +1650,49 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
           '503': { description: 'S3 não configurado ao enviar arquivo' },
+        },
+      },
+    },
+    '/programs/search': {
+      get: {
+        summary: 'Pesquisar programas',
+        description:
+          'Busca por substring em `name`, `type`, `description`, `level`, `objective` e `bother` (unaccent + case-insensitive). **Aluna:** somente programas com `status: true`. **Treinadora:** todos (ativos e inativos). Opcionalmente filtre por `type` (`Casa`, `Academia`, `Casa/Academia`).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'q',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', maxLength: 200 },
+            description: 'Termo de busca',
+          },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+          },
+          {
+            name: 'type',
+            in: 'query',
+            schema: { type: 'string', enum: ['Casa', 'Academia', 'Casa/Academia'] },
+            description:
+              'Filtra pela coluna `type` (`Casa` → casa; `Academia` → academia; `Casa/Academia` → ambos ou casa/academia).',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Resultados paginados com totais por tipo',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ProgramPagedList' },
+              },
+            },
+          },
+          '400': { description: 'Parâmetro q ou type inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Não cadastrado como aluna nem treinadora' },
         },
       },
     },
@@ -2715,14 +2801,22 @@ export const swaggerDocument = {
     '/trainer/trainings': {
       get: {
         summary: 'Listar treinos (trainings)',
-        description: 'Catálogo paginado; mais recentes primeiro.',
+        description:
+          'Catálogo paginado; mais recentes primeiro. O campo `total` reflete a quantidade real de treinos no banco, independente da paginação.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
           { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
         ],
         responses: {
-          '200': { description: 'items, total, page, pageSize' },
+          '200': {
+            description: 'Lista paginada com total real do catálogo',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CatalogPagedList' },
+              },
+            },
+          },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
         },
@@ -2767,6 +2861,38 @@ export const swaggerDocument = {
             },
           },
           '400': { description: 'Corpo inválido (informe lyric ou description)' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+        },
+      },
+    },
+    '/trainer/trainings/search': {
+      get: {
+        summary: 'Pesquisar treinos por nome',
+        description:
+          'Busca por substring no nome do treino (`lyric`) com `unaccent` + case-insensitive. Retorna `total` com a quantidade real de resultados da busca.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'q',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', maxLength: 200 },
+            description: 'Termo de busca no nome do treino',
+          },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Resultados paginados',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CatalogPagedList' },
+              },
+            },
+          },
+          '400': { description: 'Parâmetro q inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
         },
@@ -2852,14 +2978,22 @@ export const swaggerDocument = {
     '/trainer/exercises': {
       get: {
         summary: 'Listar exercícios (exercises)',
-        description: 'Catálogo paginado; mais recentes primeiro.',
+        description:
+          'Catálogo paginado; mais recentes primeiro. O campo `total` reflete a quantidade real de exercícios no banco, independente da paginação.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
           { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
         ],
         responses: {
-          '200': { description: 'items, total, page, pageSize' },
+          '200': {
+            description: 'Lista paginada com total real do catálogo',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CatalogPagedList' },
+              },
+            },
+          },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
         },
@@ -2891,6 +3025,38 @@ export const swaggerDocument = {
         responses: {
           '201': { description: 'Criado' },
           '400': { description: 'Corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+        },
+      },
+    },
+    '/trainer/exercises/search': {
+      get: {
+        summary: 'Pesquisar exercícios por nome',
+        description:
+          'Busca por substring no campo `name` com `unaccent` + case-insensitive. Retorna `total` com a quantidade real de resultados da busca.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'q',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', maxLength: 200 },
+            description: 'Termo de busca no nome do exercício',
+          },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Resultados paginados',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CatalogPagedList' },
+              },
+            },
+          },
+          '400': { description: 'Parâmetro q inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
         },
@@ -5128,7 +5294,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar minhas notificações',
         description:
-          'Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `COUPON_CREATED`, `WELLBEING_CREATED`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; cupom usa `couponId`; wellbeing usa `wellbeingId`; conversa usa `studentId` e `messageId`.',
+          'Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `COUPON_CREATED`, `WELLBEING_CREATED`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; cupom usa `couponId`; wellbeing usa `wellbeingId`; conversa usa `studentId` e `messageId` (`title` = nome de quem enviou, `message` = texto da mensagem).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -5403,26 +5569,57 @@ export const swaggerDocument = {
         },
       },
     },
+    '/trainer/students/validation': {
+      get: {
+        summary: 'Resumo de validação das alunas',
+        description:
+          'Conta quantas alunas vinculadas ao treinador têm `validation` igual a `sim` ou `nao` (comparação case-insensitive, sem acento). Alunas com `validation` nulo ou outro valor não entram nas contagens.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Totais por status de validação',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['sim', 'nao'],
+                  properties: {
+                    sim: { type: 'integer', minimum: 0 },
+                    nao: { type: 'integer', minimum: 0 },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+        },
+      },
+    },
     '/trainer/students/search': {
       get: {
-        summary: 'Pesquisar alunas (nome ou e-mail)',
+        summary: 'Pesquisar alunas (nome, e-mail ou validação)',
         description:
-          'Busca por substring com `unaccent` + case-insensitive (ex.: "maria" encontra María, MARIA). O treinador escolhe o campo com `field=name` ou `field=email`.',
+          'Busca por substring com `unaccent` + case-insensitive (ex.: "maria" encontra María, MARIA) quando `field` e `q` são informados. Use apenas `validation=sim` ou `validation=nao` para listar alunas por status de validação (mesmo formato paginado da listagem). Os três parâmetros podem ser combinados para refinar a busca.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
             name: 'field',
             in: 'query',
-            required: true,
             schema: { type: 'string', enum: ['name', 'email'] },
-            description: 'Campo da busca',
+            description: 'Campo da busca (obrigatório com `q` se `validation` não for informado)',
           },
           {
             name: 'q',
             in: 'query',
-            required: true,
             schema: { type: 'string' },
-            description: 'Termo de busca',
+            description: 'Termo de busca (obrigatório com `field` se `validation` não for informado)',
+          },
+          {
+            name: 'validation',
+            in: 'query',
+            schema: { type: 'string', enum: ['sim', 'nao'] },
+            description: 'Filtra por status de validação (`sim` ou `nao`)',
           },
           {
             name: 'page',
@@ -5452,7 +5649,7 @@ export const swaggerDocument = {
               },
             },
           },
-          '400': { description: 'field ou q inválidos' },
+          '400': { description: 'Parâmetros de busca inválidos' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não é treinador' },
         },

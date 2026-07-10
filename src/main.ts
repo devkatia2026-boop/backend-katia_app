@@ -38,6 +38,7 @@ import { createRequireStudent } from './interfaces/http/middleware/create-requir
 import { SequelizeTrainerStudentsRepository } from './infrastructure/database/trainer-students.repository';
 import { ListTrainerStudentsUseCase } from './application/use-cases/trainer/list-trainer-students.use-case';
 import { SearchTrainerStudentsUseCase } from './application/use-cases/trainer/search-trainer-students.use-case';
+import { GetTrainerStudentsValidationSummaryUseCase } from './application/use-cases/trainer/get-trainer-students-validation-summary.use-case';
 import { GetTrainerStudentUseCase } from './application/use-cases/trainer/get-trainer-student.use-case';
 import { UpdateTrainerStudentUseCase } from './application/use-cases/trainer/update-trainer-student.use-case';
 import { DeleteTrainerStudentAnamnesisUseCase } from './application/use-cases/trainer/delete-trainer-student-anamnesis.use-case';
@@ -76,6 +77,7 @@ import { ListTrainerStudentPhysicalsUseCase } from './application/use-cases/trai
 import { ListTrainerStudentEvolutionsUseCase } from './application/use-cases/trainer/list-trainer-student-evolutions.use-case';
 import { SequelizeTrainingsRepository } from './infrastructure/database/trainings.repository';
 import { ListTrainingsUseCase } from './application/use-cases/trainer/list-trainings.use-case';
+import { SearchTrainingsUseCase } from './application/use-cases/trainer/search-trainings.use-case';
 import { GetTrainingUseCase } from './application/use-cases/trainer/get-training.use-case';
 import { CreateTrainingUseCase } from './application/use-cases/trainer/create-training.use-case';
 import { UpdateTrainingUseCase } from './application/use-cases/trainer/update-training.use-case';
@@ -85,6 +87,7 @@ import { TrainingsController } from './interfaces/http/controllers/trainings.con
 import { createTrainingsRoutes } from './interfaces/http/routes/trainings.routes';
 import { SequelizeExercisesRepository } from './infrastructure/database/exercises.repository';
 import { ListExercisesUseCase } from './application/use-cases/trainer/list-exercises.use-case';
+import { SearchExercisesUseCase } from './application/use-cases/trainer/search-exercises.use-case';
 import { GetExerciseUseCase } from './application/use-cases/trainer/get-exercise.use-case';
 import { CreateExerciseUseCase } from './application/use-cases/trainer/create-exercise.use-case';
 import { UpdateExerciseUseCase } from './application/use-cases/trainer/update-exercise.use-case';
@@ -246,6 +249,7 @@ import { ListPostsUseCase } from './application/use-cases/social/list-posts.use-
 import { GetPostUseCase } from './application/use-cases/social/get-post.use-case';
 import { SequelizeProgramsRepository } from './infrastructure/database/programs.repository';
 import { ListProgramsUseCase } from './application/use-cases/program/list-programs.use-case';
+import { SearchProgramsUseCase } from './application/use-cases/program/search-programs.use-case';
 import { ListMatchedProgramsForStudentUseCase } from './application/use-cases/program/list-matched-programs-for-student.use-case';
 import { GetProgramMatchForStudentUseCase } from './application/use-cases/program/get-program-match-for-student.use-case';
 import { GetProgramUseCase } from './application/use-cases/program/get-program.use-case';
@@ -436,6 +440,7 @@ const listProgramsToStudentsUseCase = new ListProgramsToStudentsUseCase(
 );
 const programsController = new ProgramsController(
   new ListProgramsUseCase(programsRepository),
+  new SearchProgramsUseCase(programsRepository),
   new GetProgramUseCase(programsRepository),
   new CreateProgramUseCase(programsRepository),
   new UpdateProgramUseCase(programsRepository),
@@ -613,7 +618,8 @@ const trainerTrainingsController = new TrainerTrainingsController(
   new GetTrainingUseCase(trainingsRepository),
   new CreateTrainingUseCase(trainingsRepository),
   new UpdateTrainingUseCase(trainingsRepository),
-  new DeleteTrainingUseCase(trainingsRepository)
+  new DeleteTrainingUseCase(trainingsRepository),
+  new SearchTrainingsUseCase(trainingsRepository)
 );
 const trainingsController = new TrainingsController(new GetTrainingUseCase(trainingsRepository));
 app.use(
@@ -628,7 +634,8 @@ const trainerExercisesController = new TrainerExercisesController(
   new GetExerciseUseCase(exercisesRepository),
   new CreateExerciseUseCase(exercisesRepository),
   new UpdateExerciseUseCase(exercisesRepository),
-  new DeleteExerciseUseCase(exercisesRepository)
+  new DeleteExerciseUseCase(exercisesRepository),
+  new SearchExercisesUseCase(exercisesRepository)
 );
 const exercisesController = new ExercisesController(new GetExerciseUseCase(exercisesRepository));
 app.use(
@@ -669,6 +676,7 @@ app.use(
 const trainerStudentsController = new TrainerStudentsController(
   new ListTrainerStudentsUseCase(trainerStudentsRepository),
   new SearchTrainerStudentsUseCase(trainerStudentsRepository),
+  new GetTrainerStudentsValidationSummaryUseCase(trainerStudentsRepository),
   new GetTrainerStudentUseCase(trainerStudentsRepository),
   new UpdateTrainerStudentUseCase(trainerStudentsRepository),
   deleteTrainerStudentAnamnesisUseCase,

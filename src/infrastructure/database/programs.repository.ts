@@ -4,9 +4,18 @@ import type {
   IProgramsRepository,
   PatchProgramInput,
   ProgramDTO,
+  ProgramListFilters,
+  ProgramPagedList,
+  ProgramTypeCounts,
 } from '../../application/ports/programs.port';
-import type { PagedList } from '../../application/ports/social-feed.port';
+import { toPagedResult } from '../../application/parsing/pagination.parsing';
 import { mergeProgramWhere } from './program-search';
+import {
+  appendWhere,
+  buildProgramTypeCountWhere,
+  buildProgramTypeFilterWhere,
+} from './program-type-where';
+import type { WhereOptions } from 'sequelize';
 
 const ATTR = [
   'id',
@@ -21,13 +30,42 @@ const ATTR = [
   'created_at',
 ] as const;
 
+function buildProgramListWhere(filters?: ProgramListFilters): WhereOptions {
+  let where: WhereOptions = filters?.activeOnly ? { status: true } : {};
+  where = mergeProgramWhere(where, filters?.search);
+  if (filters?.type) {
+    where = appendWhere(where, buildProgramTypeFilterWhere(filters.type));
+  }
+  return where;
+}
+
+async function countProgramTypes(
+  model: Pick<DatabaseModels, 'Program'>['Program'],
+  where: WhereOptions
+): Promise<ProgramTypeCounts> {
+  const [casa, academia, casaAcademia] = await Promise.all([
+    model.count({ where: buildProgramTypeCountWhere(where, 'casa') }),
+    model.count({ where: buildProgramTypeCountWhere(where, 'academia') }),
+    model.count({ where: buildProgramTypeCountWhere(where, 'ambos') }),
+  ]);
+  return {
+    Casa: casa,
+    Academia: academia,
+    'Casa/Academia': casaAcademia,
+  };
+}
+
 export class SequelizeProgramsRepository implements IProgramsRepository {
   constructor(private readonly models: Pick<DatabaseModels, 'Program'>) {}
 
-  async listPaged(page: number, pageSize: number, search?: string): Promise<PagedList<ProgramDTO>> {
+  async listPaged(
+    page: number,
+    pageSize: number,
+    filters?: ProgramListFilters
+  ): Promise<ProgramPagedList> {
     const offset = (page - 1) * pageSize;
-    const where = mergeProgramWhere({}, search);
-    const [total, rows] = await Promise.all([
+    const where = buildProgramListWhere(filters);
+    const [total, rows, typeCounts] = await Promise.all([
       this.models.Program.count({ where }),
       this.models.Program.findAll({
         attributes: [...ATTR],
@@ -40,8 +78,12 @@ export class SequelizeProgramsRepository implements IProgramsRepository {
         offset,
         raw: true,
       }) as Promise<ProgramDTO[]>,
+      countProgramTypes(this.models.Program, where),
     ]);
-    return { items: rows, total, page, pageSize };
+    return {
+      ...toPagedResult(rows, total, page, pageSize),
+      typeCounts,
+    };
   }
 
   async listActive(search?: string): Promise<ProgramDTO[]> {

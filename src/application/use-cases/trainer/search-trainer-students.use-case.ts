@@ -3,6 +3,7 @@ import type {
   TrainerStudentSearchField,
 } from '../../ports/trainer-students.port';
 import { normalizePagination } from '../../parsing/pagination.parsing';
+import { parseOptionalTrainerStudentValidation } from '../../parsing/trainer-student-validation.parsing';
 
 const VALIDATION = 'ValidationException';
 
@@ -13,13 +14,31 @@ export class SearchTrainerStudentsUseCase {
     trainerId: string,
     field: unknown,
     q: unknown,
+    validation: unknown,
     page: unknown,
     pageSize: unknown
   ) {
+    const validationFilter = parseOptionalTrainerStudentValidation(validation);
+    const { page: p, pageSize: ps } = normalizePagination(page, pageSize);
+
+    const hasField = field !== undefined && field !== null && field !== '';
+    const hasQuery = q !== undefined && q !== null && q !== '';
+
+    if (!validationFilter && (!hasField || !hasQuery)) {
+      const err = new Error(
+        'Informe "validation" (sim ou nao) ou os parâmetros "field" e "q" para pesquisar.'
+      );
+      err.name = VALIDATION;
+      throw err;
+    }
+
+    if (validationFilter && !hasField && !hasQuery) {
+      return this.trainerStudents.listPaged(trainerId, p, ps, validationFilter);
+    }
+
     const f = this.parseField(field);
     const term = this.parseQuery(q);
-    const { page: p, pageSize: ps } = normalizePagination(page, pageSize);
-    return this.trainerStudents.searchPaged(trainerId, f, term, p, ps);
+    return this.trainerStudents.searchPaged(trainerId, f, term, p, ps, validationFilter);
   }
 
   private parseField(field: unknown): TrainerStudentSearchField {

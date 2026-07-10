@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { UniqueConstraintError } from 'sequelize';
 import type { ListTrainerStudentsUseCase } from '../../../application/use-cases/trainer/list-trainer-students.use-case';
 import type { SearchTrainerStudentsUseCase } from '../../../application/use-cases/trainer/search-trainer-students.use-case';
+import type { GetTrainerStudentsValidationSummaryUseCase } from '../../../application/use-cases/trainer/get-trainer-students-validation-summary.use-case';
 import type { GetTrainerStudentUseCase } from '../../../application/use-cases/trainer/get-trainer-student.use-case';
 import type { UpdateTrainerStudentUseCase } from '../../../application/use-cases/trainer/update-trainer-student.use-case';
 import type { DeleteTrainerStudentAnamnesisUseCase } from '../../../application/use-cases/trainer/delete-trainer-student-anamnesis.use-case';
@@ -28,6 +29,7 @@ export class TrainerStudentsController {
   constructor(
     private readonly listTrainerStudents: ListTrainerStudentsUseCase,
     private readonly searchTrainerStudents: SearchTrainerStudentsUseCase,
+    private readonly getTrainerStudentsValidationSummary: GetTrainerStudentsValidationSummaryUseCase,
     private readonly getTrainerStudent: GetTrainerStudentUseCase,
     private readonly updateTrainerStudent: UpdateTrainerStudentUseCase,
     private readonly deleteTrainerStudentAnamnesis: DeleteTrainerStudentAnamnesisUseCase,
@@ -51,6 +53,16 @@ export class TrainerStudentsController {
     }
   }
 
+  async validationSummary(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const result = await this.getTrainerStudentsValidationSummary.execute(trainerId);
+      res.status(200).json(result);
+    } catch {
+      res.status(500).json({ message: 'Erro ao obter resumo de validação das alunas.' });
+    }
+  }
+
   async search(req: Request, res: Response): Promise<void> {
     try {
       const trainerId = req.authUser!.sub;
@@ -58,6 +70,7 @@ export class TrainerStudentsController {
         trainerId,
         firstQuery(req.query.field),
         firstQuery(req.query.q),
+        firstQuery(req.query.validation),
         firstQuery(req.query.page),
         firstQuery(req.query.pageSize)
       );

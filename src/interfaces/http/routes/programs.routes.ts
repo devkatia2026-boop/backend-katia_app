@@ -14,6 +14,9 @@ export function createProgramsRoutes(
   router.get('/', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.list(req, res)
   );
+  router.get('/search', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
+    controller.search(req, res)
+  );
   router.get('/matched', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.listMatchedForStudent(req, res)
   );

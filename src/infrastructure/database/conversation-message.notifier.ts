@@ -17,12 +17,8 @@ export class SequelizeConversationMessageNotifier implements IConversationMessag
 
   async notifyNewMessage(input: ConversationMessageNotifyInput): Promise<void> {
     const senderName = await this.resolveSenderName(input);
-    const title =
-      input.recipientRole === 'student' ? 'Nova mensagem da treinadora' : 'Nova mensagem da aluna';
-    const message =
-      input.recipientRole === 'student'
-        ? `${senderName}: ${input.body}`
-        : `${senderName}: ${input.body}`;
+    const title = senderName;
+    const message = input.body;
 
     await this.models.Notification.create({
       student_id: input.recipientRole === 'student' ? input.studentId : null,

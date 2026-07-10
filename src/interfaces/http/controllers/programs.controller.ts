@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import type { ListProgramsUseCase } from '../../../application/use-cases/program/list-programs.use-case';
+import type { SearchProgramsUseCase } from '../../../application/use-cases/program/search-programs.use-case';
 import type { GetProgramUseCase } from '../../../application/use-cases/program/get-program.use-case';
 import type { CreateProgramUseCase } from '../../../application/use-cases/trainer/create-program.use-case';
 import type { UpdateProgramUseCase } from '../../../application/use-cases/trainer/update-program.use-case';
@@ -48,6 +49,7 @@ function parseProgramId(raw: string | undefined, label = 'programId'): number {
 export class ProgramsController {
   constructor(
     private readonly listPrograms: ListProgramsUseCase,
+    private readonly searchPrograms: SearchProgramsUseCase,
     private readonly getProgram: GetProgramUseCase,
     private readonly createProgram: CreateProgramUseCase,
     private readonly updateProgram: UpdateProgramUseCase,
@@ -61,14 +63,38 @@ export class ProgramsController {
 
   async list(req: Request, res: Response): Promise<void> {
     try {
+      const authUser = req.authUser!;
       const result = await this.listPrograms.execute(
         firstQuery(req.query.page),
         firstQuery(req.query.pageSize),
-        firstQuery(req.query.search)
+        firstQuery(req.query.search),
+        firstQuery(req.query.type),
+        authUser.role as 'student' | 'trainer'
       );
       res.status(200).json(result);
     } catch (err) {
       this.handleRead(err, res);
+    }
+  }
+
+  async search(req: Request, res: Response): Promise<void> {
+    try {
+      const authUser = req.authUser!;
+      const result = await this.searchPrograms.execute(
+        firstQuery(req.query.q),
+        firstQuery(req.query.page),
+        firstQuery(req.query.pageSize),
+        firstQuery(req.query.type),
+        authUser.role as 'student' | 'trainer'
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      const error = err as { name?: string; message?: string };
+      if (error.name === VALIDATION) {
+        res.status(400).json({ message: error.message ?? 'Parâmetro inválido.' });
+        return;
+      }
+      res.status(500).json({ message: 'Erro ao pesquisar programas.' });
     }
   }
 

@@ -87,13 +87,6 @@ export class UpdateMyProfileUseCase {
     if (common.email !== undefined) {
       patch.email = common.email;
     }
-    if (common.phone !== undefined) {
-      if (common.phone === null) {
-        toDelete.push('phone_number');
-      } else {
-        patch.phone_number = common.phone;
-      }
-    }
 
     return { patch, toDelete };
   }

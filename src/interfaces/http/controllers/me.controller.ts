@@ -16,6 +16,19 @@ import { isMultipartRequest, requestBodyRecord } from '../parsing/image-multipar
 const PROFILE_NOT_FOUND = 'ProfileNotFoundException';
 const VALIDATION = 'ValidationException';
 
+const COGNITO_ERROR_STATUS: Record<string, number> = {
+  NotAuthorizedException: 401,
+  UserNotFoundException: 404,
+  UserNotConfirmedException: 403,
+  UsernameExistsException: 409,
+  AliasExistsException: 409,
+  InvalidPasswordException: 400,
+  InvalidParameterException: 400,
+  CodeMismatchException: 400,
+  ExpiredCodeException: 400,
+  LimitExceededException: 429,
+};
+
 export class MeController {
   constructor(
     private readonly getMeUseCase: GetMeUseCase,
@@ -119,6 +132,13 @@ export class MeController {
     }
     if (error.name === PROFILE_NOT_FOUND) {
       res.status(404).json({ message: error.message ?? 'Perfil não encontrado.' });
+      return;
+    }
+    const cognitoStatus = COGNITO_ERROR_STATUS[error.name ?? ''];
+    if (cognitoStatus) {
+      res.status(cognitoStatus).json({
+        message: error.message ?? 'Erro ao atualizar o perfil.',
+      });
       return;
     }
     res.status(500).json({ message: 'Erro ao atualizar o perfil.' });
