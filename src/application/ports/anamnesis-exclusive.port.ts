@@ -85,6 +85,10 @@ export type AnamnesisExclusiveCompletionResult = {
   missing_fields: string[];
 };
 
+export type AnamnesisExclusiveCountByTrainer = {
+  total: number;
+};
+
 export interface IAnamnesisExclusiveRepository {
   findById(id: number): Promise<AnamnesisExclusiveDTO | null>;
   findLatestByStudentId(studentId: string): Promise<AnamnesisExclusiveDTO | null>;
@@ -93,4 +97,5 @@ export interface IAnamnesisExclusiveRepository {
     values: AnamnesisExclusiveUpsertValues
   ): Promise<AnamnesisExclusiveDTO>;
   isStudentOfTrainer(trainerId: string, studentId: string): Promise<boolean>;
+  countByTrainer(trainerId: string): Promise<number>;
 }

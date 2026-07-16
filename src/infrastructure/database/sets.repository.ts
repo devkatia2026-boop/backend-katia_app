@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import type { DatabaseModels } from './models';
 import type {
   CreateSetInput,
@@ -6,6 +7,7 @@ import type {
   SetDTO,
 } from '../../application/ports/sets.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
+import { buildCatalogNameSearchWhere } from './catalog-name-search';
 
 const ATTR = ['id', 'name', 'order', 'created_at'] as const;
 
@@ -18,6 +20,35 @@ export class SequelizeSetsRepository implements ISetsRepository {
       this.models.Set.count(),
       this.models.Set.findAll({
         attributes: [...ATTR],
+        order: [
+          ['created_at', 'DESC'],
+          ['id', 'DESC'],
+        ],
+        limit: pageSize,
+        offset,
+        raw: true,
+      }) as Promise<SetDTO[]>,
+    ]);
+    return { items: rows, total, page, pageSize };
+  }
+
+  async searchByNamePaged(
+    term: string,
+    page: number,
+    pageSize: number
+  ): Promise<PagedList<SetDTO>> {
+    const offset = (page - 1) * pageSize;
+    const where = {
+      [Op.or]: [
+        buildCatalogNameSearchWhere('name', term),
+        buildCatalogNameSearchWhere('order', term),
+      ],
+    };
+    const [total, rows] = await Promise.all([
+      this.models.Set.count({ where }),
+      this.models.Set.findAll({
+        attributes: [...ATTR],
+        where,
         order: [
           ['created_at', 'DESC'],
           ['id', 'DESC'],

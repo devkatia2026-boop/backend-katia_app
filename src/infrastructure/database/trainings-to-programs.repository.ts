@@ -154,4 +154,9 @@ export class SequelizeTrainingsToProgramsRepository implements ITrainingsToProgr
     const row = await this.findById(created.get('id') as number);
     return row as TrainingToProgramDTO;
   }
+
+  async deleteById(id: number): Promise<boolean> {
+    const affected = await this.models.TrainingsToPrograms.destroy({ where: { id } });
+    return affected > 0;
+  }
 }

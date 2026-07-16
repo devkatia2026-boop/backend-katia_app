@@ -67,7 +67,7 @@ function expectNullableProgramLevel(value: unknown, field: string): string | nul
     err.name = VALIDATION;
     throw err;
   }
-  const t = value.trim();
+  const t = value.trim().toLocaleLowerCase('pt-BR');
   if (t.length === 0) return null;
   if (!PROGRAM_LEVELS.has(t)) {
     const err = new Error(`Campo "${field}" deve ser "iniciante", "intermediário" ou "avançado".`);

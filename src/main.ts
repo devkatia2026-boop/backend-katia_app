@@ -55,6 +55,7 @@ import { SequelizeAnamnesisExclusiveRepository } from './infrastructure/database
 import { CreateMyAnamnesisExclusiveUseCase } from './application/use-cases/anamnesis-exclusive/create-my-anamnesis-exclusive.use-case';
 import { GetAnamnesisExclusiveByStudentIdUseCase } from './application/use-cases/anamnesis-exclusive/get-anamnesis-exclusive-by-id.use-case';
 import { GetAnamnesisExclusiveCompletionUseCase } from './application/use-cases/anamnesis-exclusive/get-anamnesis-exclusive-completion.use-case';
+import { GetTrainerAnamnesisExclusiveCountUseCase } from './application/use-cases/trainer/get-trainer-anamnesis-exclusive-count.use-case';
 import { UploadAnamnesisExclusiveFilesUseCase } from './application/use-cases/anamnesis-exclusive/upload-anamnesis-exclusive-files.use-case';
 import { UploadImageFilesUseCase } from './application/use-cases/media/upload-image-files.use-case';
 import { AnamnesisExclusiveController } from './interfaces/http/controllers/anamnesis-exclusive.controller';
@@ -101,6 +102,7 @@ import { GetSetUseCase } from './application/use-cases/trainer/get-set.use-case'
 import { CreateSetUseCase } from './application/use-cases/trainer/create-set.use-case';
 import { UpdateSetUseCase } from './application/use-cases/trainer/update-set.use-case';
 import { DeleteSetUseCase } from './application/use-cases/trainer/delete-set.use-case';
+import { SearchSetsUseCase } from './application/use-cases/trainer/search-sets.use-case';
 import { TrainerSetsController } from './interfaces/http/controllers/trainer-sets.controller';
 import { SequelizeSetsToTrainingsRepository } from './infrastructure/database/sets-to-trainings.repository';
 import { ListSetsToTrainingsUseCase } from './application/use-cases/sets-to-trainings/list-sets-to-trainings.use-case';
@@ -258,9 +260,12 @@ import { UpdateProgramUseCase } from './application/use-cases/trainer/update-pro
 import { DeleteProgramUseCase } from './application/use-cases/trainer/delete-program.use-case';
 import { ProgramsController } from './interfaces/http/controllers/programs.controller';
 import { createProgramsRoutes } from './interfaces/http/routes/programs.routes';
+import { createMediaRoutes } from './interfaces/http/routes/media.routes';
+import { MediaController } from './interfaces/http/controllers/media.controller';
 import { SequelizeTrainingsToProgramsRepository } from './infrastructure/database/trainings-to-programs.repository';
 import { ListTrainingsToProgramsUseCase } from './application/use-cases/trainings-to-programs/list-trainings-to-programs.use-case';
 import { CreateTrainingToProgramUseCase } from './application/use-cases/trainer/create-training-to-program.use-case';
+import { DeleteTrainingToProgramUseCase } from './application/use-cases/trainer/delete-training-to-program.use-case';
 import { TrainingsToProgramsController } from './interfaces/http/controllers/trainings-to-programs.controller';
 import { createTrainingsToProgramsRoutes } from './interfaces/http/routes/trainings-to-programs.routes';
 import { SequelizeProgramsToStudentsRepository } from './infrastructure/database/programs-to-students.repository';
@@ -438,11 +443,15 @@ const programsToStudentsRepository = new SequelizeProgramsToStudentsRepository({
 const listProgramsToStudentsUseCase = new ListProgramsToStudentsUseCase(
   programsToStudentsRepository
 );
+const contentStudentsNotifier = new SequelizeContentStudentsNotifier({
+  Notification: models.Notification,
+  Student: models.Student,
+});
 const programsController = new ProgramsController(
   new ListProgramsUseCase(programsRepository),
   new SearchProgramsUseCase(programsRepository),
   new GetProgramUseCase(programsRepository),
-  new CreateProgramUseCase(programsRepository),
+  new CreateProgramUseCase(programsRepository, contentStudentsNotifier),
   new UpdateProgramUseCase(programsRepository),
   new DeleteProgramUseCase(programsRepository),
   listTrainingsToProgramsUseCase,
@@ -470,9 +479,16 @@ app.use(
   )
 );
 
+const mediaController = new MediaController();
+app.use(
+  '/media',
+  createMediaRoutes(mediaController, requireAuth, requireStudentOrTrainer)
+);
+
 const trainingsToProgramsController = new TrainingsToProgramsController(
   listTrainingsToProgramsUseCase,
-  new CreateTrainingToProgramUseCase(trainingsToProgramsRepository)
+  new CreateTrainingToProgramUseCase(trainingsToProgramsRepository),
+  new DeleteTrainingToProgramUseCase(trainingsToProgramsRepository)
 );
 app.use(
   '/trainings-to-programs',
@@ -648,7 +664,8 @@ const trainerSetsController = new TrainerSetsController(
   new GetSetUseCase(setsRepository),
   new CreateSetUseCase(setsRepository),
   new UpdateSetUseCase(setsRepository),
-  new DeleteSetUseCase(setsRepository)
+  new DeleteSetUseCase(setsRepository),
+  new SearchSetsUseCase(setsRepository)
 );
 const setsToTrainingsRepository = new SequelizeSetsToTrainingsRepository({
   SetsToTrainings: models.SetsToTrainings,
@@ -731,14 +748,16 @@ const anamnesisExclusiveController = new AnamnesisExclusiveController(
   new CreateMyAnamnesisExclusiveUseCase(anamnesisExclusiveRepository, studentPhysicalsRepository),
   uploadAnamnesisExclusiveFilesUseCase,
   new GetAnamnesisExclusiveByStudentIdUseCase(anamnesisExclusiveRepository),
-  new GetAnamnesisExclusiveCompletionUseCase(anamnesisExclusiveRepository)
+  new GetAnamnesisExclusiveCompletionUseCase(anamnesisExclusiveRepository),
+  new GetTrainerAnamnesisExclusiveCountUseCase(anamnesisExclusiveRepository)
 );
 app.use(
   '/anamnesis-exclusive',
   createAnamnesisExclusiveRoutes(
     anamnesisExclusiveController,
     requireAuth,
-    requireStudentOrTrainer
+    requireStudentOrTrainer,
+    requireTrainer
   )
 );
 const studentPhysicalsController = new StudentPhysicalsController(
@@ -845,10 +864,6 @@ const wellbeingRepository = new SequelizeWellbeingRepository({ Wellbeing: models
 const wellsRepository = new SequelizeWellsRepository({
   Well: models.Well,
   Wellbeing: models.Wellbeing,
-});
-const contentStudentsNotifier = new SequelizeContentStudentsNotifier({
-  Notification: models.Notification,
-  Student: models.Student,
 });
 
 const couponsController = new CouponsController(

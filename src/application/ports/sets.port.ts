@@ -19,6 +19,7 @@ export type PatchSetInput = Partial<{
 
 export interface ISetsRepository {
   listPaged(page: number, pageSize: number): Promise<PagedList<SetDTO>>;
+  searchByNamePaged(term: string, page: number, pageSize: number): Promise<PagedList<SetDTO>>;
   findById(setId: number): Promise<SetDTO | null>;
   create(input: CreateSetInput): Promise<SetDTO>;
   update(setId: number, patch: PatchSetInput): Promise<SetDTO>;

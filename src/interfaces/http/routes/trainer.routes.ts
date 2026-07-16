@@ -18,6 +18,9 @@ export function createTrainerRoutes(
   const router = Router();
   const asTrainer: RequestHandler[] = [requireAuth, requireTrainer];
 
+  router.get('/sets/search', ...asTrainer, (req: Request, res: Response) =>
+    setsController.search(req, res)
+  );
   router.get('/sets', ...asTrainer, (req: Request, res: Response) =>
     setsController.list(req, res)
   );

@@ -4,6 +4,7 @@ import type { IContentStudentsNotifier } from '../../application/ports/content-s
 
 const TYPE_COUPON_CREATED = 'COUPON_CREATED';
 const TYPE_WELLBEING_CREATED = 'WELLBEING_CREATED';
+const TYPE_PROGRAM_CREATED = 'PROGRAM_CREATED';
 
 export class SequelizeContentStudentsNotifier implements IContentStudentsNotifier {
   private expoClient: InstanceType<typeof ExpoDefault> | null = null;
@@ -26,6 +27,16 @@ export class SequelizeContentStudentsNotifier implements IContentStudentsNotifie
       message: 'Checa o novo bem estar',
       type: TYPE_WELLBEING_CREATED,
       data: { wellbeingId },
+    });
+  }
+
+  async notifyProgramCreated(programId: number, programName: string | null): Promise<void> {
+    const label = programName?.trim() || 'Novo programa';
+    await this.notifyAllStudents({
+      title: 'Novo programa',
+      message: `${label} já está disponível para você.`,
+      type: TYPE_PROGRAM_CREATED,
+      data: { programId },
     });
   }
 

@@ -4,6 +4,7 @@ import type { GetSetUseCase } from '../../../application/use-cases/trainer/get-s
 import type { CreateSetUseCase } from '../../../application/use-cases/trainer/create-set.use-case';
 import type { UpdateSetUseCase } from '../../../application/use-cases/trainer/update-set.use-case';
 import type { DeleteSetUseCase } from '../../../application/use-cases/trainer/delete-set.use-case';
+import type { SearchSetsUseCase } from '../../../application/use-cases/trainer/search-sets.use-case';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -35,7 +36,8 @@ export class TrainerSetsController {
     private readonly getSet: GetSetUseCase,
     private readonly createSet: CreateSetUseCase,
     private readonly updateSet: UpdateSetUseCase,
-    private readonly deleteSet: DeleteSetUseCase
+    private readonly deleteSet: DeleteSetUseCase,
+    private readonly searchSets: SearchSetsUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -47,6 +49,24 @@ export class TrainerSetsController {
       res.status(200).json(result);
     } catch {
       res.status(500).json({ message: 'Erro ao listar sets.' });
+    }
+  }
+
+  async search(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await this.searchSets.execute(
+        firstQuery(req.query.q),
+        firstQuery(req.query.page),
+        firstQuery(req.query.pageSize)
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      const error = err as { name?: string; message?: string };
+      if (error.name === VALIDATION) {
+        res.status(400).json({ message: error.message ?? 'Parâmetros inválidos.' });
+        return;
+      }
+      res.status(500).json({ message: 'Erro ao pesquisar sets.' });
     }
   }
 

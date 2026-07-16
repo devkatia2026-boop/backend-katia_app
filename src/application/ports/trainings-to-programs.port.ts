@@ -49,4 +49,5 @@ export interface ITrainingsToProgramsRepository {
   ): Promise<PagedList<TrainingToProgramProgram>>;
   findById(id: number): Promise<TrainingToProgramDTO | null>;
   create(input: CreateTrainingToProgramInput): Promise<TrainingToProgramDTO>;
+  deleteById(id: number): Promise<boolean>;
 }

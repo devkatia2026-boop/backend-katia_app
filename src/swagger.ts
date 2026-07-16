@@ -967,6 +967,32 @@ export const swaggerDocument = {
         },
       },
     },
+    '/anamnesis-exclusive/count': {
+      get: {
+        summary: 'Total de anamneses exclusive da treinadora',
+        description:
+          'Conta quantos registros existem em `anamnesisexclusive` de alunas vinculadas ao treinador autenticado.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Total de anamneses exclusive',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['total'],
+                  properties: {
+                    total: { type: 'integer', minimum: 0 },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+        },
+      },
+    },
     '/anamnesis-exclusive/students/{studentId}/completion': {
       get: {
         summary: 'Verificar preenchimento da anamnese exclusive',
@@ -1557,6 +1583,30 @@ export const swaggerDocument = {
         },
       },
     },
+    '/media/remote': {
+      get: {
+        summary: 'Proxy de mídia remota',
+        description:
+          'Baixa uma imagem de URL HTTPS permitida (ex.: S3) e devolve os bytes. Usado pelo app web para converter HEIC antes da exibição.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'url',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', format: 'uri' },
+            description: 'URL HTTPS da mídia (host deve terminar em `.amazonaws.com`).',
+          },
+        ],
+        responses: {
+          '200': { description: 'Bytes da mídia remota' },
+          '400': { description: 'URL inválida ou não permitida' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não autorizado' },
+          '502': { description: 'Falha ao carregar mídia remota' },
+        },
+      },
+    },
     '/programs': {
       get: {
         summary: 'Listar programas',
@@ -1601,7 +1651,8 @@ export const swaggerDocument = {
       },
       post: {
         summary: 'Criar programa',
-        description: 'Somente treinadora autenticada. Campo `photo` aceita URL JSON ou arquivo multipart (S3).',
+        description:
+          'Somente treinadora autenticada. Campo `photo` aceita URL JSON ou arquivo multipart (S3). Ao criar, todas as alunas cadastradas recebem notificação in-app e push Expo (quando houver token).',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -1621,8 +1672,22 @@ export const swaggerDocument = {
                     nullable: true,
                     enum: ['iniciante', 'intermediário', 'avançado'],
                   },
-                  objective: { type: 'string', nullable: true },
-                  bother: { type: 'string', nullable: true },
+                  objective: {
+                    type: 'string',
+                    nullable: true,
+                    enum: [
+                      'Perder peso e definir',
+                      'Ganhar massa muscular',
+                      'Melhorar condicionamento',
+                      'Manter-me ativa e saudável',
+                    ],
+                  },
+                  bother: {
+                    type: 'string',
+                    nullable: true,
+                    description:
+                      'Músculos por ordem de prioridade, separados por vírgula (ex.: Glúteos,Costas,Barriga).',
+                  },
                 },
               },
             },
@@ -1645,7 +1710,10 @@ export const swaggerDocument = {
           },
         },
         responses: {
-          '201': { description: 'Programa criado' },
+          '201': {
+            description:
+              'Programa criado. Notificações `PROGRAM_CREATED` enviadas para todas as alunas.',
+          },
           '400': { description: 'Corpo inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
@@ -2064,11 +2132,29 @@ export const swaggerDocument = {
                   name: { type: 'string', nullable: true },
                   photo: { type: 'string', format: 'uri', nullable: true },
                   status: { type: 'boolean', nullable: true },
-                  type: { type: 'string', nullable: true },
+                  type: { type: 'string', nullable: true, enum: ['casa', 'academia', 'ambos'] },
                   description: { type: 'string', nullable: true },
-                  level: { type: 'string', nullable: true },
-                  objective: { type: 'string', nullable: true },
-                  bother: { type: 'string', nullable: true },
+                  level: {
+                    type: 'string',
+                    nullable: true,
+                    enum: ['iniciante', 'intermediário', 'avançado'],
+                  },
+                  objective: {
+                    type: 'string',
+                    nullable: true,
+                    enum: [
+                      'Perder peso e definir',
+                      'Ganhar massa muscular',
+                      'Melhorar condicionamento',
+                      'Manter-me ativa e saudável',
+                    ],
+                  },
+                  bother: {
+                    type: 'string',
+                    nullable: true,
+                    description:
+                      'Músculos por ordem de prioridade, separados por vírgula (ex.: Glúteos,Costas,Barriga).',
+                  },
                 },
               },
             },
@@ -2543,6 +2629,61 @@ export const swaggerDocument = {
         responses: {
           '201': { description: 'Criado' },
           '400': { description: 'Corpo inválido (informe name ou order)' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+        },
+      },
+    },
+    '/trainer/sets/search': {
+      get: {
+        summary: 'Pesquisar sets por nome ou ordem',
+        description:
+          'Busca por substring nos campos `name` e `order` com `unaccent` + case-insensitive. Retorna `total` com a quantidade real de resultados da busca.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'q',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', maxLength: 200 },
+            description: 'Termo de busca no nome ou ordem do set',
+          },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Resultados paginados',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer' },
+                          name: { type: 'string', nullable: true },
+                          order: { type: 'string', nullable: true },
+                          created_at: { type: 'string', format: 'date-time' },
+                        },
+                      },
+                    },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Parâmetro q inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
         },
@@ -3360,6 +3501,24 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
           '409': { description: 'Vínculo já existe (program_id, training_id)' },
+        },
+      },
+    },
+    '/trainings-to-programs/{id}': {
+      delete: {
+        summary: 'Excluir vínculo treino↔programa',
+        description:
+          'Remove o treino do programa pelo `id` do vínculo em `programstotrainings`. Somente treinadora autenticada.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Vínculo excluído' },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '404': { description: 'Vínculo não encontrado' },
         },
       },
     },

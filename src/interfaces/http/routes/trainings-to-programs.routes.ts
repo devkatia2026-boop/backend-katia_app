@@ -16,6 +16,9 @@ export function createTrainingsToProgramsRoutes(
   router.post('/', [requireAuth, requireTrainer], (req: Request, res: Response) =>
     controller.create(req, res)
   );
+  router.delete('/:id', [requireAuth, requireTrainer], (req: Request, res: Response) =>
+    controller.delete(req, res)
+  );
 
   return router;
 }

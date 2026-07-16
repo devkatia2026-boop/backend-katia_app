@@ -41,4 +41,18 @@ export class SequelizeAnamnesisExclusiveRepository implements IAnamnesisExclusiv
     });
     return row !== null;
   }
+
+  async countByTrainer(trainerId: string): Promise<number> {
+    return this.models.AnamnesisExclusive.count({
+      include: [
+        {
+          model: this.models.Student,
+          as: 'student',
+          attributes: [],
+          where: { trainer_id: trainerId },
+          required: true,
+        },
+      ],
+    });
+  }
 }

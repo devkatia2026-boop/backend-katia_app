@@ -3,6 +3,7 @@ import { formatAnamnesisExclusiveResponse } from '../../../application/anamnesis
 import type { CreateMyAnamnesisExclusiveUseCase } from '../../../application/use-cases/anamnesis-exclusive/create-my-anamnesis-exclusive.use-case';
 import type { GetAnamnesisExclusiveByStudentIdUseCase } from '../../../application/use-cases/anamnesis-exclusive/get-anamnesis-exclusive-by-id.use-case';
 import type { GetAnamnesisExclusiveCompletionUseCase } from '../../../application/use-cases/anamnesis-exclusive/get-anamnesis-exclusive-completion.use-case';
+import type { GetTrainerAnamnesisExclusiveCountUseCase } from '../../../application/use-cases/trainer/get-trainer-anamnesis-exclusive-count.use-case';
 import {
   ObjectStorageException,
   type UploadAnamnesisExclusiveFilesUseCase,
@@ -37,7 +38,8 @@ export class AnamnesisExclusiveController {
     private readonly createMy: CreateMyAnamnesisExclusiveUseCase,
     private readonly uploadFiles: UploadAnamnesisExclusiveFilesUseCase,
     private readonly getByStudentId: GetAnamnesisExclusiveByStudentIdUseCase,
-    private readonly getCompletionStatus: GetAnamnesisExclusiveCompletionUseCase
+    private readonly getCompletionStatus: GetAnamnesisExclusiveCompletionUseCase,
+    private readonly getTrainerCount: GetTrainerAnamnesisExclusiveCountUseCase
   ) {}
 
   async create(req: Request, res: Response): Promise<void> {
@@ -72,6 +74,16 @@ export class AnamnesisExclusiveController {
       res.status(200).json(result);
     } catch (err) {
       this.handleRead(err, res, 'Erro ao verificar preenchimento da anamnese exclusive.');
+    }
+  }
+
+  async countForTrainer(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const total = await this.getTrainerCount.execute(trainerId);
+      res.status(200).json({ total });
+    } catch {
+      res.status(500).json({ message: 'Erro ao obter total de anamneses exclusive.' });
     }
   }
 

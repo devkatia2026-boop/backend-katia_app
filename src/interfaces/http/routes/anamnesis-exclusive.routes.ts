@@ -5,11 +5,15 @@ import type { AnamnesisExclusiveController } from '../controllers/anamnesis-excl
 export function createAnamnesisExclusiveRoutes(
   controller: AnamnesisExclusiveController,
   requireAuth: RequestHandler,
-  requireStudentOrTrainer: RequestHandler
+  requireStudentOrTrainer: RequestHandler,
+  requireTrainer: RequestHandler
 ): Router {
   const router = Router();
   const chain: RequestHandler[] = [requireAuth, requireStudentOrTrainer];
 
+  router.get('/count', [requireAuth, requireTrainer], (req: Request, res: Response) =>
+    controller.countForTrainer(req, res)
+  );
   router.get('/students/:studentId/completion', chain, (req: Request, res: Response) =>
     controller.getCompletion(req, res)
   );
