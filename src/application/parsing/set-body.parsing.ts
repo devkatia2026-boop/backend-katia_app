@@ -17,7 +17,32 @@ function expectNullableTrimmed(value: unknown, field: string): string | null {
   return t.length === 0 ? null : t;
 }
 
-/** Criação: ao menos `name` ou `order` deve ter texto após trim. */
+function parseSetTrainingOrder(raw: string | null): number[] {
+  if (!raw?.trim()) {
+    return [];
+  }
+
+  return raw
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => Number.parseInt(part, 10))
+    .filter((value) => Number.isFinite(value) && value >= 1);
+}
+
+function expectOrderWithTrainings(value: unknown, field: string): string {
+  const order = expectNullableTrimmed(value, field);
+
+  if (order === null || parseSetTrainingOrder(order).length === 0) {
+    const err = new Error(`Campo "${field}" deve conter ao menos um treino.`);
+    err.name = VALIDATION;
+    throw err;
+  }
+
+  return order;
+}
+
+/** Criação: `order` deve conter ao menos um id de treino. */
 export function parseSetCreateBody(body: unknown): CreateSetInput {
   if (!isPlainObject(body)) {
     const err = new Error('Corpo da requisição deve ser um objeto JSON.');
@@ -26,13 +51,7 @@ export function parseSetCreateBody(body: unknown): CreateSetInput {
   }
 
   const name = 'name' in body ? expectNullableTrimmed(body.name ?? null, 'name') : null;
-  const order = 'order' in body ? expectNullableTrimmed(body.order ?? null, 'order') : null;
-
-  if (name === null && order === null) {
-    const err = new Error('Informe ao menos um texto em "name" ou "order".');
-    err.name = VALIDATION;
-    throw err;
-  }
+  const order = expectOrderWithTrainings(body.order ?? null, 'order');
 
   return { name, order };
 }

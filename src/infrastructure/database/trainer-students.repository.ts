@@ -5,6 +5,7 @@ import type { StudentProfileUpdateValues } from '../../application/ports/user-pr
 import type {
   ITrainerStudentsRepository,
   PaginatedTrainerStudents,
+  TrainerStudentPlanFilter,
   TrainerStudentPublic,
   TrainerStudentSearchField,
   TrainerStudentValidationFilter,
@@ -32,13 +33,35 @@ function validationEqualsCondition(value: TrainerStudentValidationFilter) {
   return where(fn('lower', col('validation')), value);
 }
 
+function planFilterCondition(plan: TrainerStudentPlanFilter): WhereOptions {
+  if (plan === 'exclusive') {
+    return {
+      [Op.or]: [
+        where(fn('lower', col('type_plan')), 'exclusive'),
+        where(fn('lower', col('type_plan')), 'consultoria-exclusiva'),
+      ],
+    };
+  }
+
+  return {
+    [Op.or]: [
+      where(fn('lower', col('type_plan')), 'comum'),
+      where(fn('lower', col('type_plan')), 'plano-academia'),
+    ],
+  };
+}
+
 function buildTrainerWhere(
   trainerId: string,
-  validation?: TrainerStudentValidationFilter
+  validation?: TrainerStudentValidationFilter,
+  plan?: TrainerStudentPlanFilter
 ): WhereOptions {
   const conditions: WhereOptions[] = [{ trainer_id: trainerId }];
   if (validation) {
     conditions.push(validationEqualsCondition(validation));
+  }
+  if (plan) {
+    conditions.push(planFilterCondition(plan));
   }
   return conditions.length === 1 ? conditions[0] : { [Op.and]: conditions };
 }
@@ -47,7 +70,7 @@ export class SequelizeTrainerStudentsRepository implements ITrainerStudentsRepos
   constructor(private readonly models: Pick<DatabaseModels, 'Student'>) {}
 
   async countValidationSummary(trainerId: string): Promise<TrainerStudentsValidationSummary> {
-    const [sim, nao] = await Promise.all([
+    const [sim, nao, exclusive, comum] = await Promise.all([
       this.models.Student.count({
         where: {
           [Op.and]: [{ trainer_id: trainerId }, validationEqualsCondition('sim')],
@@ -58,19 +81,26 @@ export class SequelizeTrainerStudentsRepository implements ITrainerStudentsRepos
           [Op.and]: [{ trainer_id: trainerId }, validationEqualsCondition('nao')],
         },
       }),
+      this.models.Student.count({
+        where: buildTrainerWhere(trainerId, undefined, 'exclusive'),
+      }),
+      this.models.Student.count({
+        where: buildTrainerWhere(trainerId, undefined, 'comum'),
+      }),
     ]);
-    return { sim, nao };
+    return { sim, nao, exclusive, comum };
   }
 
   async listPaged(
     trainerId: string,
     page: number,
     pageSize: number,
-    validation?: TrainerStudentValidationFilter
+    validation?: TrainerStudentValidationFilter,
+    plan?: TrainerStudentPlanFilter
   ): Promise<PaginatedTrainerStudents> {
     const offset = (page - 1) * pageSize;
     const { rows, count } = await this.models.Student.findAndCountAll({
-      where: buildTrainerWhere(trainerId, validation),
+      where: buildTrainerWhere(trainerId, validation, plan),
       order: [['full_name', 'ASC']],
       limit: pageSize,
       offset,
@@ -89,7 +119,8 @@ export class SequelizeTrainerStudentsRepository implements ITrainerStudentsRepos
     term: string,
     page: number,
     pageSize: number,
-    validation?: TrainerStudentValidationFilter
+    validation?: TrainerStudentValidationFilter,
+    plan?: TrainerStudentPlanFilter
   ): Promise<PaginatedTrainerStudents> {
     const pattern = `%${escapeLikePattern(term.trim())}%`;
     const column = field === 'name' ? 'full_name' : 'email';
@@ -100,6 +131,9 @@ export class SequelizeTrainerStudentsRepository implements ITrainerStudentsRepos
     ];
     if (validation) {
       conditions.push(validationEqualsCondition(validation));
+    }
+    if (plan) {
+      conditions.push(planFilterCondition(plan));
     }
 
     const { rows, count } = await this.models.Student.findAndCountAll({

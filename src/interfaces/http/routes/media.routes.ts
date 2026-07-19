@@ -13,5 +13,9 @@ export function createMediaRoutes(
     controller.remote(req, res),
   );
 
+  router.get('/remote/display', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
+    controller.remoteDisplay(req, res),
+  );
+
   return router;
 }

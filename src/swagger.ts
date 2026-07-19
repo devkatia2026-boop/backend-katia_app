@@ -1587,7 +1587,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Proxy de mídia remota',
         description:
-          'Baixa uma imagem de URL HTTPS permitida (ex.: S3) e devolve os bytes. Usado pelo app web para converter HEIC antes da exibição.',
+          'Baixa uma mídia de URL HTTPS permitida (ex.: S3) e devolve os bytes originais.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -1604,6 +1604,37 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não autorizado' },
           '502': { description: 'Falha ao carregar mídia remota' },
+        },
+      },
+    },
+    '/media/remote/display': {
+      get: {
+        summary: 'Imagem remota pronta para exibição',
+        description:
+          'Baixa uma imagem HTTPS permitida (ex.: S3). Se for HEIC/HEIF, converte para JPEG antes de devolver os bytes.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'url',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', format: 'uri' },
+            description: 'URL HTTPS da imagem (host deve terminar em `.amazonaws.com`).',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Bytes da imagem pronta para exibição (JPEG quando a origem for HEIC/HEIF)',
+            content: {
+              'image/jpeg': { schema: { type: 'string', format: 'binary' } },
+              'image/png': { schema: { type: 'string', format: 'binary' } },
+              'image/webp': { schema: { type: 'string', format: 'binary' } },
+            },
+          },
+          '400': { description: 'URL inválida ou não permitida' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não autorizado' },
+          '502': { description: 'Falha ao carregar ou converter a imagem remota' },
         },
       },
     },
@@ -2610,7 +2641,8 @@ export const swaggerDocument = {
       },
       post: {
         summary: 'Criar set',
-        description: 'Ao menos um dos campos (`name` ou `order`) deve ter texto após trim.',
+        description:
+          'Campo `order` obrigatório com ao menos um id de treino (CSV). `name` é opcional.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -2618,9 +2650,13 @@ export const swaggerDocument = {
             'application/json': {
               schema: {
                 type: 'object',
+                required: ['order'],
                 properties: {
                   name: { type: 'string', nullable: true },
-                  order: { type: 'string', nullable: true },
+                  order: {
+                    type: 'string',
+                    description: 'Ids de treinos separados por vírgula, ex.: "12,5,8"',
+                  },
                 },
               },
             },
@@ -2628,7 +2664,7 @@ export const swaggerDocument = {
         },
         responses: {
           '201': { description: 'Criado' },
-          '400': { description: 'Corpo inválido (informe name ou order)' },
+          '400': { description: 'Corpo inválido (order deve conter ao menos um treino)' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
         },
@@ -4246,7 +4282,12 @@ export const swaggerDocument = {
                 properties: {
                   student_id: { type: 'string', format: 'uuid' },
                   sets_id: { type: 'integer', minimum: 1 },
-                  validity: { type: 'string', nullable: true },
+                  validity: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'Data de validade no formato YYYY-MM-DD (ex.: 2026-05-28)',
+                    example: '2026-05-28',
+                  },
                   status: { type: 'boolean', nullable: true },
                 },
               },
@@ -4255,7 +4296,7 @@ export const swaggerDocument = {
         },
         responses: {
           '201': { description: 'Criado' },
-          '400': { description: 'Corpo inválido ou FK inexistente' },
+          '400': { description: 'Corpo inválido, data inválida ou FK inexistente' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Aluna não é sua ou não encontrada' },
           '409': { description: 'Vínculo já existe' },
@@ -4295,7 +4336,12 @@ export const swaggerDocument = {
                 properties: {
                   student_id: { type: 'string', format: 'uuid' },
                   sets_id: { type: 'integer', minimum: 1 },
-                  validity: { type: 'string', nullable: true },
+                  validity: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'Data de validade no formato YYYY-MM-DD (ex.: 2026-05-28)',
+                    example: '2026-05-28',
+                  },
                   status: { type: 'boolean', nullable: true },
                 },
               },
@@ -4304,7 +4350,7 @@ export const swaggerDocument = {
         },
         responses: {
           '200': { description: 'Atualizado' },
-          '400': { description: 'Corpo inválido ou FK inexistente' },
+          '400': { description: 'Corpo inválido, data inválida ou FK inexistente' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Sem permissão' },
           '404': { description: 'Não encontrado' },
@@ -5690,7 +5736,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar alunas do treinador',
         description:
-          'Lista alunas vinculadas ao treinador autenticado, ordenadas por nome (`full_name` ASC). Paginação via `page` e `pageSize` (máx. 100).',
+          'Lista alunas vinculadas ao treinador autenticado, ordenadas por nome (`full_name` ASC). Paginação via `page` e `pageSize` (máx. 100). Filtros opcionais: `validation` (`sim` ou `nao`) e `plan` (`exclusive` ou `comum`).',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -5704,6 +5750,19 @@ export const swaggerDocument = {
             in: 'query',
             schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
             description: 'Itens por página',
+          },
+          {
+            name: 'validation',
+            in: 'query',
+            schema: { type: 'string', enum: ['sim', 'nao'] },
+            description: 'Filtra por status de validação (`sim` ou `nao`)',
+          },
+          {
+            name: 'plan',
+            in: 'query',
+            schema: { type: 'string', enum: ['exclusive', 'comum'] },
+            description:
+              'Filtra por tipo de plano (`exclusive` = consultoria exclusiva; `comum` = plataforma)',
           },
         ],
         responses: {
@@ -5732,19 +5791,21 @@ export const swaggerDocument = {
       get: {
         summary: 'Resumo de validação das alunas',
         description:
-          'Conta quantas alunas vinculadas ao treinador têm `validation` igual a `sim` ou `nao` (comparação case-insensitive, sem acento). Alunas com `validation` nulo ou outro valor não entram nas contagens.',
+          'Conta quantas alunas vinculadas ao treinador têm `validation` igual a `sim` ou `nao` (comparação case-insensitive, sem acento), além do total por plano (`exclusive` e `comum`). Alunas com `validation` nulo ou outro valor não entram nas contagens `sim`/`nao`.',
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {
-            description: 'Totais por status de validação',
+            description: 'Totais por status de validação e plano',
             content: {
               'application/json': {
                 schema: {
                   type: 'object',
-                  required: ['sim', 'nao'],
+                  required: ['sim', 'nao', 'exclusive', 'comum'],
                   properties: {
                     sim: { type: 'integer', minimum: 0 },
                     nao: { type: 'integer', minimum: 0 },
+                    exclusive: { type: 'integer', minimum: 0 },
+                    comum: { type: 'integer', minimum: 0 },
                   },
                 },
               },
@@ -5759,7 +5820,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Pesquisar alunas (nome, e-mail ou validação)',
         description:
-          'Busca por substring com `unaccent` + case-insensitive (ex.: "maria" encontra María, MARIA) quando `field` e `q` são informados. Use apenas `validation=sim` ou `validation=nao` para listar alunas por status de validação (mesmo formato paginado da listagem). Os três parâmetros podem ser combinados para refinar a busca.',
+          'Busca por substring com `unaccent` + case-insensitive (ex.: "maria" encontra María, MARIA) quando `field` e `q` são informados. Use apenas `validation=sim` ou `validation=nao`, apenas `plan=exclusive` ou `plan=comum`, ou combine filtros para listar alunas (mesmo formato paginado da listagem). Os parâmetros podem ser combinados com a busca por nome ou e-mail.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -5779,6 +5840,13 @@ export const swaggerDocument = {
             in: 'query',
             schema: { type: 'string', enum: ['sim', 'nao'] },
             description: 'Filtra por status de validação (`sim` ou `nao`)',
+          },
+          {
+            name: 'plan',
+            in: 'query',
+            schema: { type: 'string', enum: ['exclusive', 'comum'] },
+            description:
+              'Filtra por tipo de plano (`exclusive` = consultoria exclusiva; `comum` = plataforma)',
           },
           {
             name: 'page',
@@ -5839,6 +5907,149 @@ export const swaggerDocument = {
           },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não é treinador' },
+        },
+      },
+    },
+    '/trainer/students/{studentId}/anamnesis/history': {
+      get: {
+        summary: 'Histórico paginado de anamneses da aluna',
+        description:
+          'Lista registros de anamnese (`anamneses`) da aluna em ordem cronológica, desde que ela pertença ao treinador autenticado.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista paginada de anamneses',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: { type: 'array', items: { $ref: '#/components/schemas/Anamnesis' } },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+          '404': { description: 'Aluna não encontrada' },
+        },
+      },
+    },
+    '/trainer/students/{studentId}/training/week': {
+      get: {
+        summary: 'Treinos da semana da aluna',
+        description:
+          'Retorna a agenda semanal de treinos da aluna, desde que ela pertença ao treinador autenticado.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '200': { description: 'Agenda semanal de treinos' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+          '404': { description: 'Aluna não encontrada' },
+        },
+      },
+    },
+    '/trainer/students/{studentId}/training/calendar': {
+      get: {
+        summary: 'Calendário mensal de treinos da aluna',
+        description:
+          'Retorna o calendário mensal de pontos/treinos da aluna, desde que ela pertença ao treinador autenticado.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+          { name: 'month', in: 'query', required: true, schema: { type: 'integer', minimum: 1, maximum: 12 } },
+          { name: 'year', in: 'query', required: true, schema: { type: 'integer', minimum: 2000 } },
+        ],
+        responses: {
+          '200': { description: 'Calendário mensal de treinos' },
+          '400': { description: 'Parâmetros inválidos' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+          '404': { description: 'Aluna não encontrada' },
+        },
+      },
+    },
+    '/trainer/students/{studentId}/copy-training-phases': {
+      post: {
+        summary: 'Copiar rotinas de treino de outra aluna',
+        description:
+          'Copia vínculos aluna↔set e orientações (reps/exercise) da aluna origem para a aluna destino. Envia uma notificação à aluna destino.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+            description: 'Aluna destino',
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['sourceStudentId'],
+                properties: {
+                  sourceStudentId: { type: 'string', format: 'uuid' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Rotinas copiadas',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    copied: { type: 'integer' },
+                    skipped: { type: 'integer' },
+                    repsCopied: { type: 'integer' },
+                    total: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Parâmetros inválidos ou nenhuma rotina copiada' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador ou aluna não pertence a você' },
+          '404': { description: 'Aluna não encontrada' },
         },
       },
     },

@@ -1,10 +1,15 @@
+import type { ISetAssignedNotifier } from '../../ports/set-assigned-notifier.port';
 import type { ISetsToStudentsRepository, SetToStudentDTO } from '../../ports/sets-to-students.port';
 import { parseSetToStudentCreateBody } from '../../parsing/set-to-student-body.parsing';
 
 const FORBIDDEN = 'ForbiddenException';
 
 export class CreateSetToStudentUseCase {
-  constructor(private readonly repo: ISetsToStudentsRepository) {}
+  constructor(
+    private readonly repo: ISetsToStudentsRepository,
+    private readonly setAssignedNotifier: ISetAssignedNotifier,
+    private readonly getTrainerName: (trainerId: string) => Promise<string>
+  ) {}
 
   async execute(body: unknown, trainerSub: string): Promise<SetToStudentDTO> {
     const input = parseSetToStudentCreateBody(body);
@@ -14,6 +19,17 @@ export class CreateSetToStudentUseCase {
       err.name = FORBIDDEN;
       throw err;
     }
-    return this.repo.create(input);
+
+    const created = await this.repo.create(input);
+    const trainerName = await this.getTrainerName(trainerSub);
+
+    await this.setAssignedNotifier.notifySetAssignedToStudent({
+      trainerId: trainerSub,
+      studentId: input.student_id,
+      trainerName,
+      setsId: input.sets_id,
+    });
+
+    return created;
   }
 }

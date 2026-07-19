@@ -98,9 +98,29 @@ export function createTrainerRoutes(
   router.get('/anamneses', ...asTrainer, (req, res) => studentsController.listAnamneses(req, res));
   router.get('/students', ...asTrainer, (req, res) => studentsController.list(req, res));
   router.get(
+    '/students/:studentId/anamnesis/history',
+    ...asTrainer,
+    (req, res) => studentsController.listStudentAnamnesisHistory(req, res)
+  );
+  router.get(
     '/students/:studentId/anamnesis',
     ...asTrainer,
     (req, res) => studentsController.getStudentAnamnesis(req, res)
+  );
+  router.get(
+    '/students/:studentId/training/week',
+    ...asTrainer,
+    (req, res) => studentsController.getStudentWeeklyTraining(req, res)
+  );
+  router.get(
+    '/students/:studentId/training/calendar',
+    ...asTrainer,
+    (req, res) => studentsController.getStudentTrainingCalendar(req, res)
+  );
+  router.post(
+    '/students/:studentId/copy-training-phases',
+    ...asTrainer,
+    (req, res) => studentsController.copyStudentTrainingPhases(req, res)
   );
   router.delete(
     '/students/:studentId/anamnesis',

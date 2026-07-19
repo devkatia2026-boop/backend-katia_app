@@ -1,53 +1,79 @@
 import type { Request, Response } from 'express';
 
-const ALLOWED_HOST_SUFFIXES = ['.amazonaws.com'] as const;
+import type { GetRemoteDisplayImageUseCase } from '../../../application/use-cases/media/get-remote-display-image.use-case';
+import type { GetRemoteMediaUseCase } from '../../../application/use-cases/media/get-remote-media.use-case';
+import { REMOTE_MEDIA } from '../../../application/media/fetch-remote-media';
 
-function isAllowedRemoteMediaUrl(value: string): boolean {
-  try {
-    const parsed = new URL(value);
+const VALIDATION = 'ValidationException';
 
-    if (parsed.protocol !== 'https:') {
-      return false;
-    }
+function readRemoteUrl(req: Request): string | null {
+  const rawUrl = req.query.url;
 
-    return ALLOWED_HOST_SUFFIXES.some((suffix) => parsed.hostname.endsWith(suffix));
-  } catch {
-    return false;
+  if (typeof rawUrl !== 'string') {
+    return null;
   }
+
+  const url = rawUrl.trim();
+  return url.length > 0 ? url : null;
+}
+
+function sendRemoteMedia(res: Response, payload: { buffer: Buffer; contentType: string }): void {
+  res.setHeader('Content-Type', payload.contentType);
+  res.setHeader('Cache-Control', 'private, max-age=86400');
+  res.send(payload.buffer);
 }
 
 export class MediaController {
-  async remote(req: Request, res: Response): Promise<void> {
-    const rawUrl = req.query.url;
+  constructor(
+    private readonly getRemoteMedia: GetRemoteMediaUseCase,
+    private readonly getRemoteDisplayImage: GetRemoteDisplayImageUseCase,
+  ) {}
 
-    if (typeof rawUrl !== 'string' || !rawUrl.trim()) {
+  async remote(req: Request, res: Response): Promise<void> {
+    const url = readRemoteUrl(req);
+
+    if (!url) {
       res.status(400).json({ message: 'Parâmetro url é obrigatório.' });
       return;
     }
 
-    const url = rawUrl.trim();
+    try {
+      const payload = await this.getRemoteMedia.execute(url);
+      sendRemoteMedia(res, payload);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
 
-    if (!isAllowedRemoteMediaUrl(url)) {
-      res.status(400).json({ message: 'URL de mídia não permitida.' });
+  async remoteDisplay(req: Request, res: Response): Promise<void> {
+    const url = readRemoteUrl(req);
+
+    if (!url) {
+      res.status(400).json({ message: 'Parâmetro url é obrigatório.' });
       return;
     }
 
     try {
-      const upstream = await fetch(url);
+      const payload = await this.getRemoteDisplayImage.execute(url);
+      sendRemoteMedia(res, payload);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
 
-      if (!upstream.ok) {
-        res.status(502).json({ message: 'Falha ao carregar mídia remota.' });
+  private handleError(res: Response, error: unknown): void {
+    if (error instanceof Error) {
+      if (error.name === VALIDATION) {
+        res.status(400).json({ message: error.message });
         return;
       }
 
-      const buffer = Buffer.from(await upstream.arrayBuffer());
-      const contentType = upstream.headers.get('content-type') ?? 'application/octet-stream';
-
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'private, max-age=86400');
-      res.send(buffer);
-    } catch {
-      res.status(502).json({ message: 'Falha ao carregar mídia remota.' });
+      if (error.name === REMOTE_MEDIA) {
+        res.status(502).json({ message: error.message });
+        return;
+      }
     }
+
+    res.status(502).json({ message: 'Falha ao carregar mídia remota.' });
   }
 }

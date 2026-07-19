@@ -38,6 +38,10 @@ export interface IRepsToExercisesRepository {
     filterStudentId?: string
   ): Promise<PagedList<RepsToExerciseDTO>>;
   findById(id: number): Promise<RepsToExerciseDTO | null>;
+  findByStudentAndExercise(
+    studentId: string,
+    exerciseId: number
+  ): Promise<RepsToExerciseDTO | null>;
   getTrainerIdForRowStudent(studentId: string): Promise<string | null>;
   create(input: CreateRepsToExerciseInput): Promise<RepsToExerciseDTO>;
   update(id: number, patch: PatchRepsToExerciseInput): Promise<RepsToExerciseDTO>;

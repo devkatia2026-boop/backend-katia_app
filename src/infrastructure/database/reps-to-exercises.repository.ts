@@ -126,6 +126,23 @@ export class SequelizeRepsToExercisesRepository implements IRepsToExercisesRepos
     };
   }
 
+  async findByStudentAndExercise(
+    studentId: string,
+    exerciseId: number
+  ): Promise<RepsToExerciseDTO | null> {
+    const row = await this.models.RepsToExercises.findOne({
+      attributes: [...ATTR],
+      where: { student_id: studentId, exercise_id: exerciseId },
+      raw: true,
+    });
+
+    if (!row) {
+      return null;
+    }
+
+    return toDto({ ...(row as unknown as RepsToExerciseDTO), student: null });
+  }
+
   async findById(id: number): Promise<RepsToExerciseDTO | null> {
     const row = await this.models.RepsToExercises.findByPk(id, {
       attributes: [...ATTR],

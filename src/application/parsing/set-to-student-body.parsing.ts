@@ -62,6 +62,49 @@ function expectOptionalNullableTrimmedString(value: unknown, field: string): str
   return t.length === 0 ? null : t;
 }
 
+function expectOptionalValidityIsoDate(value: unknown, field: string): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    const err = new Error(`Campo "${field}" deve ser string ou null.`);
+    err.name = VALIDATION;
+    throw err;
+  }
+
+  const trimmed = value.trim();
+
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const err = new Error(`Campo "${field}" deve estar no formato YYYY-MM-DD.`);
+    err.name = VALIDATION;
+    throw err;
+  }
+
+  const [year, month, day] = trimmed.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    const err = new Error(`Campo "${field}" deve ser uma data válida.`);
+    err.name = VALIDATION;
+    throw err;
+  }
+
+  return trimmed;
+}
+
 export function parseSetToStudentCreateBody(body: unknown): CreateSetToStudentInput {
   if (!isPlainObject(body)) {
     const err = new Error('Corpo da requisição deve ser um objeto JSON.');
@@ -79,7 +122,9 @@ export function parseSetToStudentCreateBody(body: unknown): CreateSetToStudentIn
     student_id: expectUuid(body.student_id, 'student_id'),
     sets_id: expectPositiveInt(body.sets_id, 'sets_id'),
     validity:
-      validityRaw === undefined ? null : expectOptionalNullableTrimmedString(validityRaw, 'validity') ?? null,
+      validityRaw === undefined
+        ? null
+        : expectOptionalValidityIsoDate(validityRaw, 'validity') ?? null,
     status: statusRaw === undefined ? null : expectOptionalBoolOrNull(statusRaw, 'status') ?? null,
   };
 }
@@ -101,7 +146,7 @@ export function parseSetToStudentPatchBody(body: unknown): PatchSetToStudentInpu
     n++;
   }
   if ('validity' in body) {
-    patch.validity = expectOptionalNullableTrimmedString(body.validity, 'validity') ?? null;
+    patch.validity = expectOptionalValidityIsoDate(body.validity, 'validity') ?? null;
     n++;
   }
   if ('status' in body) {

@@ -76,6 +76,9 @@ import { CreateMyEvolutionUseCase } from './application/use-cases/student/create
 import { UpdateMyEvolutionUseCase } from './application/use-cases/student/update-my-evolution.use-case';
 import { ListTrainerStudentPhysicalsUseCase } from './application/use-cases/trainer/list-trainer-student-physicals.use-case';
 import { ListTrainerStudentEvolutionsUseCase } from './application/use-cases/trainer/list-trainer-student-evolutions.use-case';
+import { ListTrainerStudentAnamnesisHistoryUseCase } from './application/use-cases/trainer/list-trainer-student-anamnesis-history.use-case';
+import { GetTrainerStudentWeeklyTrainingUseCase } from './application/use-cases/trainer/get-trainer-student-weekly-training.use-case';
+import { GetTrainerStudentMonthlyTrainingCalendarUseCase } from './application/use-cases/trainer/get-trainer-student-monthly-training-calendar.use-case';
 import { SequelizeTrainingsRepository } from './infrastructure/database/trainings.repository';
 import { ListTrainingsUseCase } from './application/use-cases/trainer/list-trainings.use-case';
 import { SearchTrainingsUseCase } from './application/use-cases/trainer/search-trainings.use-case';
@@ -134,6 +137,8 @@ import { SequelizeSetsToStudentsRepository } from './infrastructure/database/set
 import { ListSetsToStudentsUseCase } from './application/use-cases/sets-to-students/list-sets-to-students.use-case';
 import { GetSetToStudentUseCase } from './application/use-cases/sets-to-students/get-set-to-student.use-case';
 import { CreateSetToStudentUseCase } from './application/use-cases/trainer/create-set-to-student.use-case';
+import { CopyStudentTrainingPhasesUseCase } from './application/use-cases/trainer/copy-student-training-phases.use-case';
+import { SequelizeSetAssignedNotifier } from './infrastructure/database/set-assigned.notifier';
 import { UpdateSetToStudentUseCase } from './application/use-cases/trainer/update-set-to-student.use-case';
 import { DeleteSetToStudentUseCase } from './application/use-cases/trainer/delete-set-to-student.use-case';
 import { SetsToStudentsController } from './interfaces/http/controllers/sets-to-students.controller';
@@ -262,6 +267,10 @@ import { ProgramsController } from './interfaces/http/controllers/programs.contr
 import { createProgramsRoutes } from './interfaces/http/routes/programs.routes';
 import { createMediaRoutes } from './interfaces/http/routes/media.routes';
 import { MediaController } from './interfaces/http/controllers/media.controller';
+import {
+  GetRemoteDisplayImageUseCase,
+} from './application/use-cases/media/get-remote-display-image.use-case';
+import { GetRemoteMediaUseCase } from './application/use-cases/media/get-remote-media.use-case';
 import { SequelizeTrainingsToProgramsRepository } from './infrastructure/database/trainings-to-programs.repository';
 import { ListTrainingsToProgramsUseCase } from './application/use-cases/trainings-to-programs/list-trainings-to-programs.use-case';
 import { CreateTrainingToProgramUseCase } from './application/use-cases/trainer/create-training-to-program.use-case';
@@ -479,7 +488,10 @@ app.use(
   )
 );
 
-const mediaController = new MediaController();
+const mediaController = new MediaController(
+  new GetRemoteMediaUseCase(),
+  new GetRemoteDisplayImageUseCase(),
+);
 app.use(
   '/media',
   createMediaRoutes(mediaController, requireAuth, requireStudentOrTrainer)
@@ -549,10 +561,26 @@ const setsToStudentsRepository = new SequelizeSetsToStudentsRepository({
   Student: models.Student,
   Set: models.Set,
 });
+const setAssignedNotifier = new SequelizeSetAssignedNotifier({
+  Notification: models.Notification,
+  Student: models.Student,
+});
+async function resolveTrainerDisplayName(trainerId: string): Promise<string> {
+  const trainer = await models.Trainer.findByPk(trainerId, {
+    attributes: ['full_name'],
+    raw: true,
+  });
+  const name = trainer ? (trainer as { full_name: string }).full_name?.trim() : '';
+  return name || 'Kátia';
+}
 const setsToStudentsController = new SetsToStudentsController(
   new ListSetsToStudentsUseCase(setsToStudentsRepository),
   new GetSetToStudentUseCase(setsToStudentsRepository),
-  new CreateSetToStudentUseCase(setsToStudentsRepository),
+  new CreateSetToStudentUseCase(
+    setsToStudentsRepository,
+    setAssignedNotifier,
+    resolveTrainerDisplayName
+  ),
   new UpdateSetToStudentUseCase(setsToStudentsRepository),
   new DeleteSetToStudentUseCase(setsToStudentsRepository)
 );
@@ -629,6 +657,29 @@ const listTrainerStudentEvolutionsUseCase = new ListTrainerStudentEvolutionsUseC
 const trainingsRepository = new SequelizeTrainingsRepository({
   Training: models.Training,
 });
+const pointsRepository = new SequelizePointsRepository({
+  Point: models.Point,
+  Student: models.Student,
+});
+const getWeeklyTrainingScheduleUseCase = new GetWeeklyTrainingScheduleUseCase(
+  setsToStudentsRepository,
+  trainingsRepository,
+  pointsRepository
+);
+const getMonthlyTrainingCalendarUseCase = new GetMonthlyTrainingCalendarUseCase(pointsRepository);
+const listTrainerStudentAnamnesisHistoryUseCase = new ListTrainerStudentAnamnesisHistoryUseCase(
+  trainerStudentsRepository,
+  studentAnamnesisRepository
+);
+const getTrainerStudentWeeklyTrainingUseCase = new GetTrainerStudentWeeklyTrainingUseCase(
+  trainerStudentsRepository,
+  getWeeklyTrainingScheduleUseCase
+);
+const getTrainerStudentMonthlyTrainingCalendarUseCase =
+  new GetTrainerStudentMonthlyTrainingCalendarUseCase(
+    trainerStudentsRepository,
+    getMonthlyTrainingCalendarUseCase
+  );
 const trainerTrainingsController = new TrainerTrainingsController(
   new ListTrainingsUseCase(trainingsRepository),
   new GetTrainingUseCase(trainingsRepository),
@@ -690,6 +741,12 @@ app.use(
     requireTrainer
   )
 );
+const copyStudentTrainingPhasesUseCase = new CopyStudentTrainingPhasesUseCase(
+  setsToStudentsRepository,
+  exercisesToTrainingsRepository,
+  repsToExercisesRepository,
+  setAssignedNotifier
+);
 const trainerStudentsController = new TrainerStudentsController(
   new ListTrainerStudentsUseCase(trainerStudentsRepository),
   new SearchTrainerStudentsUseCase(trainerStudentsRepository),
@@ -700,7 +757,12 @@ const trainerStudentsController = new TrainerStudentsController(
   listTrainerStudentPhysicalsUseCase,
   listTrainerStudentEvolutionsUseCase,
   new ListTrainerStudentsAnamnesesUseCase(studentAnamnesisRepository),
-  new GetTrainerStudentAnamnesisUseCase(studentAnamnesisRepository)
+  new GetTrainerStudentAnamnesisUseCase(studentAnamnesisRepository),
+  listTrainerStudentAnamnesisHistoryUseCase,
+  getTrainerStudentWeeklyTrainingUseCase,
+  getTrainerStudentMonthlyTrainingCalendarUseCase,
+  copyStudentTrainingPhasesUseCase,
+  resolveTrainerDisplayName
 );
 app.use(
   '/trainer',
@@ -773,18 +835,10 @@ const studentEvolutionsController = new StudentEvolutionsController(
   new UpdateMyEvolutionUseCase(studentEvolutionsRepository),
   uploadImageFilesUseCase
 );
-const pointsRepository = new SequelizePointsRepository({
-  Point: models.Point,
-  Student: models.Student,
-});
 const studentTrainingController = new StudentTrainingController(
   new GetTodayTrainingUseCase(setsToStudentsRepository, trainingsRepository),
-  new GetWeeklyTrainingScheduleUseCase(
-    setsToStudentsRepository,
-    trainingsRepository,
-    pointsRepository
-  ),
-  new GetMonthlyTrainingCalendarUseCase(pointsRepository)
+  getWeeklyTrainingScheduleUseCase,
+  getMonthlyTrainingCalendarUseCase
 );
 const studentAccountRepository = new SequelizeStudentAccountRepository(sequelize, models);
 const studentAccountController = new StudentAccountController(

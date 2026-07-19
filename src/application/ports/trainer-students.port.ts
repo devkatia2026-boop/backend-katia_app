@@ -28,9 +28,13 @@ export type TrainerStudentSearchField = 'name' | 'email';
 
 export type TrainerStudentValidationFilter = 'sim' | 'nao';
 
+export type TrainerStudentPlanFilter = 'exclusive' | 'comum';
+
 export type TrainerStudentsValidationSummary = {
   sim: number;
   nao: number;
+  exclusive: number;
+  comum: number;
 };
 
 export interface ITrainerStudentsRepository {
@@ -39,7 +43,8 @@ export interface ITrainerStudentsRepository {
     trainerId: string,
     page: number,
     pageSize: number,
-    validation?: TrainerStudentValidationFilter
+    validation?: TrainerStudentValidationFilter,
+    plan?: TrainerStudentPlanFilter
   ): Promise<PaginatedTrainerStudents>;
   searchPaged(
     trainerId: string,
@@ -47,7 +52,8 @@ export interface ITrainerStudentsRepository {
     term: string,
     page: number,
     pageSize: number,
-    validation?: TrainerStudentValidationFilter
+    validation?: TrainerStudentValidationFilter,
+    plan?: TrainerStudentPlanFilter
   ): Promise<PaginatedTrainerStudents>;
   findOneForTrainer(trainerId: string, studentId: string): Promise<TrainerStudentPublic | null>;
   updateStudentForTrainer(
