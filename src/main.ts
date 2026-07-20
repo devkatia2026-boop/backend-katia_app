@@ -66,6 +66,8 @@ import type { IObjectStorage } from './application/ports/object-storage.port';
 import { S3ObjectStorageAdapter } from './infrastructure/storage/s3-object-storage.adapter';
 import { SequelizeStudentPhysicalsRepository } from './infrastructure/database/student-physicals.repository';
 import { SequelizeStudentEvolutionsRepository } from './infrastructure/database/student-evolutions.repository';
+import { SequelizeRevaluationsRepository } from './infrastructure/database/revaluations.repository';
+import { SequelizeRevaluationNotifier } from './infrastructure/database/revaluation.notifier';
 import { ListMyPhysicalsUseCase } from './application/use-cases/student/list-my-physicals.use-case';
 import { GetMyPhysicalUseCase } from './application/use-cases/student/get-my-physical.use-case';
 import { CreateMyPhysicalUseCase } from './application/use-cases/student/create-my-physical.use-case';
@@ -74,6 +76,13 @@ import { ListMyEvolutionsUseCase } from './application/use-cases/student/list-my
 import { GetMyEvolutionUseCase } from './application/use-cases/student/get-my-evolution.use-case';
 import { CreateMyEvolutionUseCase } from './application/use-cases/student/create-my-evolution.use-case';
 import { UpdateMyEvolutionUseCase } from './application/use-cases/student/update-my-evolution.use-case';
+import { CreateMyRevaluationUseCase } from './application/use-cases/student/create-my-revaluation.use-case';
+import { GetMyRevaluationStatusUseCase } from './application/use-cases/student/get-my-revaluation-status.use-case';
+import { ListTrainerStudentRevaluationsUseCase } from './application/use-cases/trainer/list-trainer-student-revaluations.use-case';
+import { GetTrainerStudentRevaluationUseCase } from './application/use-cases/trainer/get-trainer-student-revaluation.use-case';
+import { CompareTrainerStudentRevaluationsUseCase } from './application/use-cases/trainer/compare-trainer-student-revaluations.use-case';
+import { StartTrainerStudentsRevaluationUseCase } from './application/use-cases/trainer/start-trainer-students-revaluation.use-case';
+import { SendRevaluationDailyRemindersUseCase } from './application/use-cases/revaluations/send-revaluation-daily-reminders.use-case';
 import { ListTrainerStudentPhysicalsUseCase } from './application/use-cases/trainer/list-trainer-student-physicals.use-case';
 import { ListTrainerStudentEvolutionsUseCase } from './application/use-cases/trainer/list-trainer-student-evolutions.use-case';
 import { ListTrainerStudentAnamnesisHistoryUseCase } from './application/use-cases/trainer/list-trainer-student-anamnesis-history.use-case';
@@ -189,6 +198,10 @@ import { GetCouponUseCase } from './application/use-cases/coupons/get-coupon.use
 import { CreateCouponUseCase } from './application/use-cases/coupons/create-coupon.use-case';
 import { UpdateCouponUseCase } from './application/use-cases/coupons/update-coupon.use-case';
 import { DeleteCouponUseCase } from './application/use-cases/coupons/delete-coupon.use-case';
+import { ListNoticesUseCase } from './application/use-cases/notices/list-notices.use-case';
+import { GetNoticeUseCase } from './application/use-cases/notices/get-notice.use-case';
+import { CreateNoticeUseCase } from './application/use-cases/notices/create-notice.use-case';
+import { DeleteNoticeUseCase } from './application/use-cases/notices/delete-notice.use-case';
 import { ListWellbeingUseCase } from './application/use-cases/wellbeing/list-wellbeing.use-case';
 import { GetWellbeingUseCase } from './application/use-cases/wellbeing/get-wellbeing.use-case';
 import { CreateWellbeingUseCase } from './application/use-cases/wellbeing/create-wellbeing.use-case';
@@ -200,12 +213,16 @@ import { CreateWellUseCase } from './application/use-cases/wells/create-well.use
 import { UpdateWellUseCase } from './application/use-cases/wells/update-well.use-case';
 import { DeleteWellUseCase } from './application/use-cases/wells/delete-well.use-case';
 import { CouponsController } from './interfaces/http/controllers/coupons.controller';
+import { NoticesController } from './interfaces/http/controllers/notices.controller';
 import { WellbeingController } from './interfaces/http/controllers/wellbeing.controller';
 import { WellsController } from './interfaces/http/controllers/wells.controller';
 import { createCouponsRoutes } from './interfaces/http/routes/coupons.routes';
+import { createNoticesRoutes } from './interfaces/http/routes/notices.routes';
 import { createWellbeingRoutes } from './interfaces/http/routes/wellbeing.routes';
 import { createWellsRoutes } from './interfaces/http/routes/wells.routes';
 import { SequelizeContentStudentsNotifier } from './infrastructure/database/content-students-notifier';
+import { SequelizeNoticesRepository } from './infrastructure/database/notices.repository';
+import { SequelizeNoticesNotifier } from './infrastructure/database/notices.notifier';
 import { SequelizeNotificationsRepository } from './infrastructure/database/notifications.repository';
 import { ListNotificationsUseCase } from './application/use-cases/notifications/list-notifications.use-case';
 import { GetNotificationUseCase } from './application/use-cases/notifications/get-notification.use-case';
@@ -222,6 +239,7 @@ import { SendLastMonthRankingChampionNotificationsUseCase } from './application/
 import { RankingsController } from './interfaces/http/controllers/rankings.controller';
 import { createRankingsRoutes } from './interfaces/http/routes/rankings.routes';
 import { startRankingChampionNotificationScheduler } from './infrastructure/scheduling/ranking-champion-notification.scheduler';
+import { startRevaluationDailyReminderScheduler } from './infrastructure/scheduling/revaluation-daily-reminder.scheduler';
 import { SequelizeConversationsRepository } from './infrastructure/database/conversations.repository';
 import { SequelizeConversationMessageNotifier } from './infrastructure/database/conversation-message.notifier';
 import { ConversationRealtimeHub } from './infrastructure/realtime/conversation-realtime.hub';
@@ -233,6 +251,7 @@ import { ConversationsController } from './interfaces/http/controllers/conversat
 import { createConversationsRoutes } from './interfaces/http/routes/conversations.routes';
 import { StudentPhysicalsController } from './interfaces/http/controllers/student-physicals.controller';
 import { StudentEvolutionsController } from './interfaces/http/controllers/student-evolutions.controller';
+import { StudentRevaluationsController } from './interfaces/http/controllers/student-revaluations.controller';
 import { StudentTrainingController } from './interfaces/http/controllers/student-training.controller';
 import { GetTodayTrainingUseCase } from './application/use-cases/student/get-today-training.use-case';
 import { GetWeeklyTrainingScheduleUseCase } from './application/use-cases/student/get-weekly-training-schedule.use-case';
@@ -307,6 +326,11 @@ const wellImageUploadMiddleware = createImageUploadMiddleware(['photo']);
 const evolutionImageUploadMiddleware = createImageUploadMiddleware([
   'original_photo',
   'current_photo',
+]);
+const revaluationImageUploadMiddleware = createImageUploadMiddleware([
+  'front_photo',
+  'side_photo',
+  'back_photo',
 ]);
 
 app.use((req, res, next) => {
@@ -648,6 +672,13 @@ const studentEvolutionsRepository = new SequelizeStudentEvolutionsRepository({
   Evolution: models.Evolution,
   Student: models.Student,
 });
+const revaluationsRepository = new SequelizeRevaluationsRepository({
+  Revaluation: models.Revaluation,
+  Student: models.Student,
+});
+const revaluationNotifier = new SequelizeRevaluationNotifier({
+  Notification: models.Notification,
+});
 const listTrainerStudentPhysicalsUseCase = new ListTrainerStudentPhysicalsUseCase(
   studentPhysicalsRepository
 );
@@ -762,6 +793,10 @@ const trainerStudentsController = new TrainerStudentsController(
   getTrainerStudentWeeklyTrainingUseCase,
   getTrainerStudentMonthlyTrainingCalendarUseCase,
   copyStudentTrainingPhasesUseCase,
+  new ListTrainerStudentRevaluationsUseCase(revaluationsRepository),
+  new GetTrainerStudentRevaluationUseCase(revaluationsRepository),
+  new CompareTrainerStudentRevaluationsUseCase(revaluationsRepository),
+  new StartTrainerStudentsRevaluationUseCase(revaluationsRepository, revaluationNotifier),
   resolveTrainerDisplayName
 );
 app.use(
@@ -835,6 +870,11 @@ const studentEvolutionsController = new StudentEvolutionsController(
   new UpdateMyEvolutionUseCase(studentEvolutionsRepository),
   uploadImageFilesUseCase
 );
+const studentRevaluationsController = new StudentRevaluationsController(
+  new CreateMyRevaluationUseCase(revaluationsRepository),
+  new GetMyRevaluationStatusUseCase(revaluationsRepository),
+  uploadImageFilesUseCase
+);
 const studentTrainingController = new StudentTrainingController(
   new GetTodayTrainingUseCase(setsToStudentsRepository, trainingsRepository),
   getWeeklyTrainingScheduleUseCase,
@@ -851,12 +891,14 @@ app.use(
     anamnesisExclusiveController,
     studentPhysicalsController,
     studentEvolutionsController,
+    studentRevaluationsController,
     studentTrainingController,
     studentAccountController,
     requireAuth,
     requireStudent,
     anamnesisExclusiveUploadMiddleware,
-    evolutionImageUploadMiddleware
+    evolutionImageUploadMiddleware,
+    revaluationImageUploadMiddleware
   )
 );
 
@@ -939,6 +981,27 @@ app.use(
   )
 );
 
+const noticesRepository = new SequelizeNoticesRepository({ Notice: models.Notice });
+const noticesNotifier = new SequelizeNoticesNotifier({
+  Notification: models.Notification,
+  Student: models.Student,
+});
+const noticesController = new NoticesController(
+  new ListNoticesUseCase(noticesRepository),
+  new GetNoticeUseCase(noticesRepository),
+  new CreateNoticeUseCase(noticesRepository, noticesNotifier),
+  new DeleteNoticeUseCase(noticesRepository)
+);
+app.use(
+  '/notices',
+  createNoticesRoutes(
+    noticesController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer
+  )
+);
+
 const wellbeingController = new WellbeingController(
   new ListWellbeingUseCase(wellbeingRepository),
   new GetWellbeingUseCase(wellbeingRepository),
@@ -1004,6 +1067,12 @@ const sendLastMonthRankingChampionNotifications = new SendLastMonthRankingChampi
   rankingChampionNotifier
 );
 startRankingChampionNotificationScheduler(sendLastMonthRankingChampionNotifications);
+
+const sendRevaluationDailyReminders = new SendRevaluationDailyRemindersUseCase(
+  revaluationsRepository,
+  revaluationNotifier
+);
+startRevaluationDailyReminderScheduler(sendRevaluationDailyReminders);
 
 const notificationsController = new NotificationsController(
   new ListNotificationsUseCase(notificationsRepository),

@@ -1,6 +1,10 @@
 import { col, fn, Op, where, type WhereOptions } from 'sequelize';
 import type { Student } from './models/student.model';
 import type { DatabaseModels } from './models';
+import {
+  comumPlanWhere,
+  exclusivePlanWhere,
+} from './student-plan-eligibility';
 import type { StudentProfileUpdateValues } from '../../application/ports/user-profile-updater.port';
 import type {
   ITrainerStudentsRepository,
@@ -35,20 +39,10 @@ function validationEqualsCondition(value: TrainerStudentValidationFilter) {
 
 function planFilterCondition(plan: TrainerStudentPlanFilter): WhereOptions {
   if (plan === 'exclusive') {
-    return {
-      [Op.or]: [
-        where(fn('lower', col('type_plan')), 'exclusive'),
-        where(fn('lower', col('type_plan')), 'consultoria-exclusiva'),
-      ],
-    };
+    return exclusivePlanWhere();
   }
 
-  return {
-    [Op.or]: [
-      where(fn('lower', col('type_plan')), 'comum'),
-      where(fn('lower', col('type_plan')), 'plano-academia'),
-    ],
-  };
+  return comumPlanWhere();
 }
 
 function buildTrainerWhere(

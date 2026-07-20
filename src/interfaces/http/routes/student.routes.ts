@@ -4,6 +4,7 @@ import type { StudentAnamnesisController } from '../controllers/student-anamnesi
 import type { AnamnesisExclusiveController } from '../controllers/anamnesis-exclusive.controller';
 import type { StudentPhysicalsController } from '../controllers/student-physicals.controller';
 import type { StudentEvolutionsController } from '../controllers/student-evolutions.controller';
+import type { StudentRevaluationsController } from '../controllers/student-revaluations.controller';
 import type { StudentTrainingController } from '../controllers/student-training.controller';
 import type { StudentAccountController } from '../controllers/student-account.controller';
 import { createAnamnesisExclusiveUploadMiddleware } from '../middleware/anamnesis-exclusive-upload.middleware';
@@ -13,12 +14,14 @@ export function createStudentRoutes(
   anamnesisExclusiveController: AnamnesisExclusiveController,
   physicalsController: StudentPhysicalsController,
   evolutionsController: StudentEvolutionsController,
+  revaluationsController: StudentRevaluationsController,
   trainingController: StudentTrainingController,
   accountController: StudentAccountController,
   requireAuth: RequestHandler,
   requireStudent: RequestHandler,
   anamnesisExclusiveUpload: RequestHandler,
-  evolutionImageUpload: RequestHandler
+  evolutionImageUpload: RequestHandler,
+  revaluationImageUpload: RequestHandler
 ): Router {
   const router = Router();
   const asStudent: RequestHandler[] = [requireAuth, requireStudent];
@@ -46,6 +49,13 @@ export function createStudentRoutes(
   router.get('/evolutions/:evolutionId', ...asStudent, (req, res) => evolutionsController.getOne(req, res));
   router.patch('/evolutions/:evolutionId', ...asStudent, evolutionImageUpload, (req, res) =>
     evolutionsController.patch(req, res)
+  );
+
+  router.get('/revaluation/status', ...asStudent, (req, res) =>
+    revaluationsController.getStatus(req, res)
+  );
+  router.post('/revaluations', ...asStudent, revaluationImageUpload, (req, res) =>
+    revaluationsController.create(req, res)
   );
 
   router.get('/training/today', ...asStudent, (req, res) => trainingController.getToday(req, res));

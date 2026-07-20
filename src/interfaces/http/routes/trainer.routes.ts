@@ -95,6 +95,9 @@ export function createTrainerRoutes(
   router.get('/students/validation', ...asTrainer, (req, res) =>
     studentsController.validationSummary(req, res)
   );
+  router.post('/students/revaluation/start', ...asTrainer, (req, res) =>
+    studentsController.startRevaluation(req, res)
+  );
   router.get('/anamneses', ...asTrainer, (req, res) => studentsController.listAnamneses(req, res));
   router.get('/students', ...asTrainer, (req, res) => studentsController.list(req, res));
   router.get(
@@ -136,6 +139,21 @@ export function createTrainerRoutes(
     '/students/:studentId/evolutions',
     ...asTrainer,
     (req, res) => studentsController.listStudentEvolutions(req, res)
+  );
+  router.get(
+    '/students/:studentId/revaluations/compare',
+    ...asTrainer,
+    (req, res) => studentsController.compareStudentRevaluations(req, res)
+  );
+  router.get(
+    '/students/:studentId/revaluations/:revaluationId',
+    ...asTrainer,
+    (req, res) => studentsController.getStudentRevaluation(req, res)
+  );
+  router.get(
+    '/students/:studentId/revaluations',
+    ...asTrainer,
+    (req, res) => studentsController.listStudentRevaluations(req, res)
   );
   router.get('/students/:studentId', ...asTrainer, (req, res) => studentsController.getOne(req, res));
   router.patch('/students/:studentId', ...asTrainer, (req, res) => studentsController.patch(req, res));

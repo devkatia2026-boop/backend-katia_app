@@ -14,6 +14,7 @@ export type TrainerStudentPublic = {
   weight: number | null;
   check_winner: boolean | null;
   validation: string | null;
+  in_revalution: boolean;
   created_at: Date;
 };
 

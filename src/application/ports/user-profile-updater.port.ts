@@ -20,6 +20,7 @@ export type StudentProfileUpdateValues = Partial<{
   expo_push_token: string | null;
   check_winner: boolean | null;
   validation: string | null;
+  in_revalution: boolean;
 }>;
 
 export interface IUserProfileUpdater {

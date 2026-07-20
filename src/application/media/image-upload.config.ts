@@ -42,10 +42,17 @@ export const EVOLUTION_IMAGE_FIELDS: ImageUploadFieldConfig = {
   current_photo: { maxCount: 1 },
 };
 
+export const REVALUATION_IMAGE_FIELDS: ImageUploadFieldConfig = {
+  front_photo: { maxCount: 1 },
+  side_photo: { maxCount: 1 },
+  back_photo: { maxCount: 1 },
+};
+
 export const S3_PREFIX_POST = 'posts';
 export const S3_PREFIX_PROFILE = 'profiles';
 export const S3_PREFIX_PROGRAM = 'programs';
 export const S3_PREFIX_EVOLUTION = 'evolutions';
+export const S3_PREFIX_REVALUATION = 'revaluations';
 export const S3_PREFIX_COUPON = 'coupons';
 export const S3_PREFIX_WELLBEING = 'wellbeing';
 export const S3_PREFIX_WELL = 'wells';

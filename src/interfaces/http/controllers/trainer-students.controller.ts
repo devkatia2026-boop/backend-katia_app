@@ -14,11 +14,16 @@ import type { ListTrainerStudentAnamnesisHistoryUseCase } from '../../../applica
 import type { GetTrainerStudentWeeklyTrainingUseCase } from '../../../application/use-cases/trainer/get-trainer-student-weekly-training.use-case';
 import type { GetTrainerStudentMonthlyTrainingCalendarUseCase } from '../../../application/use-cases/trainer/get-trainer-student-monthly-training-calendar.use-case';
 import type { CopyStudentTrainingPhasesUseCase } from '../../../application/use-cases/trainer/copy-student-training-phases.use-case';
+import type { ListTrainerStudentRevaluationsUseCase } from '../../../application/use-cases/trainer/list-trainer-student-revaluations.use-case';
+import type { GetTrainerStudentRevaluationUseCase } from '../../../application/use-cases/trainer/get-trainer-student-revaluation.use-case';
+import type { CompareTrainerStudentRevaluationsUseCase } from '../../../application/use-cases/trainer/compare-trainer-student-revaluations.use-case';
+import type { StartTrainerStudentsRevaluationUseCase } from '../../../application/use-cases/trainer/start-trainer-students-revaluation.use-case';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'StudentNotFoundException';
 const FORBIDDEN = 'ForbiddenException';
 const ANAMNESIS_NOT_FOUND = 'AnamnesisNotFoundException';
+const REVALUATION_NOT_FOUND = 'RevaluationNotFoundException';
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? '';
@@ -28,6 +33,16 @@ function firstParam(value: string | string[] | undefined): string {
 function firstQuery(value: unknown): unknown {
   if (Array.isArray(value)) return value[0];
   return value;
+}
+
+function parseRevaluationId(raw: string): number {
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) {
+    const err = new Error('Identificador da reavaliação inválido.');
+    err.name = VALIDATION;
+    throw err;
+  }
+  return n;
 }
 
 export class TrainerStudentsController {
@@ -46,6 +61,10 @@ export class TrainerStudentsController {
     private readonly getTrainerStudentWeeklyTraining: GetTrainerStudentWeeklyTrainingUseCase,
     private readonly getTrainerStudentMonthlyTrainingCalendar: GetTrainerStudentMonthlyTrainingCalendarUseCase,
     private readonly copyStudentTrainingPhasesUseCase: CopyStudentTrainingPhasesUseCase,
+    private readonly listTrainerStudentRevaluations: ListTrainerStudentRevaluationsUseCase,
+    private readonly getTrainerStudentRevaluation: GetTrainerStudentRevaluationUseCase,
+    private readonly compareTrainerStudentRevaluations: CompareTrainerStudentRevaluationsUseCase,
+    private readonly startTrainerStudentsRevaluation: StartTrainerStudentsRevaluationUseCase,
     private readonly getTrainerDisplayName: (trainerId: string) => Promise<string>
   ) {}
 
@@ -310,6 +329,95 @@ export class TrainerStudentsController {
         return;
       }
       res.status(500).json({ message: 'Erro ao copiar rotinas de treino.' });
+    }
+  }
+
+  async startRevaluation(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const result = await this.startTrainerStudentsRevaluation.execute(trainerId, req.body);
+      res.status(200).json(result);
+    } catch (err) {
+      const error = err as { name?: string; message?: string };
+      if (error.name === VALIDATION) {
+        res.status(400).json({ message: error.message ?? 'Dados inválidos.' });
+        return;
+      }
+      res.status(500).json({ message: 'Erro ao iniciar reavaliação das alunas.' });
+    }
+  }
+
+  async listStudentRevaluations(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const studentId = firstParam(req.params.studentId);
+      const result = await this.listTrainerStudentRevaluations.execute(trainerId, studentId);
+      res.status(200).json(result);
+    } catch (err) {
+      const error = err as { name?: string; message?: string };
+      if (error.name === NOT_FOUND) {
+        res.status(404).json({ message: error.message ?? 'Aluna não encontrada.' });
+        return;
+      }
+      res.status(500).json({ message: 'Erro ao listar reavaliações da aluna.' });
+    }
+  }
+
+  async getStudentRevaluation(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const studentId = firstParam(req.params.studentId);
+      const revaluationId = parseRevaluationId(firstParam(req.params.revaluationId));
+      const row = await this.getTrainerStudentRevaluation.execute(
+        trainerId,
+        studentId,
+        revaluationId
+      );
+      res.status(200).json(row);
+    } catch (err) {
+      const error = err as { name?: string; message?: string };
+      if (error.name === VALIDATION) {
+        res.status(400).json({ message: error.message ?? 'Parâmetro inválido.' });
+        return;
+      }
+      if (error.name === NOT_FOUND) {
+        res.status(404).json({ message: error.message ?? 'Aluna não encontrada.' });
+        return;
+      }
+      if (error.name === REVALUATION_NOT_FOUND) {
+        res.status(404).json({ message: error.message ?? 'Reavaliação não encontrada.' });
+        return;
+      }
+      res.status(500).json({ message: 'Erro ao obter reavaliação da aluna.' });
+    }
+  }
+
+  async compareStudentRevaluations(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const studentId = firstParam(req.params.studentId);
+      const result = await this.compareTrainerStudentRevaluations.execute(
+        trainerId,
+        studentId,
+        firstQuery(req.query.firstId),
+        firstQuery(req.query.secondId)
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      const error = err as { name?: string; message?: string };
+      if (error.name === VALIDATION) {
+        res.status(400).json({ message: error.message ?? 'Parâmetros inválidos.' });
+        return;
+      }
+      if (error.name === NOT_FOUND) {
+        res.status(404).json({ message: error.message ?? 'Aluna não encontrada.' });
+        return;
+      }
+      if (error.name === REVALUATION_NOT_FOUND) {
+        res.status(404).json({ message: error.message ?? 'Reavaliação não encontrada.' });
+        return;
+      }
+      res.status(500).json({ message: 'Erro ao comparar reavaliações da aluna.' });
     }
   }
 }

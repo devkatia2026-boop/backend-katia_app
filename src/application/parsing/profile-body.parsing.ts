@@ -60,6 +60,18 @@ function expectNullableBoolean(value: unknown, field: string): boolean | null {
   throw err;
 }
 
+function expectBoolean(value: unknown, field: string): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const t = value.trim().toLowerCase();
+    if (t === 'true') return true;
+    if (t === 'false') return false;
+  }
+  const err = new Error(`Campo "${field}" deve ser boolean.`);
+  err.name = VALIDATION;
+  throw err;
+}
+
 /**
  * Campos comuns + exclusivos de aluno (mesma regra do PATCH /auth/me para student).
  */
@@ -115,6 +127,9 @@ export function parseMyProfileBody(body: unknown): {
   }
   if ('validation' in body) {
     studentExtra.validation = expectNullableString(body.validation, 'validation');
+  }
+  if ('in_revalution' in body) {
+    studentExtra.in_revalution = expectBoolean(body.in_revalution, 'in_revalution');
   }
 
   return { common, studentExtra };

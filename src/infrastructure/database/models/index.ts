@@ -29,6 +29,8 @@ import { initNotification, Notification } from './notification.model';
 import { initCoupon, Coupon } from './coupon.model';
 import { initWellbeing, Wellbeing } from './wellbeing.model';
 import { initWell, Well } from './well.model';
+import { initRevaluation, Revaluation } from './revaluation.model';
+import { initNotice, Notice } from './notice.model';
 
 export type DatabaseModels = {
   Trainer: typeof Trainer;
@@ -61,6 +63,8 @@ export type DatabaseModels = {
   Coupon: typeof Coupon;
   Wellbeing: typeof Wellbeing;
   Well: typeof Well;
+  Revaluation: typeof Revaluation;
+  Notice: typeof Notice;
 };
 
 function associate(models: DatabaseModels): void {
@@ -94,6 +98,8 @@ function associate(models: DatabaseModels): void {
     Notification,
     Wellbeing,
     Well,
+    Revaluation,
+    Notice,
   } = models;
 
   Trainer.hasMany(Student, { foreignKey: 'trainer_id', as: 'students' });
@@ -113,6 +119,12 @@ function associate(models: DatabaseModels): void {
 
   Student.hasMany(Evolution, { foreignKey: 'student_id', as: 'evolutions' });
   Evolution.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
+
+  Student.hasMany(Revaluation, { foreignKey: 'student_id', as: 'revaluations' });
+  Revaluation.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
+
+  Trainer.hasMany(Notice, { foreignKey: 'trainer_id', as: 'notices' });
+  Notice.belongsTo(Trainer, { foreignKey: 'trainer_id', as: 'trainer' });
 
   Post.hasMany(Like, { foreignKey: 'post_id', as: 'likes' });
   Like.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
@@ -256,6 +268,8 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const CouponModel = initCoupon(sequelize);
   const WellbeingModel = initWellbeing(sequelize);
   const WellModel = initWell(sequelize);
+  const RevaluationModel = initRevaluation(sequelize);
+  const NoticeModel = initNotice(sequelize);
 
   const models: DatabaseModels = {
     Trainer: TrainerModel,
@@ -288,6 +302,8 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     Coupon: CouponModel,
     Wellbeing: WellbeingModel,
     Well: WellModel,
+    Revaluation: RevaluationModel,
+    Notice: NoticeModel,
   };
 
   associate(models);
@@ -326,4 +342,6 @@ export {
   Coupon,
   Wellbeing,
   Well,
+  Revaluation,
+  Notice,
 };

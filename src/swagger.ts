@@ -30,6 +30,11 @@ export const swaggerDocument = {
       description:
         'Itens vinculados a um wellbeing (`wellbeing_id`). **Treinadora:** CRUD completo. **Aluna:** vê apenas wells ativos cujo wellbeing pai também está ativo. Filtro opcional `wellbeingId` na listagem.',
     },
+    {
+      name: 'Avisos',
+      description:
+        'Avisos da treinadora (`notices`). **Treinadora:** criar e excluir. **Aluna e treinadora:** listagem e detalhe de todos os avisos. O campo `type_plan` (`exclusive`, `comum` ou `ambos`) define para quais alunas é enviada a notificação ao criar; a leitura REST não filtra por plano.',
+    },
   ],
   info: {
     title: 'API Backend Reta AI',
@@ -67,6 +72,30 @@ export const swaggerDocument = {
           days_for_week: { type: 'string', nullable: true },
           level_experience: { type: 'string', nullable: true },
           bother: { type: 'string', nullable: true },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      Revaluation: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer', example: 1 },
+          student_id: { type: 'string', format: 'uuid' },
+          front_photo: { type: 'string', format: 'uri', nullable: true },
+          side_photo: { type: 'string', format: 'uri', nullable: true },
+          back_photo: { type: 'string', format: 'uri', nullable: true },
+          current_weight: { type: 'number', nullable: true },
+          monthly_rating: { type: 'integer', nullable: true },
+          biggest_achievement: { type: 'string', nullable: true },
+          biggest_challenge: { type: 'string', nullable: true },
+          training_fit_routine: { type: 'boolean', nullable: true },
+          favorite_workout: { type: 'string', nullable: true },
+          least_favorite_or_difficult_exercise: { type: 'string', nullable: true },
+          nutrition_rating: { type: 'integer', nullable: true },
+          energy_rating: { type: 'integer', nullable: true },
+          body_changes: { type: 'string', nullable: true },
+          pain_or_adjustments: { type: 'string', nullable: true },
+          next_month_goal: { type: 'string', nullable: true },
+          proudest_moment: { type: 'string', nullable: true },
           created_at: { type: 'string', format: 'date-time' },
         },
       },
@@ -168,6 +197,21 @@ export const swaggerDocument = {
           site_name: { type: 'string', nullable: true },
           percentage: { type: 'string', nullable: true, example: '10%' },
           description: { type: 'string', nullable: true },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      Notice: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          trainer_id: { type: 'string', format: 'uuid' },
+          message: { type: 'string', nullable: true },
+          type_plan: {
+            type: 'string',
+            enum: ['exclusive', 'comum', 'ambos'],
+            description:
+              'Audiência da notificação no envio: exclusive (`exclusive`/`consultoria-exclusiva`), comum (`comum`/`plano-academia`) ou ambos',
+          },
           created_at: { type: 'string', format: 'date-time' },
         },
       },
@@ -601,7 +645,7 @@ export const swaggerDocument = {
                         profile: {
                           type: 'object',
                           description:
-                            'Campos da tabela students (sem refresh_token nem expo_push_token), incluindo `check_winner` e `validation` (boolean/string ou null).',
+                            'Campos da tabela students (sem refresh_token nem expo_push_token), incluindo `check_winner`, `validation` e `in_revalution`.',
                         },
                       },
                     },
@@ -617,7 +661,7 @@ export const swaggerDocument = {
       patch: {
         summary: 'Atualizar perfil autenticado',
         description:
-          'Atualiza parcialmente o perfil em JSON. `name` e `email` sincronizam com o Cognito via access token; `phone` permanece apenas na base local (formato BR). Os demais campos permanecem apenas no banco. Envie apenas os campos a alterar. Para foto de perfil use PATCH /auth/me/photo. Treinador e aluna. Campos `birth`, `cpf`, `type_plan`, `height`, `weight` e `validation` são exclusivos de aluno. `check_winner` (boolean ou null) disponível para aluna e treinadora. O token de push Expo não é retornado no GET /auth/me.',
+          'Atualiza parcialmente o perfil em JSON. `name` e `email` sincronizam com o Cognito via access token; `phone` permanece apenas na base local (formato BR). Os demais campos permanecem apenas no banco. Envie apenas os campos a alterar. Para foto de perfil use PATCH /auth/me/photo. Treinador e aluna. Campos `birth`, `cpf`, `type_plan`, `height`, `weight`, `validation` e `in_revalution` são exclusivos de aluna. `check_winner` (boolean ou null) disponível para aluna e treinadora. O token de push Expo não é retornado no GET /auth/me.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -650,6 +694,10 @@ export const swaggerDocument = {
                   height: { type: 'number', nullable: true, description: 'Apenas student' },
                   weight: { type: 'number', nullable: true, description: 'Apenas student' },
                   validation: { type: 'string', nullable: true, description: 'Apenas student' },
+                  in_revalution: {
+                    type: 'boolean',
+                    description: 'Indica se a aluna está em período de reavaliação; apenas student',
+                  },
                   check_winner: {
                     type: 'boolean',
                     nullable: true,
@@ -1474,6 +1522,106 @@ export const swaggerDocument = {
           '400': { description: 'Corpo inválido (nenhuma imagem válida)' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não é aluna' },
+          '503': { description: 'S3 não configurado ao enviar arquivo' },
+        },
+      },
+    },
+    '/student/revaluation/status': {
+      get: {
+        summary: 'Status de reavaliação da aluna',
+        description:
+          'Retorna se a aluna autenticada está em período de reavaliação (`in_revalution: true`).',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Status atual',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['in_revalution'],
+                  properties: {
+                    in_revalution: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna' },
+        },
+      },
+    },
+    '/student/revaluations': {
+      post: {
+        summary: 'Enviar reavaliação',
+        description:
+          'Cria uma reavaliação quando `in_revalution` está ativo. Após o envio, `in_revalution` volta para `false`. Fotos (`front_photo`, `side_photo`, `back_photo`) aceitam URL JSON ou arquivo multipart (S3).',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  front_photo: { type: 'string', format: 'uri', nullable: true },
+                  side_photo: { type: 'string', format: 'uri', nullable: true },
+                  back_photo: { type: 'string', format: 'uri', nullable: true },
+                  current_weight: { type: 'number', nullable: true },
+                  monthly_rating: { type: 'integer', nullable: true },
+                  biggest_achievement: { type: 'string', nullable: true },
+                  biggest_challenge: { type: 'string', nullable: true },
+                  training_fit_routine: { type: 'boolean', nullable: true },
+                  favorite_workout: { type: 'string', nullable: true },
+                  least_favorite_or_difficult_exercise: { type: 'string', nullable: true },
+                  nutrition_rating: { type: 'integer', nullable: true },
+                  energy_rating: { type: 'integer', nullable: true },
+                  body_changes: { type: 'string', nullable: true },
+                  pain_or_adjustments: { type: 'string', nullable: true },
+                  next_month_goal: { type: 'string', nullable: true },
+                  proudest_moment: { type: 'string', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  front_photo: { type: 'string', format: 'binary' },
+                  side_photo: { type: 'string', format: 'binary' },
+                  back_photo: { type: 'string', format: 'binary' },
+                  current_weight: { type: 'number' },
+                  monthly_rating: { type: 'integer' },
+                  biggest_achievement: { type: 'string' },
+                  biggest_challenge: { type: 'string' },
+                  training_fit_routine: { type: 'boolean' },
+                  favorite_workout: { type: 'string' },
+                  least_favorite_or_difficult_exercise: { type: 'string' },
+                  nutrition_rating: { type: 'integer' },
+                  energy_rating: { type: 'integer' },
+                  body_changes: { type: 'string' },
+                  pain_or_adjustments: { type: 'string' },
+                  next_month_goal: { type: 'string' },
+                  proudest_moment: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Reavaliação criada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Revaluation' },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Aluna não está em reavaliação ou usuário não é aluna' },
           '503': { description: 'S3 não configurado ao enviar arquivo' },
         },
       },
@@ -5237,6 +5385,90 @@ export const swaggerDocument = {
         },
       },
     },
+    '/notices': {
+      get: {
+        tags: ['Avisos'],
+        summary: 'Listar avisos',
+        description:
+          'Paginação `page`, `pageSize` (máx. 100). **Aluna e treinadora:** todos os avisos, sem filtro por plano.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+        ],
+        responses: {
+          '200': { description: 'Lista paginada de avisos' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+        },
+      },
+      post: {
+        tags: ['Avisos'],
+        summary: 'Criar aviso',
+        description:
+          'Somente treinadora. `type_plan` define a audiência da **notificação** (não da listagem REST), com base no `type_plan` **atual** da aluna no momento do envio: `exclusive` → `exclusive` ou `consultoria-exclusiva`; `comum` → `comum` ou `plano-academia`; `ambos` → todas as alunas vinculadas à treinadora. Valores desconhecidos ou nulos não recebem notificação quando o aviso não é `ambos`.\n\n' +
+          '**Notificações:** inbox + push Expo (se houver token). Mensagem: `Tens um aviso da Kátia: {message}`. Tipo `NOTICE_CREATED`; `data.noticeId` e `data.type_plan`.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['message', 'type_plan'],
+                properties: {
+                  message: { type: 'string', example: 'Treino extra amanhã às 18h.' },
+                  type_plan: {
+                    type: 'string',
+                    enum: ['exclusive', 'comum', 'ambos'],
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Aviso criado',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Notice' } } },
+          },
+          '400': { description: 'Corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Somente treinadora' },
+        },
+      },
+    },
+    '/notices/{noticeId}': {
+      get: {
+        tags: ['Avisos'],
+        summary: 'Obter aviso',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'noticeId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Aviso',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Notice' } } },
+          },
+          '404': { description: 'Aviso não encontrado' },
+        },
+      },
+      delete: {
+        tags: ['Avisos'],
+        summary: 'Excluir aviso',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'noticeId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Excluído' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Aviso não encontrado' },
+        },
+      },
+    },
     '/wellbeing': {
       get: {
         tags: ['Wellbeing'],
@@ -6102,6 +6334,172 @@ export const swaggerDocument = {
         },
       },
     },
+    '/trainer/students/revaluation/start': {
+      post: {
+        summary: 'Iniciar reavaliação das alunas',
+        description:
+          'Define `in_revalution: true` para alunas do treinador com `type_plan` exclusivo (`exclusive` ou `consultoria-exclusiva`) e `validation: sim`. Sem `student_ids`, aplica a todas elegíveis; com UUIDs, apenas às informadas. Envia notificação push/in-app: "Você está em reavaliçaão, responda o questionário!".',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  student_ids: {
+                    type: 'array',
+                    items: { type: 'string', format: 'uuid' },
+                    description: 'Opcional; se omitido ou vazio, todas as alunas elegíveis',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Quantidade de alunas atualizadas e notificadas',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['updated', 'notified'],
+                  properties: {
+                    updated: { type: 'integer', minimum: 0 },
+                    notified: { type: 'integer', minimum: 0 },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+        },
+      },
+    },
+    '/trainer/students/{studentId}/revaluations/compare': {
+      get: {
+        summary: 'Comparar duas reavaliações da aluna',
+        description:
+          'Compara duas reavaliações da mesma aluna (`first` = mais antiga, `second` = mais recente por `created_at`). Query obrigatória: `firstId` e `secondId` (inteiros distintos).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+          {
+            name: 'firstId',
+            in: 'query',
+            required: true,
+            schema: { type: 'integer', minimum: 1 },
+          },
+          {
+            name: 'secondId',
+            in: 'query',
+            required: true,
+            schema: { type: 'integer', minimum: 1 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Par de reavaliações ordenadas por data',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['student_id', 'first', 'second'],
+                  properties: {
+                    student_id: { type: 'string', format: 'uuid' },
+                    first: { $ref: '#/components/schemas/Revaluation' },
+                    second: { $ref: '#/components/schemas/Revaluation' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Parâmetros inválidos' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+          '404': { description: 'Aluna ou reavaliação não encontrada' },
+        },
+      },
+    },
+    '/trainer/students/{studentId}/revaluations/{revaluationId}': {
+      get: {
+        summary: 'Obter uma reavaliação da aluna',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+          {
+            name: 'revaluationId',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer', minimum: 1 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Reavaliação encontrada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Revaluation' },
+              },
+            },
+          },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+          '404': { description: 'Aluna ou reavaliação não encontrada' },
+        },
+      },
+    },
+    '/trainer/students/{studentId}/revaluations': {
+      get: {
+        summary: 'Listar reavaliações da aluna',
+        description:
+          'Lista `revaluations` da aluna (mais recentes primeiro), desde que ela esteja vinculada ao treinador autenticado.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista em `items`',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Revaluation' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+          '404': { description: 'Aluna não encontrada' },
+        },
+      },
+    },
     '/trainer/students/{studentId}/evolutions': {
       get: {
         summary: 'Listar evoluções da aluna',
@@ -6193,7 +6591,7 @@ export const swaggerDocument = {
       patch: {
         summary: 'Atualizar dados da aluna',
         description:
-          'Mesmos campos opcionais do PATCH /auth/me para aluna (`name`, `photo_perfil`, `phone`, `email`, `expo_push_token`, `birth`, `cpf`, `type_plan`, `height`, `weight`, `validation`, `check_winner`).',
+          'Mesmos campos opcionais do PATCH /auth/me para aluna (`name`, `photo_perfil`, `phone`, `email`, `expo_push_token`, `birth`, `cpf`, `type_plan`, `height`, `weight`, `validation`, `in_revalution`, `check_winner`).',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -6221,6 +6619,7 @@ export const swaggerDocument = {
                   height: { type: 'number', nullable: true },
                   weight: { type: 'number', nullable: true },
                   validation: { type: 'string', nullable: true },
+                  in_revalution: { type: 'boolean' },
                   check_winner: { type: 'boolean', nullable: true },
                 },
               },
