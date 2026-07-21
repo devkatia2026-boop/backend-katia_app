@@ -7,6 +7,9 @@ import type {
   SetToStudentByStudentListItem,
   SetToStudentDTO,
   SetToStudentStudentBrief,
+  SetValidityReminderLink,
+  TrainerPastValidityStudentsSummary,
+  TrainerPastValidityStudentItem,
 } from '../../application/ports/sets-to-students.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
@@ -22,7 +25,9 @@ function buildWhere(filters: ListSetsToStudentsFilters): Record<string, unknown>
 }
 
 export class SequelizeSetsToStudentsRepository implements ISetsToStudentsRepository {
-  constructor(private readonly models: Pick<DatabaseModels, 'SetsToStudents' | 'Student' | 'Set'>) {}
+  constructor(
+    private readonly models: Pick<DatabaseModels, 'SetsToStudents' | 'Student' | 'Set' | 'Trainer'>
+  ) {}
 
   private get includeOpts() {
     return [
@@ -217,5 +222,98 @@ export class SequelizeSetsToStudentsRepository implements ISetsToStudentsReposit
   async deleteById(id: number): Promise<boolean> {
     const affected = await this.models.SetsToStudents.destroy({ where: { id } });
     return affected > 0;
+  }
+
+  async listPastValidityStudentsForTrainer(
+    trainerId: string,
+    todayIso: string
+  ): Promise<TrainerPastValidityStudentsSummary> {
+    const sequelize = this.models.SetsToStudents.sequelize;
+
+    if (!sequelize) {
+      return { total: 0, student_ids: [], items: [] };
+    }
+
+    const [rows] = (await sequelize.query(
+      `
+        SELECT
+          sts.student_id,
+          s.full_name AS student_name,
+          COUNT(sts.id)::int AS expired_sets_count
+        FROM setstostudents sts
+        INNER JOIN students s ON s.id = sts.student_id AND s.trainer_id = :trainerId
+        WHERE sts.status = true
+          AND sts.validity IS NOT NULL
+          AND sts.validity < :todayIso
+        GROUP BY sts.student_id, s.full_name
+        ORDER BY MIN(sts.validity) ASC, sts.student_id ASC
+      `,
+      {
+        replacements: { trainerId, todayIso },
+      }
+    )) as [Array<{ student_id: string; student_name: string; expired_sets_count: number }>, unknown];
+
+    const items: TrainerPastValidityStudentItem[] = rows.map((row) => ({
+      student_id: row.student_id,
+      student_name: row.student_name?.trim() || 'Aluna',
+      expired_sets_count: Number(row.expired_sets_count) || 0,
+    }));
+
+    const total = items.reduce((sum, item) => sum + item.expired_sets_count, 0);
+    const student_ids = items.map((item) => item.student_id);
+
+    return { total, student_ids, items };
+  }
+
+  async listActiveSetsWithValidityForReminders(): Promise<SetValidityReminderLink[]> {
+    const sequelize = this.models.SetsToStudents.sequelize;
+
+    if (!sequelize) {
+      return [];
+    }
+
+    const [rows] = (await sequelize.query(
+      `
+        SELECT
+          sts.id,
+          sts.student_id,
+          sts.sets_id,
+          sts.validity,
+          s.full_name AS student_name,
+          s.trainer_id,
+          t.expo_push_token AS trainer_expo_push_token,
+          sets.name AS set_name
+        FROM setstostudents sts
+        INNER JOIN students s ON s.id = sts.student_id
+        INNER JOIN trainers t ON t.id = s.trainer_id
+        LEFT JOIN sets ON sets.id = sts.sets_id
+        WHERE sts.status = true
+          AND sts.validity IS NOT NULL
+        ORDER BY sts.validity ASC, sts.id ASC
+      `
+    )) as [
+      Array<{
+        id: number;
+        student_id: string;
+        sets_id: number;
+        validity: string;
+        student_name: string;
+        trainer_id: string;
+        trainer_expo_push_token: string | null;
+        set_name: string | null;
+      }>,
+      unknown,
+    ];
+
+    return rows.map((row) => ({
+      id: Number(row.id),
+      student_id: row.student_id,
+      student_name: row.student_name?.trim() || 'Aluna',
+      trainer_id: row.trainer_id,
+      sets_id: Number(row.sets_id),
+      set_name: row.set_name?.trim() || null,
+      validity: row.validity,
+      trainer_expo_push_token: row.trainer_expo_push_token?.trim() || null,
+    }));
   }
 }

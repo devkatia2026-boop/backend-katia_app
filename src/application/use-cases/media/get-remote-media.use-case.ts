@@ -1,4 +1,5 @@
 import { downloadRemoteMedia } from '../../media/fetch-remote-media';
+import type { IObjectStorage } from '../../ports/object-storage.port';
 
 export type RemoteMediaPayload = {
   buffer: Buffer;
@@ -6,8 +7,10 @@ export type RemoteMediaPayload = {
 };
 
 export class GetRemoteMediaUseCase {
+  constructor(private readonly objectStorage: IObjectStorage | null = null) {}
+
   async execute(url: string): Promise<RemoteMediaPayload> {
-    const remote = await downloadRemoteMedia(url);
+    const remote = await downloadRemoteMedia(url, this.objectStorage);
 
     return {
       buffer: remote.buffer,

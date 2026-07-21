@@ -18,6 +18,9 @@ import type { ListTrainerStudentRevaluationsUseCase } from '../../../application
 import type { GetTrainerStudentRevaluationUseCase } from '../../../application/use-cases/trainer/get-trainer-student-revaluation.use-case';
 import type { CompareTrainerStudentRevaluationsUseCase } from '../../../application/use-cases/trainer/compare-trainer-student-revaluations.use-case';
 import type { StartTrainerStudentsRevaluationUseCase } from '../../../application/use-cases/trainer/start-trainer-students-revaluation.use-case';
+import type { ListTrainerPendingRevaluationInspectionsUseCase } from '../../../application/use-cases/trainer/list-trainer-pending-revaluation-inspections.use-case';
+import type { GetTrainerUnrespondedFeedbacksSummaryUseCase } from '../../../application/use-cases/trainer/get-trainer-unresponded-feedbacks-summary.use-case';
+import type { ListTrainerPastValidityStudentsUseCase } from '../../../application/use-cases/trainer/list-trainer-past-validity-students.use-case';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'StudentNotFoundException';
@@ -65,6 +68,9 @@ export class TrainerStudentsController {
     private readonly getTrainerStudentRevaluation: GetTrainerStudentRevaluationUseCase,
     private readonly compareTrainerStudentRevaluations: CompareTrainerStudentRevaluationsUseCase,
     private readonly startTrainerStudentsRevaluation: StartTrainerStudentsRevaluationUseCase,
+    private readonly listTrainerPendingRevaluationInspections: ListTrainerPendingRevaluationInspectionsUseCase,
+    private readonly getTrainerUnrespondedFeedbacksSummary: GetTrainerUnrespondedFeedbacksSummaryUseCase,
+    private readonly listTrainerPastValidityStudents: ListTrainerPastValidityStudentsUseCase,
     private readonly getTrainerDisplayName: (trainerId: string) => Promise<string>
   ) {}
 
@@ -344,6 +350,36 @@ export class TrainerStudentsController {
         return;
       }
       res.status(500).json({ message: 'Erro ao iniciar reavaliação das alunas.' });
+    }
+  }
+
+  async listPendingRevaluationInspections(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const result = await this.listTrainerPendingRevaluationInspections.execute(trainerId);
+      res.status(200).json(result);
+    } catch (err) {
+      res.status(500).json({ message: 'Erro ao listar vistorias pendentes.' });
+    }
+  }
+
+  async getUnrespondedFeedbacksSummary(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const result = await this.getTrainerUnrespondedFeedbacksSummary.execute(trainerId);
+      res.status(200).json(result);
+    } catch (err) {
+      res.status(500).json({ message: 'Erro ao obter feedbacks não respondidos.' });
+    }
+  }
+
+  async listPastValidityStudents(req: Request, res: Response): Promise<void> {
+    try {
+      const trainerId = req.authUser!.sub;
+      const result = await this.listTrainerPastValidityStudents.execute(trainerId);
+      res.status(200).json(result);
+    } catch (err) {
+      res.status(500).json({ message: 'Erro ao listar rotinas vencidas.' });
     }
   }
 

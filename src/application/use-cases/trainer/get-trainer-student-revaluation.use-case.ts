@@ -11,9 +11,18 @@ export class GetTrainerStudentRevaluationUseCase {
     revaluationId: number
   ): Promise<RevaluationDTO> {
     const row = await this.repo.findByIdForTrainerStudent(trainerId, studentId, revaluationId);
-    if (row) return row;
-    const err = new Error('Reavaliação não encontrada.');
-    err.name = REVALUATION_NOT_FOUND;
-    throw err;
+
+    if (!row) {
+      const err = new Error('Reavaliação não encontrada.');
+      err.name = REVALUATION_NOT_FOUND;
+      throw err;
+    }
+
+    if (!row.trainer_view) {
+      const updated = await this.repo.markTrainerViewed(trainerId, studentId, revaluationId);
+      return updated ?? { ...row, trainer_view: true };
+    }
+
+    return row;
   }
 }

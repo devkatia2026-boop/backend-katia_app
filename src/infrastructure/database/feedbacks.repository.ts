@@ -2,6 +2,8 @@ import type { DatabaseModels } from './models';
 import type {
   CreateTrainingFeedbackInput,
   IFeedbacksRepository,
+  TrainerUnrespondedFeedbacksSummary,
+  TrainerUnrespondedFeedbackStudentItem,
   TrainingFeedbackDTO,
   TrainingFeedbackStudentBrief,
 } from '../../application/ports/feedbacks.port';
@@ -152,5 +154,45 @@ export class SequelizeFeedbacksRepository implements IFeedbacksRepository {
     const created = await this.models.Feedback.create(input as any);
     const row = await this.findById(created.get('id') as number);
     return row as TrainingFeedbackDTO;
+  }
+
+  async listUnrespondedSummaryForTrainer(
+    trainerId: string
+  ): Promise<TrainerUnrespondedFeedbacksSummary> {
+    const sequelize = this.models.Feedback.sequelize;
+
+    if (!sequelize) {
+      return { total: 0, student_ids: [], items: [] };
+    }
+
+    const [rows] = (await sequelize.query(
+      `
+        SELECT
+          f.student_id,
+          s.full_name AS student_name,
+          COUNT(f.id)::int AS unresponded_count
+        FROM feedbacks f
+        INNER JOIN students s ON s.id = f.student_id AND s.trainer_id = :trainerId
+        WHERE NOT EXISTS (
+          SELECT 1 FROM responsesfeedbacks r WHERE r.feedback_id = f.id
+        )
+        GROUP BY f.student_id, s.full_name
+        ORDER BY MAX(f.created_at) DESC, f.student_id ASC
+      `,
+      {
+        replacements: { trainerId },
+      }
+    )) as [Array<{ student_id: string; student_name: string; unresponded_count: number }>, unknown];
+
+    const items: TrainerUnrespondedFeedbackStudentItem[] = rows.map((row) => ({
+      student_id: row.student_id,
+      student_name: row.student_name?.trim() || 'Aluna',
+      unresponded_count: Number(row.unresponded_count) || 0,
+    }));
+
+    const total = items.reduce((sum, item) => sum + item.unresponded_count, 0);
+    const student_ids = items.map((item) => item.student_id);
+
+    return { total, student_ids, items };
   }
 }

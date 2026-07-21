@@ -5,6 +5,7 @@ import {
   comumPlanWhere,
   exclusivePlanWhere,
 } from './student-plan-eligibility';
+import { claimExpoPushToken } from './expo-push-token.claim';
 import type { StudentProfileUpdateValues } from '../../application/ports/user-profile-updater.port';
 import type {
   ITrainerStudentsRepository,
@@ -61,7 +62,7 @@ function buildTrainerWhere(
 }
 
 export class SequelizeTrainerStudentsRepository implements ITrainerStudentsRepository {
-  constructor(private readonly models: Pick<DatabaseModels, 'Student'>) {}
+  constructor(private readonly models: Pick<DatabaseModels, 'Student' | 'Trainer'>) {}
 
   async countValidationSummary(trainerId: string): Promise<TrainerStudentsValidationSummary> {
     const [sim, nao, exclusive, comum] = await Promise.all([
@@ -162,10 +163,35 @@ export class SequelizeTrainerStudentsRepository implements ITrainerStudentsRepos
     studentId: string,
     values: StudentProfileUpdateValues
   ): Promise<void> {
-    const [affected] = await this.models.Student.update(values, {
+    const { expo_push_token, ...rest } = values;
+    const hasTokenUpdate = expo_push_token !== undefined;
+    const hasRest = Object.keys(rest).length > 0;
+
+    if (!hasTokenUpdate && !hasRest) {
+      return;
+    }
+
+    if (hasTokenUpdate) {
+      await claimExpoPushToken(this.models, studentId, 'student', expo_push_token);
+    }
+
+    if (hasRest) {
+      const [affected] = await this.models.Student.update(rest, {
+        where: { id: studentId, trainer_id: trainerId },
+      });
+      if (affected === 0) {
+        const err = new Error('Aluna não encontrada ou não pertence a este treinador.');
+        err.name = 'StudentNotFoundException';
+        throw err;
+      }
+      return;
+    }
+
+    const row = await this.models.Student.findOne({
       where: { id: studentId, trainer_id: trainerId },
+      attributes: ['id'],
     });
-    if (affected === 0) {
+    if (!row) {
       const err = new Error('Aluna não encontrada ou não pertence a este treinador.');
       err.name = 'StudentNotFoundException';
       throw err;

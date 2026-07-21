@@ -1,6 +1,10 @@
 import type { DatabaseModels } from './models';
 import type { INotificationsRepository, NotificationDTO } from '../../application/ports/notifications.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
+import {
+  buildNotificationIdWhereForViewer,
+  buildNotificationsWhereForViewer,
+} from '../../application/notifications/notification-audience';
 
 const ATTR = ['id', 'student_id', 'trainer_id', 'title', 'message', 'read', 'type', 'data', 'created_at'] as const;
 
@@ -13,10 +17,7 @@ export class SequelizeNotificationsRepository implements INotificationsRepositor
     viewer: { role: 'student' | 'trainer'; sub: string }
   ): Promise<PagedList<NotificationDTO>> {
     const offset = (page - 1) * pageSize;
-    const where =
-      viewer.role === 'student'
-        ? { student_id: viewer.sub }
-        : { trainer_id: viewer.sub };
+    const where = buildNotificationsWhereForViewer(viewer);
 
     const [total, rows] = await Promise.all([
       this.models.Notification.count({ where }),
@@ -40,15 +41,9 @@ export class SequelizeNotificationsRepository implements INotificationsRepositor
     id: number,
     viewer: { role: 'student' | 'trainer'; sub: string }
   ): Promise<NotificationDTO | null> {
-    const base = { id } as Record<string, unknown>;
-    const where =
-      viewer.role === 'student'
-        ? { ...base, student_id: viewer.sub }
-        : { ...base, trainer_id: viewer.sub };
-
     const row = await this.models.Notification.findOne({
       attributes: [...ATTR],
-      where,
+      where: buildNotificationIdWhereForViewer(id, viewer),
       raw: true,
     });
     return (row as NotificationDTO | null) ?? null;
@@ -58,20 +53,18 @@ export class SequelizeNotificationsRepository implements INotificationsRepositor
     id: number,
     viewer: { role: 'student' | 'trainer'; sub: string }
   ): Promise<NotificationDTO | null> {
-    const where =
-      viewer.role === 'student'
-        ? { id, student_id: viewer.sub }
-        : { id, trainer_id: viewer.sub };
-
-    await this.models.Notification.update({ read: true }, { where });
+    await this.models.Notification.update(
+      { read: true },
+      { where: buildNotificationIdWhereForViewer(id, viewer) }
+    );
     return this.findByIdForViewer(id, viewer);
   }
 
   async markAllReadForViewer(viewer: { role: 'student' | 'trainer'; sub: string }): Promise<number> {
-    const where =
-      viewer.role === 'student'
-        ? { student_id: viewer.sub, read: false }
-        : { trainer_id: viewer.sub, read: false };
+    const where = {
+      ...buildNotificationsWhereForViewer(viewer),
+      read: false,
+    };
 
     const [count] = await this.models.Notification.update({ read: true }, { where });
     return count;
@@ -81,10 +74,11 @@ export class SequelizeNotificationsRepository implements INotificationsRepositor
     type: string,
     viewer: { role: 'student' | 'trainer'; sub: string }
   ): Promise<number> {
-    const where =
-      viewer.role === 'student'
-        ? { student_id: viewer.sub, read: false, type }
-        : { trainer_id: viewer.sub, read: false, type };
+    const where = {
+      ...buildNotificationsWhereForViewer(viewer),
+      read: false,
+      type,
+    };
 
     const [count] = await this.models.Notification.update({ read: true }, { where });
     return count;

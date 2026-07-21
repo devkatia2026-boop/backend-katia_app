@@ -89,7 +89,7 @@ export function parseRevaluationCreateBody(body: unknown): RevaluationUpsertValu
     out.current_weight = expectNullableNumber(body.current_weight, 'current_weight');
   }
   if ('monthly_rating' in body) {
-    out.monthly_rating = expectNullableInteger(body.monthly_rating, 'monthly_rating');
+    out.monthly_rating = expectNullableString(body.monthly_rating, 'monthly_rating');
   }
   if ('biggest_achievement' in body) {
     out.biggest_achievement = expectNullableString(body.biggest_achievement, 'biggest_achievement');
@@ -110,7 +110,7 @@ export function parseRevaluationCreateBody(body: unknown): RevaluationUpsertValu
     );
   }
   if ('nutrition_rating' in body) {
-    out.nutrition_rating = expectNullableInteger(body.nutrition_rating, 'nutrition_rating');
+    out.nutrition_rating = expectNullableString(body.nutrition_rating, 'nutrition_rating');
   }
   if ('energy_rating' in body) {
     out.energy_rating = expectNullableInteger(body.energy_rating, 'energy_rating');

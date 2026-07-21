@@ -47,6 +47,29 @@ export type ListSetsToStudentsFilters = {
   setsId?: number;
 };
 
+export type TrainerPastValidityStudentItem = {
+  student_id: string;
+  student_name: string;
+  expired_sets_count: number;
+};
+
+export type TrainerPastValidityStudentsSummary = {
+  total: number;
+  student_ids: string[];
+  items: TrainerPastValidityStudentItem[];
+};
+
+export type SetValidityReminderLink = {
+  id: number;
+  student_id: string;
+  student_name: string;
+  trainer_id: string;
+  sets_id: number;
+  set_name: string | null;
+  validity: string;
+  trainer_expo_push_token: string | null;
+};
+
 export interface ISetsToStudentsRepository {
   listPaged(
     page: number,
@@ -71,4 +94,9 @@ export interface ISetsToStudentsRepository {
   create(input: CreateSetToStudentInput): Promise<SetToStudentDTO>;
   update(id: number, patch: PatchSetToStudentInput): Promise<SetToStudentDTO>;
   deleteById(id: number): Promise<boolean>;
+  listPastValidityStudentsForTrainer(
+    trainerId: string,
+    todayIso: string
+  ): Promise<TrainerPastValidityStudentsSummary>;
+  listActiveSetsWithValidityForReminders(): Promise<SetValidityReminderLink[]>;
 }

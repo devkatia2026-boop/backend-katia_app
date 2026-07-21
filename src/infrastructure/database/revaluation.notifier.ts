@@ -4,12 +4,16 @@ import type { IRevaluationNotifier } from '../../application/ports/revaluation-n
 
 const TYPE_REVALUATION_STARTED = 'REVALUATION_STARTED';
 const TYPE_REVALUATION_COMPLETE_REMINDER = 'REVALUATION_COMPLETE_REMINDER';
+const TYPE_REVALUATION_COMPLETED = 'REVALUATION_COMPLETED';
+const TYPE_REVALUATION_PENDING_INSPECTIONS = 'REVALUATION_PENDING_INSPECTIONS';
 
 export class SequelizeRevaluationNotifier implements IRevaluationNotifier {
   private expoClient: InstanceType<typeof ExpoDefault> | null = null;
   private expoModule: typeof ExpoDefault | null = null;
 
-  constructor(private readonly models: Pick<DatabaseModels, 'Notification'>) {}
+  constructor(
+    private readonly models: Pick<DatabaseModels, 'Notification' | 'Trainer'>
+  ) {}
 
   async notifyRevaluationStarted(
     studentId: string,
@@ -23,7 +27,7 @@ export class SequelizeRevaluationNotifier implements IRevaluationNotifier {
         title: 'Reavaliação',
         message: 'Você está em reavaliçaão, responda o questionário!',
         type: TYPE_REVALUATION_STARTED,
-        data: {},
+        data: { type: TYPE_REVALUATION_STARTED },
       },
       expoPushToken
     );
@@ -41,10 +45,82 @@ export class SequelizeRevaluationNotifier implements IRevaluationNotifier {
         title: 'Reavaliação',
         message: 'Conclua a sua reavaliação!',
         type: TYPE_REVALUATION_COMPLETE_REMINDER,
-        data: {},
+        data: { type: TYPE_REVALUATION_COMPLETE_REMINDER },
       },
       expoPushToken
     );
+  }
+
+  async notifyRevaluationCompleted(
+    studentId: string,
+    trainerId: string,
+    revaluationId: number,
+    studentName: string
+  ): Promise<void> {
+    const title = 'Reavaliação concluída';
+    const message = `${studentName} concluiu a reavaliação.`;
+
+    await this.models.Notification.create({
+      student_id: null,
+      trainer_id: trainerId,
+      title,
+      message,
+      read: false,
+      type: TYPE_REVALUATION_COMPLETED,
+      data: {
+        type: TYPE_REVALUATION_COMPLETED,
+        studentId,
+        revaluationId,
+      },
+    });
+
+    const token = await this.getTrainerPushToken(trainerId);
+
+    if (!token) {
+      return;
+    }
+
+    await this.sendExpoPush(token, title, message, {
+      type: TYPE_REVALUATION_COMPLETED,
+      studentId,
+      revaluationId,
+    });
+  }
+
+  async notifyTrainerPendingInspections(
+    trainerId: string,
+    pendingCount: number,
+    expoPushToken: string | null
+  ): Promise<void> {
+    const title = 'Vistorias pendentes';
+    const message =
+      pendingCount === 1
+        ? 'Você tem 1 reavaliação aguardando vistoria.'
+        : `Você tem ${pendingCount} reavaliações aguardando vistoria.`;
+
+    await this.models.Notification.create({
+      student_id: null,
+      trainer_id: trainerId,
+      title,
+      message,
+      read: false,
+      type: TYPE_REVALUATION_PENDING_INSPECTIONS,
+      data: {
+        type: TYPE_REVALUATION_PENDING_INSPECTIONS,
+        pendingCount,
+      },
+    });
+
+    const token = expoPushToken?.trim() || (await this.getTrainerPushToken(trainerId));
+
+    if (!token) {
+      return;
+    }
+
+    await this.sendExpoPush(token, title, message, {
+      type: TYPE_REVALUATION_PENDING_INSPECTIONS,
+      pendingCount,
+    });
   }
 
   private async persistAndPush(
@@ -67,9 +143,22 @@ export class SequelizeRevaluationNotifier implements IRevaluationNotifier {
       type: row.type,
       data: row.data,
     });
+
     const trimmed = token?.trim() ?? '';
-    if (!trimmed) return;
+
+    if (!trimmed) {
+      return;
+    }
+
     await this.sendExpoPush(trimmed, row.title, row.message, row.data);
+  }
+
+  private async getTrainerPushToken(trainerId: string): Promise<string | null> {
+    const trainer = await this.models.Trainer.findByPk(trainerId, {
+      attributes: ['expo_push_token'],
+    });
+
+    return trainer?.expo_push_token?.trim() ?? null;
   }
 
   private async sendExpoPush(
@@ -79,18 +168,24 @@ export class SequelizeRevaluationNotifier implements IRevaluationNotifier {
     data: Record<string, unknown>
   ): Promise<void> {
     const Expo = await this.getExpoModule();
+
     if (!Expo.isExpoPushToken(token)) {
       console.warn('[push] Token Expo inválido (revaluation)');
       return;
     }
+
     if (!this.expoClient) {
       this.expoClient = new Expo();
     }
+
     const expo = this.expoClient;
+
     try {
       const chunks = expo.chunkPushNotifications([{ to: token, title, body, data }]);
+
       for (const chunk of chunks) {
         const tickets = await expo.sendPushNotificationsAsync(chunk);
+
         for (const t of tickets) {
           if (t.status === 'error') {
             console.warn('[push] Falha Expo (revaluation):', t.message, t.details);
@@ -107,6 +202,7 @@ export class SequelizeRevaluationNotifier implements IRevaluationNotifier {
       const { default: Expo } = await import('expo-server-sdk');
       this.expoModule = Expo;
     }
+
     return this.expoModule;
   }
 }

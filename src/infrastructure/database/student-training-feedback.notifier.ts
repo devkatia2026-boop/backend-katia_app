@@ -28,6 +28,12 @@ export class SequelizeStudentTrainingFeedbackNotifier
       message,
       read: false,
       type: NOTIFICATION_TYPE,
+      data: {
+        type: NOTIFICATION_TYPE,
+        feedbackId: input.feedbackId,
+        studentId: input.studentId,
+        trainerId: input.trainerId,
+      },
     });
 
     const trainer = await this.models.Trainer.findByPk(input.trainerId, {

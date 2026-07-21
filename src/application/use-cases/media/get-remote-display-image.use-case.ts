@@ -4,6 +4,7 @@ import {
   isHeicRemoteSource,
   resolveRemoteImageContentType,
 } from '../../media/remote-media.config';
+import type { IObjectStorage } from '../../ports/object-storage.port';
 
 export type RemoteDisplayImagePayload = {
   buffer: Buffer;
@@ -11,8 +12,10 @@ export type RemoteDisplayImagePayload = {
 };
 
 export class GetRemoteDisplayImageUseCase {
+  constructor(private readonly objectStorage: IObjectStorage | null = null) {}
+
   async execute(url: string): Promise<RemoteDisplayImagePayload> {
-    const remote = await downloadRemoteMedia(url);
+    const remote = await downloadRemoteMedia(url, this.objectStorage);
 
     if (!isHeicRemoteSource(url, remote.contentType, remote.buffer)) {
       return {

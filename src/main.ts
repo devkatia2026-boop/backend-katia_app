@@ -75,8 +75,14 @@ import { UpdateMyPhysicalUseCase } from './application/use-cases/student/update-
 import { ListMyEvolutionsUseCase } from './application/use-cases/student/list-my-evolutions.use-case';
 import { GetMyEvolutionUseCase } from './application/use-cases/student/get-my-evolution.use-case';
 import { CreateMyEvolutionUseCase } from './application/use-cases/student/create-my-evolution.use-case';
-import { UpdateMyEvolutionUseCase } from './application/use-cases/student/update-my-evolution.use-case';
 import { CreateMyRevaluationUseCase } from './application/use-cases/student/create-my-revaluation.use-case';
+import { UpdateMyEvolutionUseCase } from './application/use-cases/student/update-my-evolution.use-case';
+import { ListTrainerPendingRevaluationInspectionsUseCase } from './application/use-cases/trainer/list-trainer-pending-revaluation-inspections.use-case';
+import { GetTrainerUnrespondedFeedbacksSummaryUseCase } from './application/use-cases/trainer/get-trainer-unresponded-feedbacks-summary.use-case';
+import { ListTrainerPastValidityStudentsUseCase } from './application/use-cases/trainer/list-trainer-past-validity-students.use-case';
+import { SendSetValidityRemindersUseCase } from './application/use-cases/sets-to-students/send-set-validity-reminders.use-case';
+import { SequelizeSetValidityNotifier } from './infrastructure/database/set-validity.notifier';
+import { SendTrainerPendingRevaluationInspectionRemindersUseCase } from './application/use-cases/revaluations/send-trainer-pending-revaluation-inspection-reminders.use-case';
 import { GetMyRevaluationStatusUseCase } from './application/use-cases/student/get-my-revaluation-status.use-case';
 import { ListTrainerStudentRevaluationsUseCase } from './application/use-cases/trainer/list-trainer-student-revaluations.use-case';
 import { GetTrainerStudentRevaluationUseCase } from './application/use-cases/trainer/get-trainer-student-revaluation.use-case';
@@ -496,6 +502,7 @@ const programsController = new ProgramsController(
 
 const trainerStudentsRepository = new SequelizeTrainerStudentsRepository({
   Student: models.Student,
+  Trainer: models.Trainer,
 });
 const requireTrainer = createRequireTrainer((sub) =>
   models.Trainer.findByPk(sub).then((row) => row !== null)
@@ -513,8 +520,8 @@ app.use(
 );
 
 const mediaController = new MediaController(
-  new GetRemoteMediaUseCase(),
-  new GetRemoteDisplayImageUseCase(),
+  new GetRemoteMediaUseCase(objectStorage),
+  new GetRemoteDisplayImageUseCase(objectStorage),
 );
 app.use(
   '/media',
@@ -584,6 +591,11 @@ const setsToStudentsRepository = new SequelizeSetsToStudentsRepository({
   SetsToStudents: models.SetsToStudents,
   Student: models.Student,
   Set: models.Set,
+  Trainer: models.Trainer,
+});
+const feedbacksRepository = new SequelizeFeedbacksRepository({
+  Feedback: models.Feedback,
+  Student: models.Student,
 });
 const setAssignedNotifier = new SequelizeSetAssignedNotifier({
   Notification: models.Notification,
@@ -675,9 +687,11 @@ const studentEvolutionsRepository = new SequelizeStudentEvolutionsRepository({
 const revaluationsRepository = new SequelizeRevaluationsRepository({
   Revaluation: models.Revaluation,
   Student: models.Student,
+  Trainer: models.Trainer,
 });
 const revaluationNotifier = new SequelizeRevaluationNotifier({
   Notification: models.Notification,
+  Trainer: models.Trainer,
 });
 const listTrainerStudentPhysicalsUseCase = new ListTrainerStudentPhysicalsUseCase(
   studentPhysicalsRepository
@@ -797,6 +811,9 @@ const trainerStudentsController = new TrainerStudentsController(
   new GetTrainerStudentRevaluationUseCase(revaluationsRepository),
   new CompareTrainerStudentRevaluationsUseCase(revaluationsRepository),
   new StartTrainerStudentsRevaluationUseCase(revaluationsRepository, revaluationNotifier),
+  new ListTrainerPendingRevaluationInspectionsUseCase(revaluationsRepository),
+  new GetTrainerUnrespondedFeedbacksSummaryUseCase(feedbacksRepository),
+  new ListTrainerPastValidityStudentsUseCase(setsToStudentsRepository),
   resolveTrainerDisplayName
 );
 app.use(
@@ -871,7 +888,7 @@ const studentEvolutionsController = new StudentEvolutionsController(
   uploadImageFilesUseCase
 );
 const studentRevaluationsController = new StudentRevaluationsController(
-  new CreateMyRevaluationUseCase(revaluationsRepository),
+  new CreateMyRevaluationUseCase(revaluationsRepository, revaluationNotifier),
   new GetMyRevaluationStatusUseCase(revaluationsRepository),
   uploadImageFilesUseCase
 );
@@ -916,10 +933,6 @@ app.use(
   createPointsRoutes(pointsController, requireAuth, requireStudentOrTrainer, requireStudent)
 );
 
-const feedbacksRepository = new SequelizeFeedbacksRepository({
-  Feedback: models.Feedback,
-  Student: models.Student,
-});
 const feedbackResponsesRepository = new SequelizeFeedbackResponsesRepository({
   ResponsesFeedback: models.ResponsesFeedback,
 });
@@ -1072,7 +1085,24 @@ const sendRevaluationDailyReminders = new SendRevaluationDailyRemindersUseCase(
   revaluationsRepository,
   revaluationNotifier
 );
-startRevaluationDailyReminderScheduler(sendRevaluationDailyReminders);
+const sendTrainerPendingRevaluationInspectionReminders =
+  new SendTrainerPendingRevaluationInspectionRemindersUseCase(
+    revaluationsRepository,
+    revaluationNotifier
+  );
+const setValidityNotifier = new SequelizeSetValidityNotifier({
+  Notification: models.Notification,
+  Trainer: models.Trainer,
+});
+const sendSetValidityReminders = new SendSetValidityRemindersUseCase(
+  setsToStudentsRepository,
+  setValidityNotifier
+);
+startRevaluationDailyReminderScheduler(
+  sendRevaluationDailyReminders,
+  sendTrainerPendingRevaluationInspectionReminders,
+  sendSetValidityReminders
+);
 
 const notificationsController = new NotificationsController(
   new ListNotificationsUseCase(notificationsRepository),

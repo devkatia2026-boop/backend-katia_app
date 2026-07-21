@@ -23,8 +23,19 @@ export type CreateTrainingFeedbackInput = {
   feedback: string | null;
 };
 
+export type TrainerUnrespondedFeedbackStudentItem = {
+  student_id: string;
+  student_name: string;
+  unresponded_count: number;
+};
+
+export type TrainerUnrespondedFeedbacksSummary = {
+  total: number;
+  student_ids: string[];
+  items: TrainerUnrespondedFeedbackStudentItem[];
+};
+
 export interface IFeedbacksRepository {
-  /** Aluna: `filterStudentId` ignorado no repositório. Treinadora: obrigatório filtrar por aluna (`student_id`). */
   listForViewer(
     page: number,
     pageSize: number,
@@ -36,4 +47,7 @@ export interface IFeedbacksRepository {
     studentId: string
   ): Promise<{ trainer_id: string; full_name: string } | null>;
   create(input: CreateTrainingFeedbackInput): Promise<TrainingFeedbackDTO>;
+  listUnrespondedSummaryForTrainer(
+    trainerId: string
+  ): Promise<TrainerUnrespondedFeedbacksSummary>;
 }

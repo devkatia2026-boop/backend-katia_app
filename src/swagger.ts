@@ -77,26 +77,161 @@ export const swaggerDocument = {
       },
       Revaluation: {
         type: 'object',
+        description: 'Questionário de reavaliação mensal da aluna (`revaluations`).',
         properties: {
           id: { type: 'integer', example: 1 },
           student_id: { type: 'string', format: 'uuid' },
-          front_photo: { type: 'string', format: 'uri', nullable: true },
-          side_photo: { type: 'string', format: 'uri', nullable: true },
-          back_photo: { type: 'string', format: 'uri', nullable: true },
-          current_weight: { type: 'number', nullable: true },
-          monthly_rating: { type: 'integer', nullable: true },
-          biggest_achievement: { type: 'string', nullable: true },
-          biggest_challenge: { type: 'string', nullable: true },
-          training_fit_routine: { type: 'boolean', nullable: true },
-          favorite_workout: { type: 'string', nullable: true },
-          least_favorite_or_difficult_exercise: { type: 'string', nullable: true },
-          nutrition_rating: { type: 'integer', nullable: true },
-          energy_rating: { type: 'integer', nullable: true },
-          body_changes: { type: 'string', nullable: true },
-          pain_or_adjustments: { type: 'string', nullable: true },
-          next_month_goal: { type: 'string', nullable: true },
-          proudest_moment: { type: 'string', nullable: true },
+          front_photo: {
+            type: 'string',
+            format: 'uri',
+            nullable: true,
+            description: 'Foto de frente.',
+          },
+          side_photo: {
+            type: 'string',
+            format: 'uri',
+            nullable: true,
+            description: 'Foto de lado.',
+          },
+          back_photo: {
+            type: 'string',
+            format: 'uri',
+            nullable: true,
+            description: 'Foto de costas.',
+          },
+          current_weight: {
+            type: 'number',
+            nullable: true,
+            description: 'Peso atualizado.',
+          },
+          monthly_rating: {
+            type: 'string',
+            nullable: true,
+            description: 'Como você avalia esse mês de 0 a 10? Por quê?',
+          },
+          biggest_achievement: {
+            type: 'string',
+            nullable: true,
+            description: 'Qual foi sua maior vitória nesse período?',
+          },
+          biggest_challenge: {
+            type: 'string',
+            nullable: true,
+            description: 'Qual foi sua maior dificuldade?',
+          },
+          training_fit_routine: {
+            type: 'boolean',
+            nullable: true,
+            description: 'Seu treino encaixou bem na sua rotina?',
+          },
+          favorite_workout: {
+            type: 'string',
+            nullable: true,
+            description:
+              'Qual treino desta fase você mais gostou? E em qual treino ou exercício sentiu que mais evoluiu?',
+          },
+          least_favorite_or_difficult_exercise: {
+            type: 'string',
+            nullable: true,
+            description:
+              'Teve algum treino ou exercício que você não gostou ou teve mais dificuldade?',
+          },
+          nutrition_rating: {
+            type: 'string',
+            nullable: true,
+            description:
+              'De 0 a 10, como você avalia sua alimentação neste mês? O que mais te ajudou e o que mais dificultou?',
+          },
+          energy_rating: {
+            type: 'integer',
+            nullable: true,
+            minimum: 0,
+            maximum: 10,
+            description: 'De 0 a 10, como você avalia sua disposição e energia durante o mês?',
+          },
+          body_changes: {
+            type: 'string',
+            nullable: true,
+            description: 'Você percebeu alguma mudança no seu corpo? Qual região mais evoluiu?',
+          },
+          pain_or_adjustments: {
+            type: 'string',
+            nullable: true,
+            description: 'Existe alguma dor, desconforto ou exercício que gostaria de ajustar?',
+          },
+          next_month_goal: {
+            type: 'string',
+            nullable: true,
+            description: 'Qual é o seu principal objetivo para o próximo mês?',
+          },
+          proudest_moment: {
+            type: 'string',
+            nullable: true,
+            description: 'O que fez você se sentir mais orgulhosa de si mesma neste mês?',
+          },
+          trainer_view: {
+            type: 'boolean',
+            description: 'Indica se a treinadora já visualizou/vistoriou esta reavaliação.',
+            example: false,
+          },
           created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      RevaluationPendingInspection: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer', example: 12 },
+          student_id: { type: 'string', format: 'uuid' },
+          student_name: { type: 'string', example: 'Maria Silva' },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      TrainerUnrespondedFeedbackStudentItem: {
+        type: 'object',
+        required: ['student_id', 'student_name', 'unresponded_count'],
+        properties: {
+          student_id: { type: 'string', format: 'uuid' },
+          student_name: { type: 'string', example: 'Maria Silva' },
+          unresponded_count: { type: 'integer', minimum: 0, example: 3 },
+        },
+      },
+      TrainerUnrespondedFeedbacksSummary: {
+        type: 'object',
+        required: ['total', 'student_ids', 'items'],
+        properties: {
+          total: { type: 'integer', minimum: 0, example: 12 },
+          student_ids: {
+            type: 'array',
+            items: { type: 'string', format: 'uuid' },
+          },
+          items: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/TrainerUnrespondedFeedbackStudentItem' },
+          },
+        },
+      },
+      TrainerPastValidityStudentItem: {
+        type: 'object',
+        required: ['student_id', 'student_name', 'expired_sets_count'],
+        properties: {
+          student_id: { type: 'string', format: 'uuid' },
+          student_name: { type: 'string', example: 'Maria Silva' },
+          expired_sets_count: { type: 'integer', minimum: 1, example: 2 },
+        },
+      },
+      TrainerPastValidityStudentsSummary: {
+        type: 'object',
+        required: ['total', 'student_ids', 'items'],
+        properties: {
+          total: { type: 'integer', minimum: 0, example: 5 },
+          student_ids: {
+            type: 'array',
+            items: { type: 'string', format: 'uuid' },
+          },
+          items: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/TrainerPastValidityStudentItem' },
+          },
         },
       },
       Training: {
@@ -682,7 +817,8 @@ export const swaggerDocument = {
                   expo_push_token: {
                     type: 'string',
                     nullable: true,
-                    description: 'Token Expo Push para notificações; null remove',
+                    description:
+                      'Token Expo Push para notificações; null remove. Ao registrar um token, ele é desvinculado de qualquer outra conta (treinadora ou aluna) que o possua, garantindo que apenas a sessão ativa do dispositivo receba push.',
                   },
                   birth: {
                     type: 'string',
@@ -1566,22 +1702,90 @@ export const swaggerDocument = {
                 type: 'object',
                 minProperties: 1,
                 properties: {
-                  front_photo: { type: 'string', format: 'uri', nullable: true },
-                  side_photo: { type: 'string', format: 'uri', nullable: true },
-                  back_photo: { type: 'string', format: 'uri', nullable: true },
-                  current_weight: { type: 'number', nullable: true },
-                  monthly_rating: { type: 'integer', nullable: true },
-                  biggest_achievement: { type: 'string', nullable: true },
-                  biggest_challenge: { type: 'string', nullable: true },
-                  training_fit_routine: { type: 'boolean', nullable: true },
-                  favorite_workout: { type: 'string', nullable: true },
-                  least_favorite_or_difficult_exercise: { type: 'string', nullable: true },
-                  nutrition_rating: { type: 'integer', nullable: true },
-                  energy_rating: { type: 'integer', nullable: true },
-                  body_changes: { type: 'string', nullable: true },
-                  pain_or_adjustments: { type: 'string', nullable: true },
-                  next_month_goal: { type: 'string', nullable: true },
-                  proudest_moment: { type: 'string', nullable: true },
+                  front_photo: {
+                    type: 'string',
+                    format: 'uri',
+                    nullable: true,
+                    description: 'Foto de frente.',
+                  },
+                  side_photo: {
+                    type: 'string',
+                    format: 'uri',
+                    nullable: true,
+                    description: 'Foto de lado.',
+                  },
+                  back_photo: {
+                    type: 'string',
+                    format: 'uri',
+                    nullable: true,
+                    description: 'Foto de costas.',
+                  },
+                  current_weight: { type: 'number', nullable: true, description: 'Peso atualizado.' },
+                  monthly_rating: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'Como você avalia esse mês de 0 a 10? Por quê?',
+                  },
+                  biggest_achievement: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'Qual foi sua maior vitória nesse período?',
+                  },
+                  biggest_challenge: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'Qual foi sua maior dificuldade?',
+                  },
+                  training_fit_routine: {
+                    type: 'boolean',
+                    nullable: true,
+                    description: 'Seu treino encaixou bem na sua rotina?',
+                  },
+                  favorite_workout: {
+                    type: 'string',
+                    nullable: true,
+                    description:
+                      'Qual treino desta fase você mais gostou? E em qual treino ou exercício sentiu que mais evoluiu?',
+                  },
+                  least_favorite_or_difficult_exercise: {
+                    type: 'string',
+                    nullable: true,
+                    description:
+                      'Teve algum treino ou exercício que você não gostou ou teve mais dificuldade?',
+                  },
+                  nutrition_rating: {
+                    type: 'string',
+                    nullable: true,
+                    description:
+                      'De 0 a 10, como você avalia sua alimentação neste mês? O que mais te ajudou e o que mais dificultou?',
+                  },
+                  energy_rating: {
+                    type: 'integer',
+                    nullable: true,
+                    minimum: 0,
+                    maximum: 10,
+                    description: 'De 0 a 10, como você avalia sua disposição e energia durante o mês?',
+                  },
+                  body_changes: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'Você percebeu alguma mudança no seu corpo? Qual região mais evoluiu?',
+                  },
+                  pain_or_adjustments: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'Existe alguma dor, desconforto ou exercício que gostaria de ajustar?',
+                  },
+                  next_month_goal: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'Qual é o seu principal objetivo para o próximo mês?',
+                  },
+                  proudest_moment: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'O que fez você se sentir mais orgulhosa de si mesma neste mês?',
+                  },
                 },
               },
             },
@@ -1593,13 +1797,13 @@ export const swaggerDocument = {
                   side_photo: { type: 'string', format: 'binary' },
                   back_photo: { type: 'string', format: 'binary' },
                   current_weight: { type: 'number' },
-                  monthly_rating: { type: 'integer' },
+                  monthly_rating: { type: 'string', nullable: true },
                   biggest_achievement: { type: 'string' },
                   biggest_challenge: { type: 'string' },
                   training_fit_routine: { type: 'boolean' },
                   favorite_workout: { type: 'string' },
                   least_favorite_or_difficult_exercise: { type: 'string' },
-                  nutrition_rating: { type: 'integer' },
+                  nutrition_rating: { type: 'string', nullable: true },
                   energy_rating: { type: 'integer' },
                   body_changes: { type: 'string' },
                   pain_or_adjustments: { type: 'string' },
@@ -1735,7 +1939,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Proxy de mídia remota',
         description:
-          'Baixa uma mídia de URL HTTPS permitida (ex.: S3) e devolve os bytes originais.',
+          'Baixa uma mídia de URL HTTPS permitida (ex.: S3). Objetos privados do bucket configurado no servidor são lidos via credenciais AWS; demais URLs públicas são buscadas por HTTP.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -1759,7 +1963,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Imagem remota pronta para exibição',
         description:
-          'Baixa uma imagem HTTPS permitida (ex.: S3). Se for HEIC/HEIF, converte para JPEG antes de devolver os bytes.',
+          'Baixa uma imagem HTTPS permitida (ex.: S3). Objetos privados do bucket configurado no servidor são lidos via credenciais AWS. Se for HEIC/HEIF, converte para JPEG antes de devolver os bytes.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -5731,7 +5935,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar minhas notificações',
         description:
-          'Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `COUPON_CREATED`, `WELLBEING_CREATED`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; cupom usa `couponId`; wellbeing usa `wellbeingId`; conversa usa `studentId` e `messageId` (`title` = nome de quem enviou, `message` = texto da mensagem).',
+          'Aluna: notificações com `student_id` igual ao usuário autenticado, exceto tipos exclusivos da treinadora (`STUDENT_TRAINING_FEEDBACK_CREATED`, `STUDENT_POINT_CREATED`, `NEW_STUDENT_REGISTRATION`, `REVALUATION_COMPLETED`, `REVALUATION_PENDING_INSPECTIONS`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`). Treinadora: notificações com `trainer_id` igual ao usuário autenticado e `student_id` nulo, ou tipos com contexto de aluna (`STUDENT_TRAINING_FEEDBACK_CREATED`, `STUDENT_POINT_CREATED`, `NEW_STUDENT_REGISTRATION`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`); tipos exclusivos da aluna (`REVALUATION_STARTED`, `REVALUATION_COMPLETE_REMINDER`, `FEEDBACK_RESPONSE_CREATED`, `NOTICE_CREATED`, `SET_ASSIGNED_TO_STUDENT`, `COUPON_CREATED`, `WELLBEING_CREATED`, `PROGRAM_CREATED`) não aparecem na inbox da treinadora. Tipos compartilhados (`FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`) usam linhas separadas por destinatário (`student_id` preenchido para aluna, nulo para treinadora). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `REVALUATION_STARTED`, `REVALUATION_COMPLETED`, `REVALUATION_PENDING_INSPECTIONS`, `NOTICE_CREATED`, `SET_ASSIGNED_TO_STUDENT`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`, `COUPON_CREATED`, `WELLBEING_CREATED`, `PROGRAM_CREATED`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; reavaliação concluída usa `studentId` e `revaluationId`; validade de rotina usa `studentId`, `setToStudentId`, `setsId`, `validity` e `milestone`; cupom usa `couponId`; wellbeing usa `wellbeingId`; conversa usa `studentId` e `messageId` (`title` = nome de quem enviou, `message` = texto da mensagem).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -5791,7 +5995,7 @@ export const swaggerDocument = {
       patch: {
         summary: 'Marcar todas as notificações como lidas',
         description:
-          'Marca como lidas todas as notificações não lidas da inbox da aluna (`student_id`) ou da treinadora (`trainer_id`) autenticada.',
+          'Marca como lidas todas as notificações não lidas visíveis na inbox do usuário autenticado (mesma regra de filtro do GET /notifications).',
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {
@@ -6379,6 +6583,75 @@ export const swaggerDocument = {
         },
       },
     },
+    '/trainer/revaluations/pending-inspections': {
+      get: {
+        summary: 'Listar vistorias pendentes de reavaliação',
+        description:
+          'Retorna reavaliações concluídas pelas alunas com `trainer_view = false`, aguardando vistoria da treinadora.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Lista de vistorias pendentes',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['items'],
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/RevaluationPendingInspection' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+        },
+      },
+    },
+    '/trainer/feedbacks/unresponded-summary': {
+      get: {
+        summary: 'Resumo de feedbacks não respondidos',
+        description:
+          'Retorna a quantidade total de feedbacks sem resposta e a lista de alunas com pendências.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Resumo de feedbacks pendentes',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/TrainerUnrespondedFeedbacksSummary' },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+        },
+      },
+    },
+    '/trainer/sets/past-validity-students': {
+      get: {
+        summary: 'Listar alunas com rotinas vencidas',
+        description:
+          'Retorna alunas da treinadora com vínculos ativos (`status = true`) cuja validade já passou (timezone America/Sao_Paulo).',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Resumo de rotinas vencidas',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/TrainerPastValidityStudentsSummary' },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é treinador' },
+        },
+      },
+    },
     '/trainer/students/{studentId}/revaluations/compare': {
       get: {
         summary: 'Comparar duas reavaliações da aluna',
@@ -6432,6 +6705,8 @@ export const swaggerDocument = {
     '/trainer/students/{studentId}/revaluations/{revaluationId}': {
       get: {
         summary: 'Obter uma reavaliação da aluna',
+        description:
+          'Retorna a reavaliação e marca `trainer_view` como `true` quando a treinadora abre o detalhe.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -6612,7 +6887,12 @@ export const swaggerDocument = {
                   name: { type: 'string' },
                   phone: { type: 'string', nullable: true },
                   email: { type: 'string', format: 'email' },
-                  expo_push_token: { type: 'string', nullable: true },
+                  expo_push_token: {
+                    type: 'string',
+                    nullable: true,
+                    description:
+                      'Token Expo Push; null remove. Mesma regra de exclusividade por dispositivo do PATCH /auth/me.',
+                  },
                   birth: { type: 'string', nullable: true },
                   cpf: { type: 'string', nullable: true },
                   type_plan: { type: 'string', nullable: true },

@@ -1,3 +1,4 @@
+import type { IObjectStorage } from '../ports/object-storage.port';
 import { assertAllowedRemoteMediaUrl } from './remote-media.config';
 
 const REMOTE_MEDIA = 'RemoteMediaException';
@@ -7,8 +8,19 @@ export type DownloadedRemoteMedia = {
   contentType: string | null;
 };
 
-export async function downloadRemoteMedia(url: string): Promise<DownloadedRemoteMedia> {
+export async function downloadRemoteMedia(
+  url: string,
+  objectStorage?: IObjectStorage | null,
+): Promise<DownloadedRemoteMedia> {
   assertAllowedRemoteMediaUrl(url);
+
+  if (objectStorage) {
+    const owned = await objectStorage.getObjectByPublicUrl(url);
+
+    if (owned) {
+      return owned;
+    }
+  }
 
   let upstream: Response;
 

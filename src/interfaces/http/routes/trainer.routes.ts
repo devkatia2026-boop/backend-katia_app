@@ -21,6 +21,9 @@ export function createTrainerRoutes(
   router.get('/sets/search', ...asTrainer, (req: Request, res: Response) =>
     setsController.search(req, res)
   );
+  router.get('/sets/past-validity-students', ...asTrainer, (req, res) =>
+    studentsController.listPastValidityStudents(req, res)
+  );
   router.get('/sets', ...asTrainer, (req: Request, res: Response) =>
     setsController.list(req, res)
   );
@@ -97,6 +100,12 @@ export function createTrainerRoutes(
   );
   router.post('/students/revaluation/start', ...asTrainer, (req, res) =>
     studentsController.startRevaluation(req, res)
+  );
+  router.get('/revaluations/pending-inspections', ...asTrainer, (req, res) =>
+    studentsController.listPendingRevaluationInspections(req, res)
+  );
+  router.get('/feedbacks/unresponded-summary', ...asTrainer, (req, res) =>
+    studentsController.getUnrespondedFeedbacksSummary(req, res)
   );
   router.get('/anamneses', ...asTrainer, (req, res) => studentsController.listAnamneses(req, res));
   router.get('/students', ...asTrainer, (req, res) => studentsController.list(req, res));
