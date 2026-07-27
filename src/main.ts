@@ -29,6 +29,10 @@ import { GetMeUseCase } from './application/use-cases/auth/get-me.use-case';
 import { UpdateMyProfileUseCase } from './application/use-cases/auth/update-my-profile.use-case';
 import { swaggerDocument } from './swagger';
 import { createTrainerRoutes } from './interfaces/http/routes/trainer.routes';
+import { createStudentSharedRoutes } from './interfaces/http/routes/student-shared.routes';
+import { createSemesterPromotionRoutes } from './interfaces/http/routes/semester-promotion.routes';
+import { createAppVersionRoutes } from './interfaces/http/routes/app-version.routes';
+import { createEduzzWebhookRoutes } from './interfaces/http/routes/eduzz-webhook.routes';
 import { createRequireTrainer } from './interfaces/http/middleware/create-require-trainer.middleware';
 import { DeleteStudentAccountUseCase } from './application/use-cases/student/delete-student-account.use-case';
 import { StudentAccountController } from './interfaces/http/controllers/student-account.controller';
@@ -220,6 +224,27 @@ import { UpdateWellUseCase } from './application/use-cases/wells/update-well.use
 import { DeleteWellUseCase } from './application/use-cases/wells/delete-well.use-case';
 import { CouponsController } from './interfaces/http/controllers/coupons.controller';
 import { NoticesController } from './interfaces/http/controllers/notices.controller';
+import { StudentSharedController } from './interfaces/http/controllers/student-shared.controller';
+import { SemesterPromotionController } from './interfaces/http/controllers/semester-promotion.controller';
+import { AppVersionController } from './interfaces/http/controllers/app-version.controller';
+import { EduzzWebhookController } from './interfaces/http/controllers/eduzz-webhook.controller';
+import { GetStudentWasExclusiveUseCase } from './application/use-cases/students/get-student-was-exclusive.use-case';
+import {
+  GetSemesterPromotionUseCase,
+  UpdateSemesterPromotionUseCase,
+} from './application/use-cases/trainer/semester-promotion.use-cases';
+import {
+  CreateAppVersionUseCase,
+  GetAppVersionUseCase,
+  UpdateAppVersionUseCase,
+} from './application/use-cases/app-version/app-version.use-cases';
+import { SequelizeTrainerSettingsRepository } from './infrastructure/database/trainer-settings.repository';
+import { SequelizeAppVersionRepository } from './infrastructure/database/app-version.repository';
+import { SequelizeEduzzStudentPlanRepository } from './infrastructure/database/eduzz-student-plans.repository';
+import { SequelizeStudentPlanExpirationRepository } from './infrastructure/database/student-plan-expiration.repository';
+import { ProcessEduzzWebhookUseCase } from './application/use-cases/eduzz/process-eduzz-webhook.use-case';
+import { ExpireStudentPlansUseCase } from './application/use-cases/student-plans/expire-student-plans.use-case';
+import { CognitoStudentSessionInvalidator } from './infrastructure/auth/cognito/cognito-student-session.invalidator';
 import { WellbeingController } from './interfaces/http/controllers/wellbeing.controller';
 import { WellsController } from './interfaces/http/controllers/wells.controller';
 import { createCouponsRoutes } from './interfaces/http/routes/coupons.routes';
@@ -246,6 +271,7 @@ import { RankingsController } from './interfaces/http/controllers/rankings.contr
 import { createRankingsRoutes } from './interfaces/http/routes/rankings.routes';
 import { startRankingChampionNotificationScheduler } from './infrastructure/scheduling/ranking-champion-notification.scheduler';
 import { startRevaluationDailyReminderScheduler } from './infrastructure/scheduling/revaluation-daily-reminder.scheduler';
+import { startStudentPlanExpirationScheduler } from './infrastructure/scheduling/student-plan-expiration.scheduler';
 import { SequelizeConversationsRepository } from './infrastructure/database/conversations.repository';
 import { SequelizeConversationMessageNotifier } from './infrastructure/database/conversation-message.notifier';
 import { ConversationRealtimeHub } from './infrastructure/realtime/conversation-realtime.hub';
@@ -816,6 +842,14 @@ const trainerStudentsController = new TrainerStudentsController(
   new ListTrainerPastValidityStudentsUseCase(setsToStudentsRepository),
   resolveTrainerDisplayName
 );
+const trainerSettingsRepository = new SequelizeTrainerSettingsRepository({
+  Trainer: models.Trainer,
+  Student: models.Student,
+});
+const semesterPromotionController = new SemesterPromotionController(
+  new GetSemesterPromotionUseCase(trainerSettingsRepository),
+  new UpdateSemesterPromotionUseCase(trainerSettingsRepository)
+);
 app.use(
   '/trainer',
   createTrainerRoutes(
@@ -824,6 +858,7 @@ app.use(
     trainerExercisesController,
     trainerSetsController,
     setsToTrainingsController,
+    semesterPromotionController,
     requireAuth,
     requireTrainer
   )
@@ -1104,6 +1139,16 @@ startRevaluationDailyReminderScheduler(
   sendSetValidityReminders
 );
 
+const studentPlanExpirationRepository = new SequelizeStudentPlanExpirationRepository({
+  Student: models.Student,
+});
+startStudentPlanExpirationScheduler(
+  new ExpireStudentPlansUseCase(
+    studentPlanExpirationRepository,
+    new CognitoStudentSessionInvalidator()
+  )
+);
+
 const notificationsController = new NotificationsController(
   new ListNotificationsUseCase(notificationsRepository),
   new GetNotificationUseCase(notificationsRepository),
@@ -1147,6 +1192,39 @@ app.use(
   '/conversations',
   createConversationsRoutes(conversationsController, requireAuth, requireStudentOrTrainer)
 );
+
+const studentSharedController = new StudentSharedController(
+  new GetStudentWasExclusiveUseCase(trainerStudentsRepository)
+);
+app.use(
+  '/students',
+  createStudentSharedRoutes(studentSharedController, requireAuth, requireStudentOrTrainer)
+);
+app.use(
+  '/semester-promotion',
+  createSemesterPromotionRoutes(
+    semesterPromotionController,
+    requireAuth,
+    requireStudentOrTrainer
+  )
+);
+
+const appVersionRepository = new SequelizeAppVersionRepository({ AppVersion: models.AppVersion });
+const appVersionController = new AppVersionController(
+  new GetAppVersionUseCase(appVersionRepository),
+  new CreateAppVersionUseCase(appVersionRepository),
+  new UpdateAppVersionUseCase(appVersionRepository)
+);
+app.use('/version', createAppVersionRoutes(appVersionController, requireAuth, requireTrainer));
+
+const eduzzWebhookSecret = process.env.EDUZZ_WEBHOOK_SECRET?.trim() || null;
+const eduzzStudentPlanRepository = new SequelizeEduzzStudentPlanRepository({
+  Student: models.Student,
+});
+const eduzzWebhookController = new EduzzWebhookController(
+  new ProcessEduzzWebhookUseCase(eduzzStudentPlanRepository, eduzzWebhookSecret)
+);
+app.use('/webhooks/eduzz', createEduzzWebhookRoutes(eduzzWebhookController));
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok' });

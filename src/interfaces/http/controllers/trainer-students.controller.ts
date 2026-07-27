@@ -334,7 +334,7 @@ export class TrainerStudentsController {
         res.status(404).json({ message: error.message ?? 'Aluna não encontrada.' });
         return;
       }
-      res.status(500).json({ message: 'Erro ao copiar rotinas de treino.' });
+      res.status(500).json({ message: 'Erro ao copiar fases de treino.' });
     }
   }
 
@@ -379,7 +379,7 @@ export class TrainerStudentsController {
       const result = await this.listTrainerPastValidityStudents.execute(trainerId);
       res.status(200).json(result);
     } catch (err) {
-      res.status(500).json({ message: 'Erro ao listar rotinas vencidas.' });
+      res.status(500).json({ message: 'Erro ao listar fases vencidas.' });
     }
   }
 

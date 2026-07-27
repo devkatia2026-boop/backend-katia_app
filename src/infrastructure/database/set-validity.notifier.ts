@@ -50,7 +50,7 @@ export class SequelizeSetValidityNotifier implements ISetValidityNotifier {
       return false;
     }
 
-    const setLabel = input.set_name?.trim() || 'Rotina';
+    const setLabel = input.set_name?.trim() || 'Fase';
     const studentName = input.student_name.trim() || 'Aluna';
     const { title, message } = buildCopy(input.milestone, studentName, setLabel, input.validity);
 
@@ -155,23 +155,23 @@ function buildCopy(
   switch (milestone) {
     case '7d':
       return {
-        title: 'Validade da rotina',
-        message: `A rotina "${setLabel}" de ${studentName} vence em 7 dias (${validity}).`,
+        title: 'Validade da fase',
+        message: `A fase "${setLabel}" de ${studentName} vence em 7 dias (${validity}).`,
       };
     case '3d':
       return {
-        title: 'Validade da rotina',
-        message: `A rotina "${setLabel}" de ${studentName} vence em 3 dias (${validity}).`,
+        title: 'Validade da fase',
+        message: `A fase "${setLabel}" de ${studentName} vence em 3 dias (${validity}).`,
       };
     case 'today':
       return {
-        title: 'Validade da rotina',
-        message: `A rotina "${setLabel}" de ${studentName} vence hoje (${validity}).`,
+        title: 'Validade da fase',
+        message: `A fase "${setLabel}" de ${studentName} vence hoje (${validity}).`,
       };
     default:
       return {
-        title: 'Rotina vencida',
-        message: `A rotina "${setLabel}" de ${studentName} está vencida desde ${validity}.`,
+        title: 'Fase vencida',
+        message: `A fase "${setLabel}" de ${studentName} está vencida desde ${validity}.`,
       };
   }
 }

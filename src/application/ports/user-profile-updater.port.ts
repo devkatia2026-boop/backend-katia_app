@@ -21,6 +21,7 @@ export type StudentProfileUpdateValues = Partial<{
   check_winner: boolean | null;
   validation: string | null;
   in_revalution: boolean;
+  was_exclusive: boolean;
 }>;
 
 export interface IUserProfileUpdater {

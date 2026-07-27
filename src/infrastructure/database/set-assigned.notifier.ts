@@ -14,8 +14,8 @@ export class SequelizeSetAssignedNotifier implements ISetAssignedNotifier {
   constructor(private readonly models: Pick<DatabaseModels, 'Notification' | 'Student'>) {}
 
   async notifySetAssignedToStudent(input: SetAssignedToStudentInput): Promise<void> {
-    const title = 'Nova rotina de treinos';
-    const message = `${input.trainerName} te enviou uma nova rotina de treinos!`;
+    const title = 'Nova fase de treinos';
+    const message = `${input.trainerName} te enviou uma nova fase de treinos!`;
     const data = { setsId: input.setsId, type: NOTIFICATION_TYPE };
 
     await this.models.Notification.create({

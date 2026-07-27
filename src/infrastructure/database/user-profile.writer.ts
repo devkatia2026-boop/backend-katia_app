@@ -52,6 +52,8 @@ export class SequelizeUserProfileWriter implements IUserProfileWriter {
       weight: null,
       validation: null,
       in_revalution: false,
+      was_exclusive: false,
+      validation_plan: null,
     });
   }
 }

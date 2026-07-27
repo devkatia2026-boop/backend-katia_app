@@ -5,6 +5,7 @@ import type { TrainerTrainingsController } from '../controllers/trainer-training
 import type { TrainerExercisesController } from '../controllers/trainer-exercises.controller';
 import type { TrainerSetsController } from '../controllers/trainer-sets.controller';
 import type { SetsToTrainingsController } from '../controllers/sets-to-trainings.controller';
+import type { SemesterPromotionController } from '../controllers/semester-promotion.controller';
 
 export function createTrainerRoutes(
   studentsController: TrainerStudentsController,
@@ -12,11 +13,16 @@ export function createTrainerRoutes(
   exercisesController: TrainerExercisesController,
   setsController: TrainerSetsController,
   setsToTrainingsController: SetsToTrainingsController,
+  semesterPromotionController: SemesterPromotionController,
   requireAuth: RequestHandler,
   requireTrainer: RequestHandler
 ): Router {
   const router = Router();
   const asTrainer: RequestHandler[] = [requireAuth, requireTrainer];
+
+  router.patch('/semester-promotion', ...asTrainer, (req: Request, res: Response) =>
+    semesterPromotionController.patch(req, res)
+  );
 
   router.get('/sets/search', ...asTrainer, (req: Request, res: Response) =>
     setsController.search(req, res)

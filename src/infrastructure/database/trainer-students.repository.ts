@@ -6,6 +6,7 @@ import {
   exclusivePlanWhere,
 } from './student-plan-eligibility';
 import { claimExpoPushToken } from './expo-push-token.claim';
+import { applyWasExclusiveOnStudentProfileUpdate } from '../../application/student-plan/student-was-exclusive';
 import type { StudentProfileUpdateValues } from '../../application/ports/user-profile-updater.port';
 import type {
   ITrainerStudentsRepository,
@@ -176,7 +177,8 @@ export class SequelizeTrainerStudentsRepository implements ITrainerStudentsRepos
     }
 
     if (hasRest) {
-      const [affected] = await this.models.Student.update(rest, {
+      const patch = applyWasExclusiveOnStudentProfileUpdate(rest);
+      const [affected] = await this.models.Student.update(patch, {
         where: { id: studentId, trainer_id: trainerId },
       });
       if (affected === 0) {
@@ -196,5 +198,21 @@ export class SequelizeTrainerStudentsRepository implements ITrainerStudentsRepos
       err.name = 'StudentNotFoundException';
       throw err;
     }
+  }
+
+  async findWasExclusiveForStudent(
+    studentId: string,
+    trainerId: string | null
+  ): Promise<{ student_id: string; was_exclusive: boolean } | null> {
+    const where = trainerId ? { id: studentId, trainer_id: trainerId } : { id: studentId };
+    const row = await this.models.Student.findOne({
+      where,
+      attributes: ['id', 'was_exclusive'],
+    });
+    if (!row) return null;
+    return {
+      student_id: String(row.get('id')),
+      was_exclusive: Boolean(row.get('was_exclusive')),
+    };
   }
 }

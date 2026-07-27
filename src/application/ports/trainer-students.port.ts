@@ -15,6 +15,8 @@ export type TrainerStudentPublic = {
   check_winner: boolean | null;
   validation: string | null;
   in_revalution: boolean;
+  was_exclusive: boolean;
+  validation_plan: string | null;
   created_at: Date;
 };
 
@@ -62,4 +64,8 @@ export interface ITrainerStudentsRepository {
     studentId: string,
     values: StudentProfileUpdateValues
   ): Promise<void>;
+  findWasExclusiveForStudent(
+    studentId: string,
+    trainerId: string | null
+  ): Promise<{ student_id: string; was_exclusive: boolean } | null>;
 }

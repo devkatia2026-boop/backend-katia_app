@@ -31,6 +31,7 @@ import { initWellbeing, Wellbeing } from './wellbeing.model';
 import { initWell, Well } from './well.model';
 import { initRevaluation, Revaluation } from './revaluation.model';
 import { initNotice, Notice } from './notice.model';
+import { initAppVersion, AppVersion } from './app-version.model';
 
 export type DatabaseModels = {
   Trainer: typeof Trainer;
@@ -65,6 +66,7 @@ export type DatabaseModels = {
   Well: typeof Well;
   Revaluation: typeof Revaluation;
   Notice: typeof Notice;
+  AppVersion: typeof AppVersion;
 };
 
 function associate(models: DatabaseModels): void {
@@ -270,6 +272,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const WellModel = initWell(sequelize);
   const RevaluationModel = initRevaluation(sequelize);
   const NoticeModel = initNotice(sequelize);
+  const AppVersionModel = initAppVersion(sequelize);
 
   const models: DatabaseModels = {
     Trainer: TrainerModel,
@@ -304,6 +307,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     Well: WellModel,
     Revaluation: RevaluationModel,
     Notice: NoticeModel,
+    AppVersion: AppVersionModel,
   };
 
   associate(models);
@@ -344,4 +348,5 @@ export {
   Well,
   Revaluation,
   Notice,
+  AppVersion,
 };

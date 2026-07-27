@@ -17,6 +17,8 @@ export class Student extends Model {
   declare check_winner: boolean | null;
   declare validation: string | null;
   declare in_revalution: boolean;
+  declare was_exclusive: boolean;
+  declare validation_plan: string | null;
   declare readonly created_at: Date;
 }
 
@@ -56,6 +58,12 @@ export function initStudent(sequelize: Sequelize): typeof Student {
         allowNull: false,
         defaultValue: false,
       },
+      was_exclusive: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      validation_plan: DataTypes.STRING,
     },
     {
       sequelize,

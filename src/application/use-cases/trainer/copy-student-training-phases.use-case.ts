@@ -65,7 +65,7 @@ export class CopyStudentTrainingPhasesUseCase {
     const sourceLinks = await this.fetchAllStudentLinks(input.sourceStudentId);
 
     if (sourceLinks.length === 0) {
-      const err = new Error('A aluna selecionada não possui rotinas disponíveis.');
+      const err = new Error('A aluna selecionada não possui fases disponíveis.');
       err.name = VALIDATION;
       throw err;
     }
@@ -105,7 +105,7 @@ export class CopyStudentTrainingPhasesUseCase {
     }
 
     if (copied === 0 && skipped > 0) {
-      const err = new Error('A aluna já possui todas as rotinas da origem selecionada.');
+      const err = new Error('A aluna já possui todas as fases da origem selecionada.');
       err.name = VALIDATION;
       throw err;
     }

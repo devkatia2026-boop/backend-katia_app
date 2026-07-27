@@ -4,6 +4,7 @@ import type {
   StudentProfileUpdateValues,
   TrainerProfileUpdateValues,
 } from '../../application/ports/user-profile-updater.port';
+import { applyWasExclusiveOnStudentProfileUpdate } from '../../application/student-plan/student-was-exclusive';
 import { claimExpoPushToken } from './expo-push-token.claim';
 
 export class SequelizeUserProfileUpdater implements IUserProfileUpdater {
@@ -54,7 +55,8 @@ export class SequelizeUserProfileUpdater implements IUserProfileUpdater {
     }
 
     if (hasRest) {
-      const [affected] = await this.models.Student.update(rest, { where: { id } });
+      const patch = applyWasExclusiveOnStudentProfileUpdate(rest);
+      const [affected] = await this.models.Student.update(patch, { where: { id } });
       if (affected === 0) {
         const err = new Error('Aluno não encontrado.');
         err.name = 'ProfileNotFoundException';

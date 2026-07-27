@@ -35,6 +35,16 @@ export const swaggerDocument = {
       description:
         'Avisos da treinadora (`notices`). **Treinadora:** criar e excluir. **Aluna e treinadora:** listagem e detalhe de todos os avisos. O campo `type_plan` (`exclusive`, `comum` ou `ambos`) define para quais alunas é enviada a notificação ao criar; a leitura REST não filtra por plano.',
     },
+    {
+      name: 'Configuração',
+      description:
+        'Versão do app, promoção semestral da treinadora e histórico de plano exclusivo das alunas.',
+    },
+    {
+      name: 'Webhooks',
+      description:
+        'Integrações externas sem autenticação JWT. Webhook Eduzz atualiza `type_plan`, `validation` e `validation_plan` da aluna pelo e-mail do comprador (`data.buyer.email`). Scheduler interno às **00:00** (horário de Brasília) expira planos cuja `validation_plan` é igual ao dia atual (`type_plan: null`, `validation: nao`, `refresh_token: null` e logout no Cognito).',
+    },
   ],
   info: {
     title: 'API Backend Reta AI',
@@ -521,6 +531,28 @@ export const swaggerDocument = {
           number_shoe: { type: 'integer', nullable: true },
         },
       },
+      AppVersion: {
+        type: 'object',
+        required: ['version', 'created_at'],
+        properties: {
+          version: { type: 'string', example: '1.2.0' },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      EduzzWebhookResult: {
+        type: 'object',
+        required: ['processed', 'event', 'action'],
+        properties: {
+          processed: { type: 'boolean' },
+          event: { type: 'string', example: 'myeduzz.invoice_paid' },
+          action: {
+            type: 'string',
+            enum: ['plan_updated', 'plan_cleared', 'ignored'],
+          },
+          student_id: { type: 'string', format: 'uuid', nullable: true },
+          reason: { type: 'string', nullable: true },
+        },
+      },
     },
   },
   paths: {
@@ -542,6 +574,219 @@ export const swaggerDocument = {
               },
             },
           },
+        },
+      },
+    },
+    '/version': {
+      get: {
+        tags: ['Configuração'],
+        summary: 'Obter versão do app',
+        description: 'Público (sem autenticação). Retorna a versão cadastrada em `version`.',
+        responses: {
+          '200': {
+            description: 'Versão atual',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AppVersion' },
+              },
+            },
+          },
+          '404': { description: 'Versão ainda não cadastrada' },
+        },
+      },
+      post: {
+        tags: ['Configuração'],
+        summary: 'Cadastrar versão do app',
+        description: 'Somente treinadora. Cria o registro inicial (409 se já existir).',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['version'],
+                properties: {
+                  version: { type: 'string', example: '1.0.0' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Versão cadastrada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AppVersion' },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido' },
+          '403': { description: 'Somente treinadora' },
+          '409': { description: 'Versão já cadastrada (use PATCH)' },
+        },
+      },
+      patch: {
+        tags: ['Configuração'],
+        summary: 'Atualizar versão do app',
+        description: 'Somente treinadora. Altera a versão cadastrada (404 se ainda não existir).',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['version'],
+                properties: {
+                  version: { type: 'string', example: '1.0.1' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Versão atualizada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AppVersion' },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Versão ainda não cadastrada (use POST)' },
+        },
+      },
+    },
+    '/webhooks/eduzz': {
+      post: {
+        tags: ['Webhooks'],
+        summary: 'Webhook Eduzz (fatura paga, reembolsada ou cancelada)',
+        description:
+          'Público (sem JWT). Quando `EDUZZ_WEBHOOK_SECRET` está definido no servidor, valida `data.producer.originSecret` do payload. Evento `myeduzz.invoice_paid`: localiza a aluna por `data.buyer.email` (case-insensitive) e atualiza o plano conforme `data.producer.name` (comparação normalizada, sem distinção de maiúsculas/minúsculas): **KI TRAINING- PLANO MENSAL** → `type_plan: comum`, `validation: sim`, `validation_plan` +30 dias; **Consultoria exclusiva- 30 dias** → exclusivo +30 dias; **Consultoria Premium- 3 meses de acompanhamento** → exclusivo +90 dias; **BLACK RELÂMPAGO: 6 MESES** → exclusivo +180 dias. Plano exclusivo define `was_exclusive: true`. Eventos `myeduzz.invoice_refunded` ou `myeduzz.invoice_canceled`: `type_plan: null`, `validation: nao`, `validation_plan: null`. **Expiração automática:** todo dia às **00:00** (fuso `America/Sao_Paulo`), alunas com `validation_plan` igual à data do dia têm `type_plan` definido como `null`, `validation` como `nao`, `refresh_token` limpo e sessão encerrada no Cognito (`AdminUserGlobalSignOut`). Resposta sempre 200 quando o JSON é válido (mesmo se aluna não encontrada ou produtor não mapeado).',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['id', 'event', 'data'],
+                properties: {
+                  id: { type: 'string' },
+                  event: {
+                    type: 'string',
+                    enum: [
+                      'myeduzz.invoice_paid',
+                      'myeduzz.invoice_refunded',
+                      'myeduzz.invoice_canceled',
+                    ],
+                  },
+                  data: {
+                    type: 'object',
+                    required: ['buyer', 'producer'],
+                    properties: {
+                      buyer: {
+                        type: 'object',
+                        required: ['email'],
+                        properties: {
+                          email: { type: 'string', format: 'email' },
+                        },
+                      },
+                      producer: {
+                        type: 'object',
+                        required: ['name'],
+                        properties: {
+                          name: { type: 'string' },
+                          originSecret: { type: 'string' },
+                        },
+                      },
+                    },
+                  },
+                  sentDate: { type: 'string', format: 'date-time' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Webhook processado ou ignorado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/EduzzWebhookResult' },
+              },
+            },
+          },
+          '400': { description: 'Payload inválido' },
+          '401': { description: 'originSecret inválido (quando EDUZZ_WEBHOOK_SECRET está configurado)' },
+        },
+      },
+    },
+    '/semester-promotion': {
+      get: {
+        tags: ['Configuração'],
+        summary: 'Consultar promoção semestral',
+        description:
+          '**Treinadora:** retorna o próprio `semester_promotion`. **Aluna:** retorna o `semester_promotion` da treinadora vinculada.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Flag de promoção semestral',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['semester_promotion'],
+                  properties: {
+                    semester_promotion: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+          '404': { description: 'Perfil não encontrado' },
+        },
+      },
+    },
+    '/students/{studentId}/was-exclusive': {
+      get: {
+        tags: ['Configuração'],
+        summary: 'Consultar se a aluna já foi exclusiva',
+        description:
+          '**Aluna:** só pode consultar o próprio `studentId`. **Treinadora:** consulta alunas vinculadas. `was_exclusive` vira `true` quando `type_plan` passa a ser exclusivo (`exclusive` ou `consultoria-exclusiva`) e não volta a `false`.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'studentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Histórico de plano exclusivo',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['student_id', 'was_exclusive'],
+                  properties: {
+                    student_id: { type: 'string', format: 'uuid' },
+                    was_exclusive: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Acesso negado' },
+          '404': { description: 'Aluna não encontrada' },
         },
       },
     },
@@ -768,7 +1013,7 @@ export const swaggerDocument = {
                         profile: {
                           type: 'object',
                           description:
-                            'Campos da tabela trainers (sem refresh_token nem expo_push_token), incluindo `check_winner` (boolean ou null).',
+                            'Campos da tabela trainers (sem refresh_token nem expo_push_token), incluindo `check_winner` (boolean ou null) e `semester_promotion`. Para alterar `semester_promotion`, use PATCH /trainer/semester-promotion.',
                         },
                       },
                     },
@@ -780,7 +1025,7 @@ export const swaggerDocument = {
                         profile: {
                           type: 'object',
                           description:
-                            'Campos da tabela students (sem refresh_token nem expo_push_token), incluindo `check_winner`, `validation` e `in_revalution`.',
+                            'Campos da tabela students (sem refresh_token nem expo_push_token), incluindo `check_winner`, `validation`, `validation_plan` (data limite do plano, formato YYYY-MM-DD; expira automaticamente às 00:00 de Brasília), `in_revalution` e `was_exclusive` (somente leitura; definido automaticamente quando `type_plan` vira exclusivo).',
                         },
                       },
                     },
@@ -2943,6 +3188,47 @@ export const swaggerDocument = {
           '204': { description: 'Like removido' },
           '401': { description: 'Token ausente ou inválido' },
           '404': { description: 'Post ou like não encontrado' },
+        },
+      },
+    },
+    '/trainer/semester-promotion': {
+      patch: {
+        tags: ['Configuração'],
+        summary: 'Alterar promoção semestral',
+        description: 'Somente treinadora. Define `semester_promotion` como `true` ou `false`.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['semester_promotion'],
+                properties: {
+                  semester_promotion: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Valor atualizado',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['semester_promotion'],
+                  properties: {
+                    semester_promotion: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Treinador não encontrado' },
         },
       },
     },
@@ -5935,7 +6221,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar minhas notificações',
         description:
-          'Aluna: notificações com `student_id` igual ao usuário autenticado, exceto tipos exclusivos da treinadora (`STUDENT_TRAINING_FEEDBACK_CREATED`, `STUDENT_POINT_CREATED`, `NEW_STUDENT_REGISTRATION`, `REVALUATION_COMPLETED`, `REVALUATION_PENDING_INSPECTIONS`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`). Treinadora: notificações com `trainer_id` igual ao usuário autenticado e `student_id` nulo, ou tipos com contexto de aluna (`STUDENT_TRAINING_FEEDBACK_CREATED`, `STUDENT_POINT_CREATED`, `NEW_STUDENT_REGISTRATION`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`); tipos exclusivos da aluna (`REVALUATION_STARTED`, `REVALUATION_COMPLETE_REMINDER`, `FEEDBACK_RESPONSE_CREATED`, `NOTICE_CREATED`, `SET_ASSIGNED_TO_STUDENT`, `COUPON_CREATED`, `WELLBEING_CREATED`, `PROGRAM_CREATED`) não aparecem na inbox da treinadora. Tipos compartilhados (`FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`) usam linhas separadas por destinatário (`student_id` preenchido para aluna, nulo para treinadora). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `REVALUATION_STARTED`, `REVALUATION_COMPLETED`, `REVALUATION_PENDING_INSPECTIONS`, `NOTICE_CREATED`, `SET_ASSIGNED_TO_STUDENT`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`, `COUPON_CREATED`, `WELLBEING_CREATED`, `PROGRAM_CREATED`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; reavaliação concluída usa `studentId` e `revaluationId`; validade de rotina usa `studentId`, `setToStudentId`, `setsId`, `validity` e `milestone`; cupom usa `couponId`; wellbeing usa `wellbeingId`; conversa usa `studentId` e `messageId` (`title` = nome de quem enviou, `message` = texto da mensagem).',
+          'Aluna: notificações com `student_id` igual ao usuário autenticado, exceto tipos exclusivos da treinadora (`STUDENT_TRAINING_FEEDBACK_CREATED`, `STUDENT_POINT_CREATED`, `NEW_STUDENT_REGISTRATION`, `REVALUATION_COMPLETED`, `REVALUATION_PENDING_INSPECTIONS`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`). Treinadora: notificações com `trainer_id` igual ao usuário autenticado e `student_id` nulo, ou tipos com contexto de aluna (`STUDENT_TRAINING_FEEDBACK_CREATED`, `STUDENT_POINT_CREATED`, `NEW_STUDENT_REGISTRATION`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`); tipos exclusivos da aluna (`REVALUATION_STARTED`, `REVALUATION_COMPLETE_REMINDER`, `FEEDBACK_RESPONSE_CREATED`, `NOTICE_CREATED`, `SET_ASSIGNED_TO_STUDENT`, `COUPON_CREATED`, `WELLBEING_CREATED`, `PROGRAM_CREATED`) não aparecem na inbox da treinadora. Tipos compartilhados (`FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`) usam linhas separadas por destinatário (`student_id` preenchido para aluna, nulo para treinadora). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `REVALUATION_STARTED`, `REVALUATION_COMPLETED`, `REVALUATION_PENDING_INSPECTIONS`, `NOTICE_CREATED`, `SET_ASSIGNED_TO_STUDENT`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`, `COUPON_CREATED`, `WELLBEING_CREATED`, `PROGRAM_CREATED`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; reavaliação concluída usa `studentId` e `revaluationId`; validade de fase usa `studentId`, `setToStudentId`, `setsId`, `validity` e `milestone`; cupom usa `couponId`; wellbeing usa `wellbeingId`; conversa usa `studentId` e `messageId` (`title` = nome de quem enviou, `message` = texto da mensagem).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -6438,7 +6724,7 @@ export const swaggerDocument = {
     },
     '/trainer/students/{studentId}/copy-training-phases': {
       post: {
-        summary: 'Copiar rotinas de treino de outra aluna',
+        summary: 'Copiar fases de treino de outra aluna',
         description:
           'Copia vínculos aluna↔set e orientações (reps/exercise) da aluna origem para a aluna destino. Envia uma notificação à aluna destino.',
         security: [{ bearerAuth: [] }],
@@ -6467,7 +6753,7 @@ export const swaggerDocument = {
         },
         responses: {
           '200': {
-            description: 'Rotinas copiadas',
+            description: 'Fases copiadas',
             content: {
               'application/json': {
                 schema: {
@@ -6482,7 +6768,7 @@ export const swaggerDocument = {
               },
             },
           },
-          '400': { description: 'Parâmetros inválidos ou nenhuma rotina copiada' },
+          '400': { description: 'Parâmetros inválidos ou nenhuma fase copiada' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Usuário não é treinador ou aluna não pertence a você' },
           '404': { description: 'Aluna não encontrada' },
@@ -6634,13 +6920,13 @@ export const swaggerDocument = {
     },
     '/trainer/sets/past-validity-students': {
       get: {
-        summary: 'Listar alunas com rotinas vencidas',
+        summary: 'Listar alunas com fases vencidas',
         description:
           'Retorna alunas da treinadora com vínculos ativos (`status = true`) cuja validade já passou (timezone America/Sao_Paulo).',
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {
-            description: 'Resumo de rotinas vencidas',
+            description: 'Resumo de fases vencidas',
             content: {
               'application/json': {
                 schema: { $ref: '#/components/schemas/TrainerPastValidityStudentsSummary' },
