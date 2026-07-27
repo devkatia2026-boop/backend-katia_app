@@ -22,6 +22,12 @@ const production = {
   port: Number(process.env.DB_PORT_PROD || 5432),
   dialect,
   logging: false,
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
 };
 
 module.exports = {

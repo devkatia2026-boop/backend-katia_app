@@ -7,7 +7,7 @@ export type DatabaseConnectionConfig = {
   dialect: 'postgres';
 };
 
-function useLocalDatabase(): boolean {
+export function useLocalDatabase(): boolean {
   const env = (process.env.ENVIRONMENT ?? 'local').toLowerCase();
   return env === 'local' || env === 'development';
 }
@@ -31,5 +31,18 @@ export function getDatabaseConfig(): DatabaseConnectionConfig {
     username: process.env.DB_USER_PROD ?? 'postgres',
     password: process.env.DB_PASSWORD_PROD ?? '',
     database: process.env.DB_NAME_PROD ?? 'postgres',
+  };
+}
+
+export function getDatabaseDialectOptions(): { ssl: { require: true; rejectUnauthorized: false } } | undefined {
+  if (useLocalDatabase()) {
+    return undefined;
+  }
+
+  return {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
   };
 }

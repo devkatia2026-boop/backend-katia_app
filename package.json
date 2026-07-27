@@ -10,7 +10,8 @@
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:seed": "sequelize-cli db:seed:all",
-    "db:seed:undo": "sequelize-cli db:seed:undo:all"
+    "db:seed:undo": "sequelize-cli db:seed:undo:all",
+    "deploy:ecs": "powershell -ExecutionPolicy Bypass -File scripts/deploy-ecs.ps1"
   },
   "keywords": [],
   "author": "",
