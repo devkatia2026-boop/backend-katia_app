@@ -666,7 +666,7 @@ export const swaggerDocument = {
         tags: ['Webhooks'],
         summary: 'Webhook Eduzz (fatura paga, reembolsada ou cancelada)',
         description:
-          'Público (sem JWT). Quando `EDUZZ_WEBHOOK_SECRET` está definido no servidor, valida `data.producer.originSecret` do payload. Evento `myeduzz.invoice_paid`: localiza a aluna por `data.buyer.email` (case-insensitive) e atualiza o plano conforme `data.producer.name` (comparação normalizada, sem distinção de maiúsculas/minúsculas): **KI TRAINING- PLANO MENSAL** → `type_plan: comum`, `validation: sim`, `validation_plan` +30 dias; **Consultoria exclusiva- 30 dias** → exclusivo +30 dias; **Consultoria Premium- 3 meses de acompanhamento** → exclusivo +90 dias; **BLACK RELÂMPAGO: 6 MESES** → exclusivo +180 dias. Plano exclusivo define `was_exclusive: true`. Eventos `myeduzz.invoice_refunded` ou `myeduzz.invoice_canceled`: `type_plan: null`, `validation: nao`, `validation_plan: null`. **Expiração automática:** todo dia às **00:00** (fuso `America/Sao_Paulo`), alunas com `validation_plan` igual à data do dia têm `type_plan` definido como `null`, `validation` como `nao`, `refresh_token` limpo e sessão encerrada no Cognito (`AdminUserGlobalSignOut`). Resposta sempre 200 quando o JSON é válido (mesmo se aluna não encontrada ou produtor não mapeado).',
+          'Público (sem JWT). Evento **`ping`** (e testes `test.*` da Eduzz): retorna **200** sem alterar banco (verificação de URL). Quando `EDUZZ_WEBHOOK_SECRET` está definido no servidor, valida `data.producer.originSecret` nos eventos de fatura. Evento `myeduzz.invoice_paid`: localiza a aluna por `data.buyer.email` (case-insensitive) e atualiza o plano conforme `data.producer.name` (comparação normalizada, sem distinção de maiúsculas/minúsculas): **KI TRAINING- PLANO MENSAL** → `type_plan: comum`, `validation: sim`, `validation_plan` +30 dias; **Consultoria exclusiva- 30 dias** → exclusivo +30 dias; **Consultoria Premium- 3 meses de acompanhamento** → exclusivo +90 dias; **BLACK RELÂMPAGO: 6 MESES** → exclusivo +180 dias. Plano exclusivo define `was_exclusive: true`. Eventos `myeduzz.invoice_refunded` ou `myeduzz.invoice_canceled`: `type_plan: null`, `validation: nao`, `validation_plan: null`. **Expiração automática:** todo dia às **00:00** (fuso `America/Sao_Paulo`), alunas com `validation_plan` igual à data do dia têm `type_plan` definido como `null`, `validation` como `nao`, `refresh_token` limpo e sessão encerrada no Cognito (`AdminUserGlobalSignOut`). Resposta **200** para `ping` e quando o JSON de fatura é válido (mesmo se aluna não encontrada ou produtor não mapeado). Logs no CloudWatch com prefixo `[eduzz-webhook]`.',
         requestBody: {
           required: true,
           content: {
@@ -679,6 +679,7 @@ export const swaggerDocument = {
                   event: {
                     type: 'string',
                     enum: [
+                      'ping',
                       'myeduzz.invoice_paid',
                       'myeduzz.invoice_refunded',
                       'myeduzz.invoice_canceled',

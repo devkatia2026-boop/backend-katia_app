@@ -5,6 +5,24 @@ export type ParsedEduzzWebhookBody = {
   originSecret: string | null;
 };
 
+export function readEduzzWebhookEvent(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null) {
+    return null;
+  }
+
+  const event = (body as Record<string, unknown>).event;
+  if (typeof event !== 'string' || event.trim().length === 0) {
+    return null;
+  }
+
+  return event.trim();
+}
+
+export function isEduzzConnectivityEvent(event: string): boolean {
+  const normalized = event.trim().toLowerCase();
+  return normalized === 'ping' || normalized.startsWith('test.');
+}
+
 export function parseEduzzWebhookBody(body: unknown): ParsedEduzzWebhookBody {
   if (typeof body !== 'object' || body === null) {
     throw new Error('Corpo da requisição inválido.');

@@ -1,5 +1,9 @@
+import {
+  isEduzzConnectivityEvent,
+  parseEduzzWebhookBody,
+  readEduzzWebhookEvent,
+} from '../../parsing/eduzz-webhook-body.parsing';
 import { resolveEduzzPaidPlanUpdate } from '../../eduzz/eduzz-producer-plans';
-import { parseEduzzWebhookBody } from '../../parsing/eduzz-webhook-body.parsing';
 import type { IEduzzStudentPlanRepository } from '../../ports/eduzz-webhook.port';
 
 export type ProcessEduzzWebhookResult = {
@@ -21,10 +25,35 @@ export class ProcessEduzzWebhookUseCase {
   ) {}
 
   async execute(body: unknown, receivedAt = new Date()): Promise<ProcessEduzzWebhookResult> {
+    const eventPreview = readEduzzWebhookEvent(body);
+    console.log('[eduzz-webhook] recebido', {
+      event: eventPreview ?? 'desconhecido',
+    });
+
+    if (eventPreview && isEduzzConnectivityEvent(eventPreview)) {
+      console.log('[eduzz-webhook] verificacao de conectividade', { event: eventPreview });
+      return {
+        processed: true,
+        event: eventPreview,
+        action: 'ignored',
+        reason: 'Evento de verificacao.',
+      };
+    }
+
     const parsed = parseEduzzWebhookBody(body);
+    console.log('[eduzz-webhook] payload valido', {
+      event: parsed.event,
+      buyerEmail: parsed.buyerEmail,
+      producerName: parsed.producerName,
+      hasOriginSecret: parsed.originSecret !== null,
+    });
 
     if (this.webhookSecret !== null) {
       if (parsed.originSecret !== this.webhookSecret) {
+        console.warn('[eduzz-webhook] originSecret invalido', {
+          event: parsed.event,
+          buyerEmail: parsed.buyerEmail,
+        });
         throw new Error('Webhook não autorizado.');
       }
     }
@@ -32,6 +61,11 @@ export class ProcessEduzzWebhookUseCase {
     if (parsed.event === INVOICE_PAID) {
       const planUpdate = resolveEduzzPaidPlanUpdate(parsed.producerName, receivedAt);
       if (!planUpdate) {
+        console.log('[eduzz-webhook] produtor nao mapeado', {
+          event: parsed.event,
+          producerName: parsed.producerName,
+          buyerEmail: parsed.buyerEmail,
+        });
         return {
           processed: false,
           event: parsed.event,
@@ -47,6 +81,11 @@ export class ProcessEduzzWebhookUseCase {
       });
 
       if (!result) {
+        console.log('[eduzz-webhook] aluna nao encontrada', {
+          event: parsed.event,
+          buyerEmail: parsed.buyerEmail,
+          producerName: parsed.producerName,
+        });
         return {
           processed: false,
           event: parsed.event,
@@ -54,6 +93,13 @@ export class ProcessEduzzWebhookUseCase {
           reason: 'Aluna não encontrada.',
         };
       }
+
+      console.log('[eduzz-webhook] plano atualizado', {
+        event: parsed.event,
+        student_id: result.student_id,
+        type_plan: planUpdate.type_plan,
+        validation_plan: planUpdate.validation_plan,
+      });
 
       return {
         processed: true,
@@ -66,6 +112,10 @@ export class ProcessEduzzWebhookUseCase {
     if (parsed.event === INVOICE_REFUNDED || parsed.event === INVOICE_CANCELED) {
       const result = await this.repository.clearPlanByEmail(parsed.buyerEmail);
       if (!result) {
+        console.log('[eduzz-webhook] aluna nao encontrada para limpar plano', {
+          event: parsed.event,
+          buyerEmail: parsed.buyerEmail,
+        });
         return {
           processed: false,
           event: parsed.event,
@@ -73,6 +123,11 @@ export class ProcessEduzzWebhookUseCase {
           reason: 'Aluna não encontrada.',
         };
       }
+
+      console.log('[eduzz-webhook] plano limpo', {
+        event: parsed.event,
+        student_id: result.student_id,
+      });
 
       return {
         processed: true,
@@ -82,6 +137,7 @@ export class ProcessEduzzWebhookUseCase {
       };
     }
 
+    console.log('[eduzz-webhook] evento nao suportado', { event: parsed.event });
     return {
       processed: false,
       event: parsed.event,
