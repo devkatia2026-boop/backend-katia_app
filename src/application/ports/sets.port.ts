@@ -4,17 +4,23 @@ export type SetDTO = {
   id: number;
   name: string | null;
   order: string | null;
+  cardio: string | null;
+  stretching: string | null;
   created_at: Date;
 };
 
 export type CreateSetInput = {
   name: string | null;
   order: string | null;
+  cardio: string | null;
+  stretching: string | null;
 };
 
 export type PatchSetInput = Partial<{
   name: string | null;
   order: string | null;
+  cardio: string | null;
+  stretching: string | null;
 }>;
 
 export interface ISetsRepository {

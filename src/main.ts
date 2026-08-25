@@ -170,6 +170,14 @@ import { UpdateRepsToExerciseUseCase } from './application/use-cases/trainer/upd
 import { DeleteRepsToExerciseUseCase } from './application/use-cases/trainer/delete-reps-to-exercise.use-case';
 import { RepsToExercisesController } from './interfaces/http/controllers/reps-to-exercises.controller';
 import { createRepsToExercisesRoutes } from './interfaces/http/routes/reps-to-exercises.routes';
+import { SequelizeRepsToTrainingsRepository } from './infrastructure/database/reps-to-trainings.repository';
+import { ListRepsToTrainingsUseCase } from './application/use-cases/reps-to-trainings/list-reps-to-trainings.use-case';
+import { GetRepsToTrainingUseCase } from './application/use-cases/reps-to-trainings/get-reps-to-training.use-case';
+import { CreateRepsToTrainingUseCase } from './application/use-cases/trainer/create-reps-to-training.use-case';
+import { UpdateRepsToTrainingUseCase } from './application/use-cases/trainer/update-reps-to-training.use-case';
+import { DeleteRepsToTrainingUseCase } from './application/use-cases/trainer/delete-reps-to-training.use-case';
+import { RepsToTrainingsController } from './interfaces/http/controllers/reps-to-trainings.controller';
+import { createRepsToTrainingsRoutes } from './interfaces/http/routes/reps-to-trainings.routes';
 import { SequelizeObsToTrainingsRepository } from './infrastructure/database/obs-to-trainings.repository';
 import { ListObsToTrainingsUseCase } from './application/use-cases/obs-to-trainings/list-obs-to-trainings.use-case';
 import { GetObsToTrainingUseCase } from './application/use-cases/obs-to-trainings/get-obs-to-training.use-case';
@@ -671,6 +679,26 @@ app.use(
   '/reps-to-exercises',
   createRepsToExercisesRoutes(
     repsToExercisesController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer
+  )
+);
+
+const repsToTrainingsRepository = new SequelizeRepsToTrainingsRepository({
+  RepsToTrainings: models.RepsToTrainings,
+});
+const repsToTrainingsController = new RepsToTrainingsController(
+  new ListRepsToTrainingsUseCase(repsToTrainingsRepository),
+  new GetRepsToTrainingUseCase(repsToTrainingsRepository),
+  new CreateRepsToTrainingUseCase(repsToTrainingsRepository),
+  new UpdateRepsToTrainingUseCase(repsToTrainingsRepository),
+  new DeleteRepsToTrainingUseCase(repsToTrainingsRepository)
+);
+app.use(
+  '/reps-to-trainings',
+  createRepsToTrainingsRoutes(
+    repsToTrainingsController,
     requireAuth,
     requireStudentOrTrainer,
     requireTrainer

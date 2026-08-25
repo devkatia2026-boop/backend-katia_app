@@ -12,7 +12,7 @@ import type { PagedList } from '../../application/ports/social-feed.port';
 
 const ATTR = ['id', 'training_id', 'set_id', 'created_at'] as const;
 const TRAINING_ATTR = ['id', 'lyric', 'description', 'time', 'type', 'muscles', 'created_at'] as const;
-const SET_ATTR = ['id', 'name', 'order', 'created_at'] as const;
+const SET_ATTR = ['id', 'name', 'order', 'cardio', 'stretching', 'created_at'] as const;
 
 function buildWhere(filters: ListSetsToTrainingsFilters): Record<string, unknown> {
   const where: Record<string, unknown> = {};

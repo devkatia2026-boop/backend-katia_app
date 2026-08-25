@@ -40,6 +40,7 @@ Write-Host "ECS force new deployment: $EcsCluster / $EcsService"
 aws ecs update-service `
   --cluster $EcsCluster `
   --service $EcsService `
+  --health-check-grace-period-seconds 120 `
   --force-new-deployment `
   --region $AwsRegion `
   --output json | Out-Null

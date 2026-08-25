@@ -1,27 +1,9 @@
-import type { CreateRepsToExerciseInput, PatchRepsToExerciseInput } from '../ports/reps-to-exercises.port';
+import type { CreateRepsToTrainingInput, PatchRepsToTrainingInput } from '../ports/reps-to-trainings.port';
 
 const VALIDATION = 'ValidationException';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function expectUuid(value: unknown, field: string): string {
-  if (typeof value !== 'string') {
-    const err = new Error(`Campo "${field}" deve ser UUID (string).`);
-    err.name = VALIDATION;
-    throw err;
-  }
-  const t = value.trim();
-  if (!UUID_RE.test(t)) {
-    const err = new Error(`Campo "${field}" deve ser um UUID válido.`);
-    err.name = VALIDATION;
-    throw err;
-  }
-  return t;
 }
 
 function expectPositiveInt(value: unknown, field: string): number {
@@ -52,14 +34,14 @@ function expectNullableTrimmedStringOrNull(value: unknown, field: string): strin
   return t.length === 0 ? null : t;
 }
 
-export function parseRepsToExerciseCreateBody(body: unknown): CreateRepsToExerciseInput {
+export function parseRepsToTrainingCreateBody(body: unknown): CreateRepsToTrainingInput {
   if (!isPlainObject(body)) {
     const err = new Error('Corpo da requisição deve ser um objeto JSON.');
     err.name = VALIDATION;
     throw err;
   }
-  if (!('exercise_id' in body) || !('training_id' in body) || !('student_id' in body)) {
-    const err = new Error('Campos "exercise_id", "training_id" e "student_id" são obrigatórios.');
+  if (!('exercise_id' in body) || !('training_id' in body)) {
+    const err = new Error('Campos "exercise_id" e "training_id" são obrigatórios.');
     err.name = VALIDATION;
     throw err;
   }
@@ -73,19 +55,18 @@ export function parseRepsToExerciseCreateBody(body: unknown): CreateRepsToExerci
   return {
     exercise_id: expectPositiveInt(body.exercise_id, 'exercise_id'),
     training_id: expectPositiveInt(body.training_id, 'training_id'),
-    student_id: expectUuid(body.student_id, 'student_id'),
     reps,
     obs,
   };
 }
 
-export function parseRepsToExercisePatchBody(body: unknown): PatchRepsToExerciseInput {
+export function parseRepsToTrainingPatchBody(body: unknown): PatchRepsToTrainingInput {
   if (!isPlainObject(body)) {
     const err = new Error('Corpo da requisição deve ser um objeto JSON.');
     err.name = VALIDATION;
     throw err;
   }
-  const patch: PatchRepsToExerciseInput = {};
+  const patch: PatchRepsToTrainingInput = {};
   let n = 0;
   if ('exercise_id' in body) {
     patch.exercise_id = expectPositiveInt(body.exercise_id, 'exercise_id');
@@ -93,10 +74,6 @@ export function parseRepsToExercisePatchBody(body: unknown): PatchRepsToExercise
   }
   if ('training_id' in body) {
     patch.training_id = expectPositiveInt(body.training_id, 'training_id');
-    n++;
-  }
-  if ('student_id' in body) {
-    patch.student_id = expectUuid(body.student_id, 'student_id');
     n++;
   }
   if ('reps' in body) {
@@ -116,6 +93,15 @@ export function parseRepsToExercisePatchBody(body: unknown): PatchRepsToExercise
 }
 
 export function parseExerciseIdQuery(value: unknown, field: string): number {
+  if (value === undefined || value === null || value === '') {
+    const err = new Error(`Parâmetro "${field}" é obrigatório.`);
+    err.name = VALIDATION;
+    throw err;
+  }
+  return expectPositiveInt(Array.isArray(value) ? value[0] : value, field);
+}
+
+export function parseTrainingIdQuery(value: unknown, field: string): number {
   if (value === undefined || value === null || value === '') {
     const err = new Error(`Parâmetro "${field}" é obrigatório.`);
     err.name = VALIDATION;

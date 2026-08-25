@@ -21,6 +21,7 @@ import { initSetsToStudents, SetsToStudents } from './sets-to-students.model';
 import { initTrainingsToPrograms, TrainingsToPrograms } from './trainings-to-programs.model';
 import { initProgramsToStudents, ProgramsToStudents } from './programs-to-students.model';
 import { initRepsToExercises, RepsToExercises } from './reps-to-exercises.model';
+import { initRepsToTrainings, RepsToTrainings } from './reps-to-trainings.model';
 import { initObsToTrainings, ObsToTrainings } from './obs-to-trainings.model';
 import { initPoint, Point } from './point.model';
 import { initFeedback, Feedback } from './feedback.model';
@@ -56,6 +57,7 @@ export type DatabaseModels = {
   SetsToTrainings: typeof SetsToTrainings;
   SetsToStudents: typeof SetsToStudents;
   RepsToExercises: typeof RepsToExercises;
+  RepsToTrainings: typeof RepsToTrainings;
   ObsToTrainings: typeof ObsToTrainings;
   Point: typeof Point;
   Feedback: typeof Feedback;
@@ -93,6 +95,7 @@ function associate(models: DatabaseModels): void {
     SetsToTrainings,
     SetsToStudents,
     RepsToExercises,
+    RepsToTrainings,
     ObsToTrainings,
     Point,
     Feedback,
@@ -214,6 +217,15 @@ function associate(models: DatabaseModels): void {
   Exercise.hasMany(RepsToExercises, { foreignKey: 'exercise_id', as: 'reps_to_exercises' });
   RepsToExercises.belongsTo(Exercise, { foreignKey: 'exercise_id', as: 'exercise' });
 
+  Training.hasMany(RepsToExercises, { foreignKey: 'training_id', as: 'reps_to_exercises' });
+  RepsToExercises.belongsTo(Training, { foreignKey: 'training_id', as: 'training' });
+
+  Exercise.hasMany(RepsToTrainings, { foreignKey: 'exercise_id', as: 'reps_to_trainings' });
+  RepsToTrainings.belongsTo(Exercise, { foreignKey: 'exercise_id', as: 'exercise' });
+
+  Training.hasMany(RepsToTrainings, { foreignKey: 'training_id', as: 'reps_to_trainings' });
+  RepsToTrainings.belongsTo(Training, { foreignKey: 'training_id', as: 'training' });
+
   Student.hasMany(ObsToTrainings, { foreignKey: 'student_id', as: 'obs_to_trainings' });
   ObsToTrainings.belongsTo(Student, { foreignKey: 'student_id', as: 'student' });
 
@@ -262,6 +274,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const SetsToTrainingsModel = initSetsToTrainings(sequelize);
   const SetsToStudentsModel = initSetsToStudents(sequelize);
   const RepsToExercisesModel = initRepsToExercises(sequelize);
+  const RepsToTrainingsModel = initRepsToTrainings(sequelize);
   const ObsToTrainingsModel = initObsToTrainings(sequelize);
   const PointModel = initPoint(sequelize);
   const FeedbackModel = initFeedback(sequelize);
@@ -297,6 +310,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     SetsToTrainings: SetsToTrainingsModel,
     SetsToStudents: SetsToStudentsModel,
     RepsToExercises: RepsToExercisesModel,
+    RepsToTrainings: RepsToTrainingsModel,
     ObsToTrainings: ObsToTrainingsModel,
     Point: PointModel,
     Feedback: FeedbackModel,
@@ -338,6 +352,7 @@ export {
   SetsToTrainings,
   SetsToStudents,
   RepsToExercises,
+  RepsToTrainings,
   ObsToTrainings,
   Point,
   Feedback,

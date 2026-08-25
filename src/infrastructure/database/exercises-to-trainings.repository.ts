@@ -29,6 +29,17 @@ function buildWhere(filters: ListExercisesToTrainingsFilters): Record<string, un
   return where;
 }
 
+function buildListOrder(filters: ListExercisesToTrainingsFilters): [string, string][] {
+  if (filters.trainingId !== undefined) {
+    return [['id', 'ASC']];
+  }
+
+  return [
+    ['created_at', 'DESC'],
+    ['id', 'DESC'],
+  ];
+}
+
 export class SequelizeExercisesToTrainingsRepository implements IExercisesToTrainingsRepository {
   constructor(
     private readonly models: Pick<DatabaseModels, 'ExercisesToTrainings' | 'Training' | 'Exercise'>
@@ -64,10 +75,7 @@ export class SequelizeExercisesToTrainingsRepository implements IExercisesToTrai
         attributes: [...ATTR],
         where,
         include: this.includeOpts,
-        order: [
-          ['created_at', 'DESC'],
-          ['id', 'DESC'],
-        ],
+        order: buildListOrder(filters),
         limit: pageSize,
         offset,
         raw: true,
@@ -97,10 +105,7 @@ export class SequelizeExercisesToTrainingsRepository implements IExercisesToTrai
             required: true,
           },
         ],
-        order: [
-          ['created_at', 'DESC'],
-          ['id', 'DESC'],
-        ],
+        order: [['id', 'ASC']],
         limit: pageSize,
         offset,
         raw: true,

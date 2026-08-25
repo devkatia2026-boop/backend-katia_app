@@ -1,7 +1,7 @@
 import type { PagedList } from './social-feed.port';
 import type { SetDTO } from './sets.port';
 
-export type SetToStudentSetNested = Pick<SetDTO, 'id' | 'name' | 'order' | 'created_at'>;
+export type SetToStudentSetNested = Pick<SetDTO, 'id' | 'name' | 'order' | 'cardio' | 'stretching' | 'created_at'>;
 
 export type SetToStudentStudentBrief = {
   id: string;

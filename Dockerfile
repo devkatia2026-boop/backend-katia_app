@@ -14,6 +14,8 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+RUN apk add --no-cache curl
+
 RUN addgroup -g 1001 -S nodejs \
   && adduser -S nodejs -u 1001 -G nodejs -h /home/nodejs \
   && mkdir -p /home/nodejs \

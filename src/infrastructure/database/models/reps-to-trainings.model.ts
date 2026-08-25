@@ -1,17 +1,16 @@
 import { DataTypes, Model, Sequelize } from 'sequelize';
 
-export class RepsToExercises extends Model {
+export class RepsToTrainings extends Model {
   declare id: number;
   declare exercise_id: number;
   declare training_id: number;
-  declare student_id: string;
   declare reps: string | null;
   declare obs: string | null;
   declare readonly created_at: Date;
 }
 
-export function initRepsToExercises(sequelize: Sequelize): typeof RepsToExercises {
-  RepsToExercises.init(
+export function initRepsToTrainings(sequelize: Sequelize): typeof RepsToTrainings {
+  RepsToTrainings.init(
     {
       id: {
         type: DataTypes.INTEGER,
@@ -26,19 +25,15 @@ export function initRepsToExercises(sequelize: Sequelize): typeof RepsToExercise
         type: DataTypes.INTEGER,
         allowNull: false,
       },
-      student_id: {
-        type: DataTypes.UUID,
-        allowNull: false,
-      },
       reps: DataTypes.STRING,
       obs: DataTypes.TEXT,
     },
     {
       sequelize,
-      tableName: 'repstoexercises',
-      modelName: 'RepsToExercises',
+      tableName: 'repstotrainings',
+      modelName: 'RepsToTrainings',
     }
   );
 
-  return RepsToExercises;
+  return RepsToTrainings;
 }

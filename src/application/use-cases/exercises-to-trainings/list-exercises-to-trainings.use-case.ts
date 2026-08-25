@@ -10,6 +10,18 @@ import { normalizePagination } from '../../parsing/pagination.parsing';
 
 const VALIDATION = 'ValidationException';
 
+function parseLinksFlag(value: unknown): boolean {
+  if (value === undefined || value === null || value === '') return false;
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (typeof raw === 'boolean') return raw;
+  if (typeof raw === 'number') return raw === 1;
+  if (typeof raw === 'string') {
+    const normalized = raw.trim().toLowerCase();
+    return normalized === '1' || normalized === 'true' || normalized === 'yes';
+  }
+  return false;
+}
+
 function parseOptionalPositiveInt(value: unknown, field: string): number | undefined {
   if (value === undefined || value === null || value === '') return undefined;
   let n: number;
@@ -40,13 +52,18 @@ export class ListExercisesToTrainingsUseCase {
     page: unknown,
     pageSize: unknown,
     rawTrainingId: unknown,
-    rawExerciseId: unknown
+    rawExerciseId: unknown,
+    rawLinks: unknown = false
   ): Promise<ListExercisesToTrainingsResult> {
     const p = normalizePagination(page, pageSize);
     const trainingId = parseOptionalPositiveInt(rawTrainingId, 'trainingId');
     const exerciseId = parseOptionalPositiveInt(rawExerciseId, 'exerciseId');
+    const includeLinks = parseLinksFlag(rawLinks);
 
     if (trainingId !== undefined && exerciseId === undefined) {
+      if (includeLinks) {
+        return this.repo.listPaged(p.page, p.pageSize, { trainingId });
+      }
       return this.repo.listExercisesByTraining(trainingId, p.page, p.pageSize);
     }
     if (exerciseId !== undefined && trainingId === undefined) {

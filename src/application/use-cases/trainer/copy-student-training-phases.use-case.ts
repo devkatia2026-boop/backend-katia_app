@@ -162,18 +162,20 @@ export class CopyStudentTrainingPhasesUseCase {
       const exerciseIds = await this.fetchExerciseIdsForTraining(trainingId);
 
       for (const exerciseId of exerciseIds) {
-        const sourceRep = await this.repsToExercisesRepo.findByStudentAndExercise(
+        const sourceRep = await this.repsToExercisesRepo.findByStudentExerciseAndTraining(
           sourceStudentId,
-          exerciseId
+          exerciseId,
+          trainingId
         );
 
         if (!sourceRep) {
           continue;
         }
 
-        const targetRep = await this.repsToExercisesRepo.findByStudentAndExercise(
+        const targetRep = await this.repsToExercisesRepo.findByStudentExerciseAndTraining(
           targetStudentId,
-          exerciseId
+          exerciseId,
+          trainingId
         );
 
         if (targetRep) {
@@ -184,6 +186,7 @@ export class CopyStudentTrainingPhasesUseCase {
         } else {
           await this.repsToExercisesRepo.create({
             exercise_id: exerciseId,
+            training_id: trainingId,
             student_id: targetStudentId,
             reps: sourceRep.reps,
             obs: sourceRep.obs,

@@ -7,7 +7,7 @@ export type SetToTrainingTraining = Pick<
   'id' | 'lyric' | 'description' | 'time' | 'type' | 'muscles' | 'created_at'
 >;
 
-export type SetToTrainingSet = Pick<SetDTO, 'id' | 'name' | 'order' | 'created_at'>;
+export type SetToTrainingSet = Pick<SetDTO, 'id' | 'name' | 'order' | 'cardio' | 'stretching' | 'created_at'>;
 
 export type SetToTrainingDTO = {
   id: number;

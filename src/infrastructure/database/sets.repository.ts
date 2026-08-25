@@ -9,7 +9,7 @@ import type {
 import type { PagedList } from '../../application/ports/social-feed.port';
 import { buildCatalogNameSearchWhere } from './catalog-name-search';
 
-const ATTR = ['id', 'name', 'order', 'created_at'] as const;
+const ATTR = ['id', 'name', 'order', 'cardio', 'stretching', 'created_at'] as const;
 
 export class SequelizeSetsRepository implements ISetsRepository {
   constructor(private readonly models: Pick<DatabaseModels, 'Set'>) {}
@@ -42,6 +42,8 @@ export class SequelizeSetsRepository implements ISetsRepository {
       [Op.or]: [
         buildCatalogNameSearchWhere('name', term),
         buildCatalogNameSearchWhere('order', term),
+        buildCatalogNameSearchWhere('cardio', term),
+        buildCatalogNameSearchWhere('stretching', term),
       ],
     };
     const [total, rows] = await Promise.all([
@@ -73,6 +75,8 @@ export class SequelizeSetsRepository implements ISetsRepository {
     const row = await this.models.Set.create({
       name: input.name,
       order: input.order,
+      cardio: input.cardio,
+      stretching: input.stretching,
     });
     return row.get({ plain: true }) as SetDTO;
   }

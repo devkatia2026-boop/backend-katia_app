@@ -1,14 +1,13 @@
 import type { Request, Response } from 'express';
 import { ForeignKeyConstraintError } from 'sequelize';
-import type { ListRepsToExercisesUseCase } from '../../../application/use-cases/reps-to-exercises/list-reps-to-exercises.use-case';
-import type { GetRepsToExerciseUseCase } from '../../../application/use-cases/reps-to-exercises/get-reps-to-exercise.use-case';
-import type { CreateRepsToExerciseUseCase } from '../../../application/use-cases/trainer/create-reps-to-exercise.use-case';
-import type { UpdateRepsToExerciseUseCase } from '../../../application/use-cases/trainer/update-reps-to-exercise.use-case';
-import type { DeleteRepsToExerciseUseCase } from '../../../application/use-cases/trainer/delete-reps-to-exercise.use-case';
+import type { ListRepsToTrainingsUseCase } from '../../../application/use-cases/reps-to-trainings/list-reps-to-trainings.use-case';
+import type { GetRepsToTrainingUseCase } from '../../../application/use-cases/reps-to-trainings/get-reps-to-training.use-case';
+import type { CreateRepsToTrainingUseCase } from '../../../application/use-cases/trainer/create-reps-to-training.use-case';
+import type { UpdateRepsToTrainingUseCase } from '../../../application/use-cases/trainer/update-reps-to-training.use-case';
+import type { DeleteRepsToTrainingUseCase } from '../../../application/use-cases/trainer/delete-reps-to-training.use-case';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
-const FORBIDDEN = 'ForbiddenException';
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? '';
@@ -31,17 +30,13 @@ function parseId(raw: string | undefined): number {
   return n;
 }
 
-function authFrom(req: Request): { role: 'student' | 'trainer'; sub: string } {
-  return { role: req.authUser!.role!, sub: req.authUser!.sub };
-}
-
-export class RepsToExercisesController {
+export class RepsToTrainingsController {
   constructor(
-    private readonly listRows: ListRepsToExercisesUseCase,
-    private readonly getRow: GetRepsToExerciseUseCase,
-    private readonly createRow: CreateRepsToExerciseUseCase,
-    private readonly updateRow: UpdateRepsToExerciseUseCase,
-    private readonly deleteRow: DeleteRepsToExerciseUseCase
+    private readonly listRows: ListRepsToTrainingsUseCase,
+    private readonly getRow: GetRepsToTrainingUseCase,
+    private readonly createRow: CreateRepsToTrainingUseCase,
+    private readonly updateRow: UpdateRepsToTrainingUseCase,
+    private readonly deleteRow: DeleteRepsToTrainingUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -50,20 +45,18 @@ export class RepsToExercisesController {
         firstQuery(req.query.page),
         firstQuery(req.query.pageSize),
         firstQuery(req.query.exerciseId),
-        firstQuery(req.query.studentId),
-        firstQuery(req.query.trainingId),
-        authFrom(req)
+        firstQuery(req.query.trainingId)
       );
       res.status(200).json(result);
     } catch (err) {
-      this.handleRead(err, res, 'Erro ao listar orientações (reps) por exercício.');
+      this.handleRead(err, res, 'Erro ao listar orientações (reps) por treino.');
     }
   }
 
   async getById(req: Request, res: Response): Promise<void> {
     try {
       const id = parseId(firstParam(req.params.id));
-      const row = await this.getRow.execute(id, authFrom(req));
+      const row = await this.getRow.execute(id);
       res.status(200).json(row);
     } catch (err) {
       this.handleRead(err, res, 'Erro ao obter orientação.');
@@ -72,7 +65,7 @@ export class RepsToExercisesController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const created = await this.createRow.execute(req.body, req.authUser!.sub);
+      const created = await this.createRow.execute(req.body);
       res.status(201).json(created);
     } catch (err) {
       this.handleWrite(err, res, 'Erro ao criar orientação.');
@@ -82,7 +75,7 @@ export class RepsToExercisesController {
   async patch(req: Request, res: Response): Promise<void> {
     try {
       const id = parseId(firstParam(req.params.id));
-      const updated = await this.updateRow.execute(id, req.body, req.authUser!.sub);
+      const updated = await this.updateRow.execute(id, req.body);
       res.status(200).json(updated);
     } catch (err) {
       this.handleWrite(err, res, 'Erro ao atualizar orientação.');
@@ -92,7 +85,7 @@ export class RepsToExercisesController {
   async delete(req: Request, res: Response): Promise<void> {
     try {
       const id = parseId(firstParam(req.params.id));
-      await this.deleteRow.execute(id, req.authUser!.sub);
+      await this.deleteRow.execute(id);
       res.status(204).end();
     } catch (err) {
       this.handleWrite(err, res, 'Erro ao excluir orientação.');
@@ -105,10 +98,6 @@ export class RepsToExercisesController {
       res.status(400).json({ message: error.message ?? 'Parâmetro inválido.' });
       return;
     }
-    if (error.name === FORBIDDEN) {
-      res.status(403).json({ message: error.message ?? 'Proibido.' });
-      return;
-    }
     if (error.name === NOT_FOUND) {
       res.status(404).json({ message: error.message ?? 'Não encontrado.' });
       return;
@@ -118,16 +107,12 @@ export class RepsToExercisesController {
 
   private handleWrite(err: unknown, res: Response, fallback: string): void {
     if (err instanceof ForeignKeyConstraintError) {
-      res.status(400).json({ message: 'exercise_id, training_id ou student_id não existe.' });
+      res.status(400).json({ message: 'exercise_id ou training_id não existe.' });
       return;
     }
     const error = err as { name?: string; message?: string };
     if (error.name === VALIDATION) {
       res.status(400).json({ message: error.message ?? 'Dados inválidos.' });
-      return;
-    }
-    if (error.name === FORBIDDEN) {
-      res.status(403).json({ message: error.message ?? 'Proibido.' });
       return;
     }
     if (error.name === NOT_FOUND) {

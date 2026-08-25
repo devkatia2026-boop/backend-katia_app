@@ -15,7 +15,7 @@ import type { PagedList } from '../../application/ports/social-feed.port';
 
 const ATTR = ['id', 'student_id', 'sets_id', 'validity', 'status', 'created_at'] as const;
 const STUDENT_BRIEF = ['id', 'full_name', 'photo_perfil', 'email'] as const;
-const SET_NEST_ATTR = ['id', 'name', 'order', 'created_at'] as const;
+const SET_NEST_ATTR = ['id', 'name', 'order', 'cardio', 'stretching', 'created_at'] as const;
 
 function buildWhere(filters: ListSetsToStudentsFilters): Record<string, unknown> {
   const where: Record<string, unknown> = {};

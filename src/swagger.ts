@@ -1599,6 +1599,8 @@ export const swaggerDocument = {
                                   id: { type: 'integer' },
                                   name: { type: 'string', nullable: true },
                                   order: { type: 'string', nullable: true },
+                                  cardio: { type: 'string', nullable: true },
+                                  stretching: { type: 'string', nullable: true },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -1631,6 +1633,8 @@ export const swaggerDocument = {
                                   id: { type: 'integer' },
                                   name: { type: 'string', nullable: true },
                                   order: { type: 'string', nullable: true },
+                                  cardio: { type: 'string', nullable: true },
+                                  stretching: { type: 'string', nullable: true },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -3262,6 +3266,8 @@ export const swaggerDocument = {
                           id: { type: 'integer' },
                           name: { type: 'string', nullable: true },
                           order: { type: 'string', nullable: true },
+                          cardio: { type: 'string', nullable: true },
+                          stretching: { type: 'string', nullable: true },
                           created_at: { type: 'string', format: 'date-time' },
                         },
                       },
@@ -3281,7 +3287,7 @@ export const swaggerDocument = {
       post: {
         summary: 'Criar set',
         description:
-          'Campo `order` obrigatório com ao menos um id de treino (CSV). `name` é opcional.',
+          'Campo `order` obrigatório com ao menos um id de treino (CSV). `name`, `cardio` e `stretching` são opcionais.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -3296,6 +3302,8 @@ export const swaggerDocument = {
                     type: 'string',
                     description: 'Ids de treinos separados por vírgula, ex.: "12,5,8"',
                   },
+                  cardio: { type: 'string', nullable: true },
+                  stretching: { type: 'string', nullable: true },
                 },
               },
             },
@@ -3313,7 +3321,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Pesquisar sets por nome ou ordem',
         description:
-          'Busca por substring nos campos `name` e `order` com `unaccent` + case-insensitive. Retorna `total` com a quantidade real de resultados da busca.',
+          'Busca por substring nos campos `name`, `order`, `cardio` e `stretching` com `unaccent` + case-insensitive. Retorna `total` com a quantidade real de resultados da busca.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -3321,7 +3329,7 @@ export const swaggerDocument = {
             in: 'query',
             required: true,
             schema: { type: 'string', maxLength: 200 },
-            description: 'Termo de busca no nome ou ordem do set',
+            description: 'Termo de busca no nome, ordem, cardio ou stretching do set',
           },
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
           {
@@ -3346,6 +3354,8 @@ export const swaggerDocument = {
                           id: { type: 'integer' },
                           name: { type: 'string', nullable: true },
                           order: { type: 'string', nullable: true },
+                          cardio: { type: 'string', nullable: true },
+                          stretching: { type: 'string', nullable: true },
                           created_at: { type: 'string', format: 'date-time' },
                         },
                       },
@@ -3395,6 +3405,8 @@ export const swaggerDocument = {
                 properties: {
                   name: { type: 'string', nullable: true },
                   order: { type: 'string', nullable: true },
+                  cardio: { type: 'string', nullable: true },
+                  stretching: { type: 'string', nullable: true },
                 },
               },
             },
@@ -3483,6 +3495,8 @@ export const swaggerDocument = {
                                   id: { type: 'integer' },
                                   name: { type: 'string', nullable: true },
                                   order: { type: 'string', nullable: true },
+                                  cardio: { type: 'string', nullable: true },
+                                  stretching: { type: 'string', nullable: true },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -3495,6 +3509,8 @@ export const swaggerDocument = {
                               id: { type: 'integer' },
                               name: { type: 'string', nullable: true },
                               order: { type: 'string', nullable: true },
+                              cardio: { type: 'string', nullable: true },
+                              stretching: { type: 'string', nullable: true },
                               created_at: { type: 'string', format: 'date-time' },
                             },
                           },
@@ -4026,6 +4042,8 @@ export const swaggerDocument = {
                     id: { type: 'integer' },
                     name: { type: 'string', nullable: true },
                     order: { type: 'string', nullable: true },
+                    cardio: { type: 'string', nullable: true },
+                    stretching: { type: 'string', nullable: true },
                     created_at: { type: 'string', format: 'date-time' },
                   },
                 },
@@ -4661,6 +4679,8 @@ export const swaggerDocument = {
                                   id: { type: 'integer' },
                                   name: { type: 'string', nullable: true },
                                   order: { type: 'string', nullable: true },
+                                  cardio: { type: 'string', nullable: true },
+                                  stretching: { type: 'string', nullable: true },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -4673,6 +4693,8 @@ export const swaggerDocument = {
                               id: { type: 'integer' },
                               name: { type: 'string', nullable: true },
                               order: { type: 'string', nullable: true },
+                              cardio: { type: 'string', nullable: true },
+                              stretching: { type: 'string', nullable: true },
                               created_at: { type: 'string', format: 'date-time' },
                             },
                           },
@@ -4854,6 +4876,8 @@ export const swaggerDocument = {
                                   id: { type: 'integer' },
                                   name: { type: 'string', nullable: true },
                                   order: { type: 'string', nullable: true },
+                                  cardio: { type: 'string', nullable: true },
+                                  stretching: { type: 'string', nullable: true },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -4876,6 +4900,8 @@ export const swaggerDocument = {
                                   id: { type: 'integer' },
                                   name: { type: 'string', nullable: true },
                                   order: { type: 'string', nullable: true },
+                                  cardio: { type: 'string', nullable: true },
+                                  stretching: { type: 'string', nullable: true },
                                   created_at: { type: 'string', format: 'date-time' },
                                 },
                               },
@@ -5016,10 +5042,11 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar orientações (reps/obs) por exercício',
         description:
-          '**Obrigatório:** `exerciseId`. **Aluna:** vê apenas os próprios registros para esse exercício (`student` vem null nos itens). **Treinadora:** vê orientações das suas alunas; opcional `studentId` (UUID) para filtrar uma aluna.',
+          '**Obrigatório:** `exerciseId`. **Opcional:** `trainingId`, `studentId`. **Aluna:** vê apenas os próprios registros para esse exercício (`student` vem null nos itens). **Treinadora:** vê orientações das suas alunas; opcional `studentId` (UUID) para filtrar uma aluna.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'exerciseId', in: 'query', required: true, schema: { type: 'integer', minimum: 1 } },
+          { name: 'trainingId', in: 'query', schema: { type: 'integer', minimum: 1 } },
           { name: 'studentId', in: 'query', schema: { type: 'string', format: 'uuid' } },
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
           {
@@ -5043,6 +5070,7 @@ export const swaggerDocument = {
                         properties: {
                           id: { type: 'integer' },
                           exercise_id: { type: 'integer' },
+                          training_id: { type: 'integer' },
                           student_id: { type: 'string', format: 'uuid' },
                           reps: { type: 'string', nullable: true },
                           obs: { type: 'string', nullable: true },
@@ -5081,9 +5109,10 @@ export const swaggerDocument = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['exercise_id', 'student_id'],
+                required: ['exercise_id', 'training_id', 'student_id'],
                 properties: {
                   exercise_id: { type: 'integer', minimum: 1 },
+                  training_id: { type: 'integer', minimum: 1 },
                   student_id: { type: 'string', format: 'uuid' },
                   reps: { type: 'string', nullable: true },
                   obs: { type: 'string', nullable: true },
@@ -5132,6 +5161,7 @@ export const swaggerDocument = {
                 minProperties: 1,
                 properties: {
                   exercise_id: { type: 'integer', minimum: 1 },
+                  training_id: { type: 'integer', minimum: 1 },
                   student_id: { type: 'string', format: 'uuid' },
                   reps: { type: 'string', nullable: true },
                   obs: { type: 'string', nullable: true },
@@ -5160,6 +5190,148 @@ export const swaggerDocument = {
           '400': { description: 'ID inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Sem permissão' },
+          '404': { description: 'Não encontrado' },
+        },
+      },
+    },
+    '/reps-to-trainings': {
+      get: {
+        summary: 'Listar orientações (reps/obs) por exercício e treino',
+        description:
+          '**Obrigatórios:** `exerciseId` e `trainingId`. **Aluna e treinadora:** leitura liberada para o par exercício↔treino.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'exerciseId', in: 'query', required: true, schema: { type: 'integer', minimum: 1 } },
+          { name: 'trainingId', in: 'query', required: true, schema: { type: 'integer', minimum: 1 } },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'items, total, page, pageSize',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer' },
+                          exercise_id: { type: 'integer' },
+                          training_id: { type: 'integer' },
+                          reps: { type: 'string', nullable: true },
+                          obs: { type: 'string', nullable: true },
+                          created_at: { type: 'string', format: 'date-time' },
+                        },
+                      },
+                    },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'exerciseId ou trainingId ausente ou inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+        },
+      },
+      post: {
+        summary: 'Criar orientação (reps) para exercício em um treino',
+        description: 'Somente treinadora. Ao menos um de `reps` ou `obs` com texto.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['exercise_id', 'training_id'],
+                properties: {
+                  exercise_id: { type: 'integer', minimum: 1 },
+                  training_id: { type: 'integer', minimum: 1 },
+                  reps: { type: 'string', nullable: true },
+                  obs: { type: 'string', nullable: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Criado' },
+          '400': { description: 'Corpo inválido ou FK' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+        },
+      },
+    },
+    '/reps-to-trainings/{id}': {
+      get: {
+        summary: 'Obter orientação (reps/training) por id',
+        description: 'Aluna e treinadora podem ler.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': { description: 'Registro' },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '404': { description: 'Não encontrado' },
+        },
+      },
+      patch: {
+        summary: 'Atualizar orientação (reps/training)',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  exercise_id: { type: 'integer', minimum: 1 },
+                  training_id: { type: 'integer', minimum: 1 },
+                  reps: { type: 'string', nullable: true },
+                  obs: { type: 'string', nullable: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Atualizado' },
+          '400': { description: 'Corpo inválido ou FK' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '404': { description: 'Não encontrado' },
+        },
+      },
+      delete: {
+        summary: 'Excluir orientação (reps/training)',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Excluído' },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
           '404': { description: 'Não encontrado' },
         },
       },

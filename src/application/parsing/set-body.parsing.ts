@@ -51,9 +51,12 @@ export function parseSetCreateBody(body: unknown): CreateSetInput {
   }
 
   const name = 'name' in body ? expectNullableTrimmed(body.name ?? null, 'name') : null;
+  const cardio = 'cardio' in body ? expectNullableTrimmed(body.cardio ?? null, 'cardio') : null;
+  const stretching =
+    'stretching' in body ? expectNullableTrimmed(body.stretching ?? null, 'stretching') : null;
   const order = expectOrderWithTrainings(body.order ?? null, 'order');
 
-  return { name, order };
+  return { name, order, cardio, stretching };
 }
 
 export function parseSetPatchBody(body: unknown): PatchSetInput {
@@ -70,6 +73,14 @@ export function parseSetPatchBody(body: unknown): PatchSetInput {
   }
   if ('order' in body) {
     patch.order = expectNullableTrimmed(body.order, 'order');
+    n++;
+  }
+  if ('cardio' in body) {
+    patch.cardio = expectNullableTrimmed(body.cardio, 'cardio');
+    n++;
+  }
+  if ('stretching' in body) {
+    patch.stretching = expectNullableTrimmed(body.stretching, 'stretching');
     n++;
   }
   if (n === 0) {

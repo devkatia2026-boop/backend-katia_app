@@ -45,7 +45,8 @@ export class ExercisesToTrainingsController {
         firstQuery(req.query.page),
         firstQuery(req.query.pageSize),
         firstQuery(req.query.trainingId),
-        firstQuery(req.query.exerciseId)
+        firstQuery(req.query.exerciseId),
+        firstQuery(req.query.links)
       );
       res.status(200).json(result);
     } catch (err) {

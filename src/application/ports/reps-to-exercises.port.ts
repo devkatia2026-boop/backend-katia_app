@@ -8,6 +8,7 @@ export type RepsToExerciseStudentBrief = {
 export type RepsToExerciseDTO = {
   id: number;
   exercise_id: number;
+  training_id: number;
   student_id: string;
   reps: string | null;
   obs: string | null;
@@ -17,6 +18,7 @@ export type RepsToExerciseDTO = {
 
 export type CreateRepsToExerciseInput = {
   exercise_id: number;
+  training_id: number;
   student_id: string;
   reps: string | null;
   obs: string | null;
@@ -24,6 +26,7 @@ export type CreateRepsToExerciseInput = {
 
 export type PatchRepsToExerciseInput = Partial<{
   exercise_id: number;
+  training_id: number;
   student_id: string;
   reps: string | null;
   obs: string | null;
@@ -35,12 +38,14 @@ export interface IRepsToExercisesRepository {
     page: number,
     pageSize: number,
     viewer: { role: 'student' | 'trainer'; sub: string },
-    filterStudentId?: string
+    filterStudentId?: string,
+    filterTrainingId?: number
   ): Promise<PagedList<RepsToExerciseDTO>>;
   findById(id: number): Promise<RepsToExerciseDTO | null>;
-  findByStudentAndExercise(
+  findByStudentExerciseAndTraining(
     studentId: string,
-    exerciseId: number
+    exerciseId: number,
+    trainingId: number
   ): Promise<RepsToExerciseDTO | null>;
   getTrainerIdForRowStudent(studentId: string): Promise<string | null>;
   create(input: CreateRepsToExerciseInput): Promise<RepsToExerciseDTO>;
