@@ -65,6 +65,11 @@ export function parseRepsToExerciseCreateBody(body: unknown): CreateRepsToExerci
   }
   const reps = 'reps' in body ? expectNullableTrimmedStringOrNull(body.reps ?? null, 'reps') : null;
   const obs = 'obs' in body ? expectNullableTrimmedStringOrNull(body.obs ?? null, 'obs') : null;
+  const methodology =
+    'methodology' in body
+      ? expectNullableTrimmedStringOrNull(body.methodology ?? null, 'methodology')
+      : null;
+  const rest = 'rest' in body ? expectNullableTrimmedStringOrNull(body.rest ?? null, 'rest') : null;
   if (reps === null && obs === null) {
     const err = new Error('Informe ao menos "reps" ou "obs" com texto.');
     err.name = VALIDATION;
@@ -76,6 +81,8 @@ export function parseRepsToExerciseCreateBody(body: unknown): CreateRepsToExerci
     student_id: expectUuid(body.student_id, 'student_id'),
     reps,
     obs,
+    methodology,
+    rest,
   };
 }
 
@@ -105,6 +112,14 @@ export function parseRepsToExercisePatchBody(body: unknown): PatchRepsToExercise
   }
   if ('obs' in body) {
     patch.obs = expectNullableTrimmedStringOrNull(body.obs, 'obs');
+    n++;
+  }
+  if ('methodology' in body) {
+    patch.methodology = expectNullableTrimmedStringOrNull(body.methodology, 'methodology');
+    n++;
+  }
+  if ('rest' in body) {
+    patch.rest = expectNullableTrimmedStringOrNull(body.rest, 'rest');
     n++;
   }
   if (n === 0) {

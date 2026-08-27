@@ -9,7 +9,7 @@ import type {
 } from '../../application/ports/reps-to-exercises.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = ['id', 'exercise_id', 'training_id', 'student_id', 'reps', 'obs', 'created_at'] as const;
+const ATTR = ['id', 'exercise_id', 'training_id', 'student_id', 'reps', 'obs', 'methodology', 'rest', 'created_at'] as const;
 const STUDENT_LIST_ATTR = ['id', 'full_name'] as const;
 
 function mapRowWithStudent(
@@ -32,6 +32,8 @@ function toDto(
     student_id: raw.student_id,
     reps: raw.reps,
     obs: raw.obs,
+    methodology: raw.methodology,
+    rest: raw.rest,
     created_at: raw.created_at,
     student: raw.student ?? null,
   };

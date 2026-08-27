@@ -6,6 +6,8 @@ export type RepsToTrainingDTO = {
   training_id: number;
   reps: string | null;
   obs: string | null;
+  methodology: string | null;
+  rest: string | null;
   created_at: Date;
 };
 
@@ -14,6 +16,8 @@ export type CreateRepsToTrainingInput = {
   training_id: number;
   reps: string | null;
   obs: string | null;
+  methodology: string | null;
+  rest: string | null;
 };
 
 export type PatchRepsToTrainingInput = Partial<{
@@ -21,6 +25,8 @@ export type PatchRepsToTrainingInput = Partial<{
   training_id: number;
   reps: string | null;
   obs: string | null;
+  methodology: string | null;
+  rest: string | null;
 }>;
 
 export interface IRepsToTrainingsRepository {

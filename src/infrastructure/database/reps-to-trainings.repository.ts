@@ -7,7 +7,7 @@ import type {
 } from '../../application/ports/reps-to-trainings.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = ['id', 'exercise_id', 'training_id', 'reps', 'obs', 'created_at'] as const;
+const ATTR = ['id', 'exercise_id', 'training_id', 'reps', 'obs', 'methodology', 'rest', 'created_at'] as const;
 
 function toDto(raw: RepsToTrainingDTO): RepsToTrainingDTO {
   return {
@@ -16,6 +16,8 @@ function toDto(raw: RepsToTrainingDTO): RepsToTrainingDTO {
     training_id: raw.training_id,
     reps: raw.reps,
     obs: raw.obs,
+    methodology: raw.methodology,
+    rest: raw.rest,
     created_at: raw.created_at,
   };
 }

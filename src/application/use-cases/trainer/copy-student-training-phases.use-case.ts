@@ -182,6 +182,8 @@ export class CopyStudentTrainingPhasesUseCase {
           await this.repsToExercisesRepo.update(targetRep.id, {
             reps: sourceRep.reps,
             obs: sourceRep.obs,
+            methodology: sourceRep.methodology,
+            rest: sourceRep.rest,
           });
         } else {
           await this.repsToExercisesRepo.create({
@@ -190,6 +192,8 @@ export class CopyStudentTrainingPhasesUseCase {
             student_id: targetStudentId,
             reps: sourceRep.reps,
             obs: sourceRep.obs,
+            methodology: sourceRep.methodology,
+            rest: sourceRep.rest,
           });
         }
 

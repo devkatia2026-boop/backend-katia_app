@@ -12,6 +12,8 @@ export type RepsToExerciseDTO = {
   student_id: string;
   reps: string | null;
   obs: string | null;
+  methodology: string | null;
+  rest: string | null;
   created_at: Date;
   student: RepsToExerciseStudentBrief | null;
 };
@@ -22,6 +24,8 @@ export type CreateRepsToExerciseInput = {
   student_id: string;
   reps: string | null;
   obs: string | null;
+  methodology: string | null;
+  rest: string | null;
 };
 
 export type PatchRepsToExerciseInput = Partial<{
@@ -30,6 +34,8 @@ export type PatchRepsToExerciseInput = Partial<{
   student_id: string;
   reps: string | null;
   obs: string | null;
+  methodology: string | null;
+  rest: string | null;
 }>;
 
 export interface IRepsToExercisesRepository {

@@ -7,6 +7,8 @@ export class RepsToExercises extends Model {
   declare student_id: string;
   declare reps: string | null;
   declare obs: string | null;
+  declare methodology: string | null;
+  declare rest: string | null;
   declare readonly created_at: Date;
 }
 
@@ -32,6 +34,8 @@ export function initRepsToExercises(sequelize: Sequelize): typeof RepsToExercise
       },
       reps: DataTypes.STRING,
       obs: DataTypes.TEXT,
+      methodology: DataTypes.STRING,
+      rest: DataTypes.STRING,
     },
     {
       sequelize,
