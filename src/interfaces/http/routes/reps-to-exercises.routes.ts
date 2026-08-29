@@ -17,13 +17,13 @@ export function createRepsToExercisesRoutes(
     controller.getById(req, res)
   );
 
-  router.post('/', [requireAuth, requireTrainer], (req: Request, res: Response) =>
+  router.post('/', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.create(req, res)
   );
-  router.patch('/:id', [requireAuth, requireTrainer], (req: Request, res: Response) =>
+  router.patch('/:id', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.patch(req, res)
   );
-  router.delete('/:id', [requireAuth, requireTrainer], (req: Request, res: Response) =>
+  router.delete('/:id', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.delete(req, res)
   );
 

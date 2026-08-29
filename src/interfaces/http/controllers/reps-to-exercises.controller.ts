@@ -72,7 +72,7 @@ export class RepsToExercisesController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const created = await this.createRow.execute(req.body, req.authUser!.sub);
+      const created = await this.createRow.execute(req.body, authFrom(req));
       res.status(201).json(created);
     } catch (err) {
       this.handleWrite(err, res, 'Erro ao criar orientação.');
@@ -82,7 +82,7 @@ export class RepsToExercisesController {
   async patch(req: Request, res: Response): Promise<void> {
     try {
       const id = parseId(firstParam(req.params.id));
-      const updated = await this.updateRow.execute(id, req.body, req.authUser!.sub);
+      const updated = await this.updateRow.execute(id, req.body, authFrom(req));
       res.status(200).json(updated);
     } catch (err) {
       this.handleWrite(err, res, 'Erro ao atualizar orientação.');
@@ -92,7 +92,7 @@ export class RepsToExercisesController {
   async delete(req: Request, res: Response): Promise<void> {
     try {
       const id = parseId(firstParam(req.params.id));
-      await this.deleteRow.execute(id, req.authUser!.sub);
+      await this.deleteRow.execute(id, authFrom(req));
       res.status(204).end();
     } catch (err) {
       this.handleWrite(err, res, 'Erro ao excluir orientação.');

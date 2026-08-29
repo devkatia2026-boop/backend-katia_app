@@ -5103,7 +5103,8 @@ export const swaggerDocument = {
       },
       post: {
         summary: 'Criar orientação para aluna em um exercício',
-        description: 'Somente treinadora; `student_id` deve ser aluna dela. Ao menos um de `reps` ou `obs` com texto.',
+        description:
+          '**Aluna:** cria apenas para si (`student_id` = UUID dela). **Treinadora:** `student_id` deve ser aluna dela. Ao menos um de `reps` ou `obs` com texto.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -5129,7 +5130,7 @@ export const swaggerDocument = {
           '201': { description: 'Criado' },
           '400': { description: 'Corpo inválido ou FK' },
           '401': { description: 'Token ausente ou inválido' },
-          '403': { description: 'Apenas treinadoras / aluna não é sua' },
+          '403': { description: 'Sem permissão (aluna com student_id de outra ou treinadora sem vínculo)' },
         },
       },
     },
@@ -5151,7 +5152,7 @@ export const swaggerDocument = {
       },
       patch: {
         summary: 'Atualizar orientação',
-        description: 'Somente treinadora dona da aluna do registro.',
+        description: 'Aluna se for dela; treinadora se a aluna for sua.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
@@ -5186,7 +5187,7 @@ export const swaggerDocument = {
       },
       delete: {
         summary: 'Excluir orientação',
-        description: 'Somente treinadora dona da aluna do registro.',
+        description: 'Aluna se for dela; treinadora se a aluna for sua.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
