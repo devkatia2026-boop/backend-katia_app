@@ -342,6 +342,22 @@ import { CreateProgramToStudentUseCase } from './application/use-cases/student/c
 import { LeaveProgramToStudentUseCase } from './application/use-cases/student/leave-program-to-student.use-case';
 import { ProgramsToStudentsController } from './interfaces/http/controllers/programs-to-students.controller';
 import { createProgramsToStudentsRoutes } from './interfaces/http/routes/programs-to-students.routes';
+import { SequelizeFoldersRepository } from './infrastructure/database/folders.repository';
+import { SequelizeFoldersToTypeRepository } from './infrastructure/database/folders-to-type.repository';
+import { ListFoldersUseCase } from './application/use-cases/folders/list-folders.use-case';
+import { GetFolderUseCase } from './application/use-cases/folders/get-folder.use-case';
+import { CreateFolderUseCase } from './application/use-cases/trainer/create-folder.use-case';
+import { UpdateFolderUseCase } from './application/use-cases/trainer/update-folder.use-case';
+import { DeleteFolderUseCase } from './application/use-cases/trainer/delete-folder.use-case';
+import { ListFoldersToTypeUseCase } from './application/use-cases/folders-to-type/list-folders-to-type.use-case';
+import { GetFolderToTypeUseCase } from './application/use-cases/folders-to-type/get-folder-to-type.use-case';
+import { CreateFolderToTypeUseCase } from './application/use-cases/trainer/create-folder-to-type.use-case';
+import { UpdateFolderToTypeUseCase } from './application/use-cases/trainer/update-folder-to-type.use-case';
+import { DeleteFolderToTypeUseCase } from './application/use-cases/trainer/delete-folder-to-type.use-case';
+import { FoldersController } from './interfaces/http/controllers/folders.controller';
+import { FoldersToTypeController } from './interfaces/http/controllers/folders-to-type.controller';
+import { createFoldersRoutes } from './interfaces/http/routes/folders.routes';
+import { createFoldersToTypeRoutes } from './interfaces/http/routes/folders-to-type.routes';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -724,6 +740,35 @@ app.use(
     requireStudentOrTrainer,
     requireTrainer
   )
+);
+
+const foldersRepository = new SequelizeFoldersRepository({ Folder: models.Folder });
+const foldersController = new FoldersController(
+  new ListFoldersUseCase(foldersRepository),
+  new GetFolderUseCase(foldersRepository),
+  new CreateFolderUseCase(foldersRepository),
+  new UpdateFolderUseCase(foldersRepository),
+  new DeleteFolderUseCase(foldersRepository)
+);
+app.use('/folders', createFoldersRoutes(foldersController, requireAuth, requireTrainer));
+
+const foldersToTypeRepository = new SequelizeFoldersToTypeRepository({
+  FoldersToType: models.FoldersToType,
+  Folder: models.Folder,
+  Training: models.Training,
+  Exercise: models.Exercise,
+  Set: models.Set,
+});
+const foldersToTypeController = new FoldersToTypeController(
+  new ListFoldersToTypeUseCase(foldersToTypeRepository),
+  new GetFolderToTypeUseCase(foldersToTypeRepository),
+  new CreateFolderToTypeUseCase(foldersToTypeRepository),
+  new UpdateFolderToTypeUseCase(foldersToTypeRepository),
+  new DeleteFolderToTypeUseCase(foldersToTypeRepository)
+);
+app.use(
+  '/folders-to-type',
+  createFoldersToTypeRoutes(foldersToTypeController, requireAuth, requireTrainer)
 );
 
 const studentPhysicalsRepository = new SequelizeStudentPhysicalsRepository({

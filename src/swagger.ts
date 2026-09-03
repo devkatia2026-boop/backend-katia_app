@@ -45,6 +45,11 @@ export const swaggerDocument = {
       description:
         'Integrações externas sem autenticação JWT. Webhook Eduzz atualiza `type_plan`, `validation` e `validation_plan` da aluna pelo e-mail do comprador (`data.buyer.email`). Scheduler interno às **00:00** (horário de Brasília) expira planos cuja `validation_plan` é igual ao dia atual (`type_plan: null`, `validation: nao`, `refresh_token: null` e logout no Cognito).',
     },
+    {
+      name: 'Pastas',
+      description:
+        'Organização da treinadora: pastas (`folders`) e vínculos de treino, exercício ou set a uma pasta (`folderstotype`, rota `/folders-to-type`). **Somente treinadora autenticada.** `type`: `T` = treino (`training_id`), `E` = exercício (`exercise_id`), `S` = set (`set_id`).',
+    },
   ],
   info: {
     title: 'API Backend Reta AI',
@@ -537,6 +542,118 @@ export const swaggerDocument = {
         properties: {
           version: { type: 'string', example: '1.2.0' },
           created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      Folder: {
+        type: 'object',
+        required: ['id', 'title', 'type', 'created_at'],
+        properties: {
+          id: { type: 'integer', example: 1 },
+          title: { type: 'string', example: 'Treinos de perna' },
+          type: { type: 'string', enum: ['T', 'E', 'S'], example: 'T' },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      FolderToType: {
+        type: 'object',
+        required: [
+          'id',
+          'folder_id',
+          'training_id',
+          'exercise_id',
+          'set_id',
+          'type',
+          'created_at',
+        ],
+        properties: {
+          id: { type: 'integer', example: 1 },
+          folder_id: { type: 'integer', example: 1 },
+          training_id: { type: 'integer', nullable: true },
+          exercise_id: { type: 'integer', nullable: true },
+          set_id: { type: 'integer', nullable: true },
+          type: { type: 'string', enum: ['T', 'E', 'S'] },
+          created_at: { type: 'string', format: 'date-time' },
+          folder: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              id: { type: 'integer' },
+              title: { type: 'string' },
+              created_at: { type: 'string', format: 'date-time' },
+            },
+          },
+          training: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              id: { type: 'integer' },
+              lyric: { type: 'string', nullable: true },
+              description: { type: 'string', nullable: true },
+              time: { type: 'integer', nullable: true },
+              type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
+              muscles: { type: 'string', nullable: true },
+              created_at: { type: 'string', format: 'date-time' },
+            },
+          },
+          exercise: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              id: { type: 'integer' },
+              name: { type: 'string', nullable: true },
+              video: { type: 'string', nullable: true },
+              type: { type: 'string', nullable: true },
+              description: { type: 'string', nullable: true },
+              level: { type: 'string', nullable: true },
+              created_at: { type: 'string', format: 'date-time' },
+            },
+          },
+          set: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              id: { type: 'integer' },
+              name: { type: 'string', nullable: true },
+              order: { type: 'string', nullable: true },
+              cardio: { type: 'string', nullable: true },
+              stretching: { type: 'string', nullable: true },
+              created_at: { type: 'string', format: 'date-time' },
+            },
+          },
+        },
+      },
+      FolderToTypeCreateBody: {
+        type: 'object',
+        required: ['folder_id', 'type'],
+        properties: {
+          folder_id: { type: 'integer', minimum: 1 },
+          type: { type: 'string', enum: ['T', 'E', 'S'] },
+          training_id: {
+            type: 'integer',
+            minimum: 1,
+            description: 'Obrigatório quando type é T.',
+          },
+          exercise_id: {
+            type: 'integer',
+            minimum: 1,
+            description: 'Obrigatório quando type é E.',
+          },
+          set_id: {
+            type: 'integer',
+            minimum: 1,
+            description: 'Obrigatório quando type é S.',
+          },
+        },
+      },
+      FolderToTypePatchBody: {
+        type: 'object',
+        minProperties: 1,
+        properties: {
+          folder_id: { type: 'integer', minimum: 1 },
+          type: { type: 'string', enum: ['T', 'E', 'S'] },
+          training_id: { type: 'integer', minimum: 1, nullable: true },
+          exercise_id: { type: 'integer', minimum: 1, nullable: true },
+          set_id: { type: 'integer', minimum: 1, nullable: true },
         },
       },
       EduzzWebhookResult: {
@@ -5495,6 +5612,295 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Sem permissão' },
           '404': { description: 'Não encontrado' },
+        },
+      },
+    },
+    '/folders': {
+      get: {
+        tags: ['Pastas'],
+        summary: 'Listar pastas',
+        description: 'Paginado, mais recentes primeiro. Somente treinadora autenticada.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+          { name: 'type', in: 'query', schema: { type: 'string', enum: ['T', 'E', 'S'] }, description: 'Filtra por aba: T treinos, E exercícios, S fases' },
+        ],
+        responses: {
+          '200': {
+            description: 'items, total, page, pageSize',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['items', 'total', 'page', 'pageSize'],
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Folder' },
+                    },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+        },
+      },
+      post: {
+        tags: ['Pastas'],
+        summary: 'Criar pasta',
+        description: 'Somente treinadora autenticada.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['title', 'type'],
+                properties: {
+                  title: { type: 'string', minLength: 1 },
+                  type: { type: 'string', enum: ['T', 'E', 'S'] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Pasta criada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Folder' },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+        },
+      },
+    },
+    '/folders/{id}': {
+      get: {
+        tags: ['Pastas'],
+        summary: 'Obter pasta por id',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Pasta',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Folder' },
+              },
+            },
+          },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '404': { description: 'Pasta não encontrada' },
+        },
+      },
+      patch: {
+        tags: ['Pastas'],
+        summary: 'Atualizar pasta',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['title'],
+                properties: {
+                  title: { type: 'string', minLength: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Pasta atualizada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Folder' },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '404': { description: 'Pasta não encontrada' },
+        },
+      },
+      delete: {
+        tags: ['Pastas'],
+        summary: 'Excluir pasta',
+        description: 'Remove a pasta e, em cascata, os vínculos em `folderstotype`.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Pasta excluída' },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '404': { description: 'Pasta não encontrada' },
+        },
+      },
+    },
+    '/folders-to-type': {
+      get: {
+        tags: ['Pastas'],
+        summary: 'Listar vínculos pasta↔conteúdo',
+        description:
+          'Paginado, mais recentes primeiro. Somente treinadora autenticada. Filtros opcionais: `folderId`, `type` (`T`|`E`|`S`), `trainingId`, `exerciseId`, `setId`.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+          { name: 'folderId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+          { name: 'type', in: 'query', schema: { type: 'string', enum: ['T', 'E', 'S'] } },
+          { name: 'trainingId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+          { name: 'exerciseId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+          { name: 'setId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'items, total, page, pageSize',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['items', 'total', 'page', 'pageSize'],
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/FolderToType' },
+                    },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Filtro inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+        },
+      },
+      post: {
+        tags: ['Pastas'],
+        summary: 'Associar treino, exercício ou set a uma pasta',
+        description:
+          'Somente treinadora autenticada. `type` define qual FK é obrigatória: `T` → `training_id`, `E` → `exercise_id`, `S` → `set_id`.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/FolderToTypeCreateBody' },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Vínculo criado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FolderToType' },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido ou FK inexistente' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+        },
+      },
+    },
+    '/folders-to-type/{id}': {
+      get: {
+        tags: ['Pastas'],
+        summary: 'Obter vínculo pasta↔conteúdo por id',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Vínculo',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FolderToType' },
+              },
+            },
+          },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '404': { description: 'Vínculo não encontrado' },
+        },
+      },
+      patch: {
+        tags: ['Pastas'],
+        summary: 'Atualizar vínculo pasta↔conteúdo',
+        description:
+          'Somente treinadora autenticada. Após o merge, a combinação `type` + FKs deve permanecer consistente.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/FolderToTypePatchBody' },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Vínculo atualizado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FolderToType' },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido ou FK inexistente' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '404': { description: 'Vínculo não encontrado' },
+        },
+      },
+      delete: {
+        tags: ['Pastas'],
+        summary: 'Excluir vínculo pasta↔conteúdo',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Vínculo excluído' },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
+          '404': { description: 'Vínculo não encontrado' },
         },
       },
     },

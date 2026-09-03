@@ -33,6 +33,8 @@ import { initWell, Well } from './well.model';
 import { initRevaluation, Revaluation } from './revaluation.model';
 import { initNotice, Notice } from './notice.model';
 import { initAppVersion, AppVersion } from './app-version.model';
+import { initFolder, Folder } from './folder.model';
+import { initFoldersToType, FoldersToType } from './folders-to-type.model';
 
 export type DatabaseModels = {
   Trainer: typeof Trainer;
@@ -69,6 +71,8 @@ export type DatabaseModels = {
   Revaluation: typeof Revaluation;
   Notice: typeof Notice;
   AppVersion: typeof AppVersion;
+  Folder: typeof Folder;
+  FoldersToType: typeof FoldersToType;
 };
 
 function associate(models: DatabaseModels): void {
@@ -105,6 +109,8 @@ function associate(models: DatabaseModels): void {
     Well,
     Revaluation,
     Notice,
+    Folder,
+    FoldersToType,
   } = models;
 
   Trainer.hasMany(Student, { foreignKey: 'trainer_id', as: 'students' });
@@ -249,6 +255,15 @@ function associate(models: DatabaseModels): void {
 
   Wellbeing.hasMany(Well, { foreignKey: 'wellbeing_id', as: 'wells' });
   Well.belongsTo(Wellbeing, { foreignKey: 'wellbeing_id', as: 'wellbeing' });
+
+  Folder.hasMany(FoldersToType, { foreignKey: 'folder_id', as: 'folders_to_type' });
+  FoldersToType.belongsTo(Folder, { foreignKey: 'folder_id', as: 'folder' });
+  Training.hasMany(FoldersToType, { foreignKey: 'training_id', as: 'folders_to_type' });
+  FoldersToType.belongsTo(Training, { foreignKey: 'training_id', as: 'training' });
+  Exercise.hasMany(FoldersToType, { foreignKey: 'exercise_id', as: 'folders_to_type' });
+  FoldersToType.belongsTo(Exercise, { foreignKey: 'exercise_id', as: 'exercise' });
+  Set.hasMany(FoldersToType, { foreignKey: 'set_id', as: 'folders_to_type' });
+  FoldersToType.belongsTo(Set, { foreignKey: 'set_id', as: 'set' });
 }
 
 export function initModels(sequelize: Sequelize): DatabaseModels {
@@ -286,6 +301,8 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const RevaluationModel = initRevaluation(sequelize);
   const NoticeModel = initNotice(sequelize);
   const AppVersionModel = initAppVersion(sequelize);
+  const FolderModel = initFolder(sequelize);
+  const FoldersToTypeModel = initFoldersToType(sequelize);
 
   const models: DatabaseModels = {
     Trainer: TrainerModel,
@@ -322,6 +339,8 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     Revaluation: RevaluationModel,
     Notice: NoticeModel,
     AppVersion: AppVersionModel,
+    Folder: FolderModel,
+    FoldersToType: FoldersToTypeModel,
   };
 
   associate(models);
@@ -364,4 +383,6 @@ export {
   Revaluation,
   Notice,
   AppVersion,
+  Folder,
+  FoldersToType,
 };
