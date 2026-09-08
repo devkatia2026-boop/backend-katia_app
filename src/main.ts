@@ -762,8 +762,8 @@ const foldersToTypeRepository = new SequelizeFoldersToTypeRepository({
 const foldersToTypeController = new FoldersToTypeController(
   new ListFoldersToTypeUseCase(foldersToTypeRepository),
   new GetFolderToTypeUseCase(foldersToTypeRepository),
-  new CreateFolderToTypeUseCase(foldersToTypeRepository),
-  new UpdateFolderToTypeUseCase(foldersToTypeRepository),
+  new CreateFolderToTypeUseCase(foldersToTypeRepository, foldersRepository),
+  new UpdateFolderToTypeUseCase(foldersToTypeRepository, foldersRepository),
   new DeleteFolderToTypeUseCase(foldersToTypeRepository)
 );
 app.use(

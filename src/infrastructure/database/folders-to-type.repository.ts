@@ -1,4 +1,4 @@
-import type { WhereOptions } from 'sequelize';
+import type { Includeable, WhereOptions } from 'sequelize';
 import type { DatabaseModels } from './models';
 import type {
   CreateFolderToTypeInput,
@@ -57,23 +57,14 @@ export class SequelizeFoldersToTypeRepository implements IFoldersToTypeRepositor
     >
   ) {}
 
-  private buildInclude(filters?: FolderToTypeListFilters) {
-    const folderInclude: {
-      model: DatabaseModels['Folder'];
-      as: 'folder';
-      attributes: typeof FOLDER_ATTR;
-      required: boolean;
-      where?: WhereOptions;
-    } = {
+  private buildInclude(filters?: FolderToTypeListFilters): Includeable[] {
+    const folderInclude: Includeable = {
       model: this.models.Folder,
       as: 'folder',
       attributes: [...FOLDER_ATTR],
       required: filters?.type !== undefined,
+      ...(filters?.type !== undefined ? { where: { type: filters.type } } : {}),
     };
-
-    if (filters?.type !== undefined) {
-      folderInclude.where = { type: filters.type };
-    }
 
     return [
       folderInclude,
@@ -102,7 +93,7 @@ export class SequelizeFoldersToTypeRepository implements IFoldersToTypeRepositor
     const where = buildWhere(filters);
     const include = this.buildInclude(filters);
 
-    const [total, rows] = await Promise.all([
+    const [totalRaw, rows] = await Promise.all([
       this.models.FoldersToType.count({ where, include, distinct: true, col: 'id' }),
       this.models.FoldersToType.findAll({
         attributes: [...ATTR],
@@ -118,6 +109,11 @@ export class SequelizeFoldersToTypeRepository implements IFoldersToTypeRepositor
         nest: true,
       }) as unknown as Promise<FolderToTypeDTO[]>,
     ]);
+
+    const total =
+      typeof totalRaw === 'number'
+        ? totalRaw
+        : (totalRaw as { count: number }[]).length;
 
     return {
       items: rows.map(toDto),

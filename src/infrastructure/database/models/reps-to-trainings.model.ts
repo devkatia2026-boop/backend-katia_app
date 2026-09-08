@@ -27,7 +27,7 @@ export function initRepsToTrainings(sequelize: Sequelize): typeof RepsToTraining
         type: DataTypes.INTEGER,
         allowNull: false,
       },
-      reps: DataTypes.STRING,
+      reps: DataTypes.TEXT,
       obs: DataTypes.TEXT,
       methodology: DataTypes.STRING,
       rest: DataTypes.STRING,
