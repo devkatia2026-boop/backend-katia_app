@@ -31,6 +31,11 @@ export const swaggerDocument = {
         'Itens vinculados a um wellbeing (`wellbeing_id`). **Treinadora:** CRUD completo. **Aluna:** vê apenas wells ativos cujo wellbeing pai também está ativo. Filtro opcional `wellbeingId` na listagem.',
     },
     {
+      name: 'Playlists',
+      description:
+        'Playlists de treino/conteúdo. **Treinadora:** CRUD completo; listagem inclui ativos e inativos. **Aluna e treinadora:** leitura de registros com `status: true`. Campo `playlist_link` é URL externa (Spotify, YouTube etc.).',
+    },
+    {
       name: 'Avisos',
       description:
         'Avisos da treinadora (`notices`). **Treinadora:** criar e excluir. **Aluna e treinadora:** listagem e detalhe de todos os avisos. O campo `type_plan` (`exclusive`, `comum` ou `ambos`) define para quais alunas é enviada a notificação ao criar; a leitura REST não filtra por plano.',
@@ -49,6 +54,21 @@ export const swaggerDocument = {
       name: 'Pastas',
       description:
         'Organização da treinadora: pastas (`folders`) e vínculos de treino, exercício ou set a uma pasta (`folderstotype`, rota `/folders-to-type`). **Somente treinadora autenticada.** `type`: `T` = treino (`training_id`), `E` = exercício (`exercise_id`), `S` = set (`set_id`).',
+    },
+    {
+      name: 'Métodos',
+      description:
+        'Itens em `methods` vinculados a um programa (`methodprograms` via `method_program_id`). **Treinadora:** CRUD. **Aluna e treinadora:** listagem e detalhe. Filtro opcional `methodProgramId` na listagem.',
+    },
+    {
+      name: 'Introduções',
+      description:
+        'Textos introdutórios de um programa (`introductions.program_id`). **Treinadora:** CRUD completo. **Aluna e treinadora:** leitura; a aluna só vê introduções cujo programa está com `status: true`. Filtro opcional `programId` na listagem.',
+    },
+    {
+      name: 'Conteúdos de introdução',
+      description:
+        'Links/mídia vinculados a uma introdução (`contents.introduction_id`). **Treinadora:** CRUD completo; envio de arquivo multipart no campo `link` (foto, PDF, vídeo ou áudio) → S3 em `introduction-contents/{trainerId}/link/...`, ou URL externa em JSON. **Aluna e treinadora:** leitura; a aluna só vê conteúdos cuja introdução pertence a programa ativo. Filtro opcional `introductionId` na listagem.',
     },
   ],
   info: {
@@ -266,6 +286,16 @@ export const swaggerDocument = {
           created_at: { type: 'string', format: 'date-time' },
         },
       },
+      ProgramLevel: {
+        type: 'string',
+        enum: ['iniciante', 'intermediário', 'avançado', 'todos os níveis'],
+        description:
+          'Persistido em minúsculas (pt-BR). Valor "todos os níveis" conta como match de nível com qualquer level_experience da anamnese da aluna.',
+      },
+      ExerciseLevel: {
+        type: 'string',
+        enum: ['iniciante', 'intermediário', 'avançado'],
+      },
       CatalogPagedList: {
         type: 'object',
         required: ['total', 'totalPage', 'items', 'page', 'pageSize'],
@@ -377,6 +407,66 @@ export const swaggerDocument = {
           created_at: { type: 'string', format: 'date-time' },
         },
       },
+      MethodItem: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          method_program_id: { type: 'integer' },
+          title: { type: 'string' },
+          link: { type: 'string' },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      MethodCreateBody: {
+        type: 'object',
+        required: ['method_program_id', 'title', 'link'],
+        properties: {
+          method_program_id: { type: 'integer', minimum: 1 },
+          title: { type: 'string' },
+          link: { type: 'string' },
+        },
+      },
+      MethodPatchBody: {
+        type: 'object',
+        minProperties: 1,
+        properties: {
+          method_program_id: { type: 'integer', minimum: 1 },
+          title: { type: 'string' },
+          link: { type: 'string' },
+        },
+      },
+      Playlist: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          status: { type: 'boolean', nullable: true },
+          photo: { type: 'string', nullable: true },
+          playlist_link: { type: 'string', nullable: true },
+          tittle: { type: 'string', nullable: true },
+          description: { type: 'string', nullable: true },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      Introduction: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          program_id: { type: 'integer' },
+          title: { type: 'string' },
+          description: { type: 'string', nullable: true },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      IntroductionContent: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          introduction_id: { type: 'integer' },
+          link: { type: 'string' },
+          type: { type: 'string' },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
       Well: {
         type: 'object',
         properties: {
@@ -385,6 +475,11 @@ export const swaggerDocument = {
           status: { type: 'boolean', nullable: true },
           photo: { type: 'string', nullable: true },
           video_link: { type: 'string', nullable: true },
+          pdf: {
+            type: 'string',
+            nullable: true,
+            description: 'URL pública do documento (PDF, DOC, DOCX ou TXT) no S3',
+          },
           tittle: { type: 'string', nullable: true },
           description: { type: 'string', nullable: true },
           created_at: { type: 'string', format: 'date-time' },
@@ -2417,20 +2512,12 @@ export const swaggerDocument = {
                   status: { type: 'boolean', nullable: true },
                   type: { type: 'string', nullable: true, enum: ['casa', 'academia', 'ambos'] },
                   description: { type: 'string', nullable: true },
-                  level: {
-                    type: 'string',
-                    nullable: true,
-                    enum: ['iniciante', 'intermediário', 'avançado'],
-                  },
+                  level: { allOf: [{ $ref: '#/components/schemas/ProgramLevel' }], nullable: true },
                   objective: {
                     type: 'string',
                     nullable: true,
-                    enum: [
-                      'Perder peso e definir',
-                      'Ganhar massa muscular',
-                      'Melhorar condicionamento',
-                      'Manter-me ativa e saudável',
-                    ],
+                    description:
+                      'Um ou mais objetivos principais, separados por vírgula (valores de `main_objective` da anamnese).',
                   },
                   bother: {
                     type: 'string',
@@ -2518,7 +2605,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar programas ativos compatíveis com anamnese',
         description:
-          'Programas com status ativo ranqueados por compatibilidade com a anamnese mais recente da aluna (type, level, objective, bother). **Aluna:** omita `studentId` ou use o próprio UUID. **Treinadora:** informe `studentId`. Opcionalmente filtre com `search` nos campos do programa.',
+          'Programas com status ativo ranqueados por compatibilidade com a anamnese mais recente da aluna (type, level, objective, bother). Em `level`, o valor `todos os níveis` no programa conta como match de nível para qualquer `level_experience` da anamnese. Em `objective`, o campo `objective` do programa e o `main_objective` da anamnese podem listar vários valores separados por vírgula; há match se **qualquer** objetivo da anamnese for igual a **algum** objetivo do programa (comparação sem acentos de caixa, pt-BR). **Aluna:** omita `studentId` ou use o próprio UUID. **Treinadora:** informe `studentId`. Opcionalmente filtre com `search` nos campos do programa.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -2558,7 +2645,10 @@ export const swaggerDocument = {
                           status: { type: 'boolean', nullable: true },
                           type: { type: 'string', nullable: true },
                           description: { type: 'string', nullable: true },
-                          level: { type: 'string', nullable: true },
+                          level: {
+                            allOf: [{ $ref: '#/components/schemas/ProgramLevel' }],
+                            nullable: true,
+                          },
                           objective: { type: 'string', nullable: true },
                           bother: { type: 'string', nullable: true },
                           created_at: { type: 'string', format: 'date-time' },
@@ -2585,6 +2675,87 @@ export const swaggerDocument = {
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Acesso negado' },
           '404': { description: 'Anamnese não encontrada' },
+        },
+      },
+    },
+    '/programs/{programId}/match': {
+      get: {
+        summary: 'Compatibilidade de um programa com a anamnese',
+        description:
+          'Mesmos critérios de `/programs/matched` (type, level, objective, bother) para um único programa, inclusive objetivos múltiplos separados por vírgula em `objective` e `main_objective`. **Aluna:** omita `studentId` ou use o próprio UUID. **Treinadora:** informe `studentId`.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'programId',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer', minimum: 1 },
+          },
+          {
+            name: 'studentId',
+            in: 'query',
+            schema: { type: 'string', format: 'uuid' },
+            description: 'Obrigatório para treinadora; opcional para aluna (apenas o próprio UUID).',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Programa com pontuação de match',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: [
+                    'student_id',
+                    'anamnesis_id',
+                    'program_id',
+                    'program',
+                    'match_count',
+                    'total_criteria',
+                    'matches',
+                  ],
+                  properties: {
+                    student_id: { type: 'string', format: 'uuid' },
+                    anamnesis_id: { type: 'integer' },
+                    program_id: { type: 'integer' },
+                    program: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'integer' },
+                        name: { type: 'string', nullable: true },
+                        photo: { type: 'string', nullable: true },
+                        status: { type: 'boolean', nullable: true },
+                        type: { type: 'string', nullable: true },
+                        description: { type: 'string', nullable: true },
+                        level: {
+                          allOf: [{ $ref: '#/components/schemas/ProgramLevel' }],
+                          nullable: true,
+                        },
+                        objective: { type: 'string', nullable: true },
+                        bother: { type: 'string', nullable: true },
+                        created_at: { type: 'string', format: 'date-time' },
+                      },
+                    },
+                    match_count: { type: 'integer' },
+                    total_criteria: { type: 'integer' },
+                    matches: {
+                      type: 'object',
+                      properties: {
+                        type: { type: 'boolean' },
+                        level: { type: 'boolean' },
+                        objective: { type: 'boolean' },
+                        bother: { type: 'boolean' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Parâmetro inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Acesso negado' },
+          '404': { description: 'Programa ou anamnese não encontrado' },
         },
       },
     },
@@ -2884,20 +3055,12 @@ export const swaggerDocument = {
                   status: { type: 'boolean', nullable: true },
                   type: { type: 'string', nullable: true, enum: ['casa', 'academia', 'ambos'] },
                   description: { type: 'string', nullable: true },
-                  level: {
-                    type: 'string',
-                    nullable: true,
-                    enum: ['iniciante', 'intermediário', 'avançado'],
-                  },
+                  level: { allOf: [{ $ref: '#/components/schemas/ProgramLevel' }], nullable: true },
                   objective: {
                     type: 'string',
                     nullable: true,
-                    enum: [
-                      'Perder peso e definir',
-                      'Ganhar massa muscular',
-                      'Melhorar condicionamento',
-                      'Manter-me ativa e saudável',
-                    ],
+                    description:
+                      'Um ou mais objetivos principais, separados por vírgula (valores de `main_objective` da anamnese).',
                   },
                   bother: {
                     type: 'string',
@@ -3961,11 +4124,7 @@ export const swaggerDocument = {
                   video: { type: 'string', nullable: true },
                   type: { type: 'string', nullable: true, enum: ['casa', 'academia', 'ambos'] },
                   description: { type: 'string', nullable: true },
-                  level: {
-                    type: 'string',
-                    nullable: true,
-                    enum: ['iniciante', 'intermediário', 'avançado'],
-                  },
+                  level: { allOf: [{ $ref: '#/components/schemas/ExerciseLevel' }], nullable: true },
                 },
               },
             },
@@ -4044,11 +4203,7 @@ export const swaggerDocument = {
                   video: { type: 'string', nullable: true },
                   type: { type: 'string', nullable: true, enum: ['casa', 'academia', 'ambos'] },
                   description: { type: 'string', nullable: true },
-                  level: {
-                    type: 'string',
-                    nullable: true,
-                    enum: ['iniciante', 'intermediário', 'avançado'],
-                  },
+                  level: { allOf: [{ $ref: '#/components/schemas/ExerciseLevel' }], nullable: true },
                 },
               },
             },
@@ -4098,11 +4253,7 @@ export const swaggerDocument = {
                     video: { type: 'string', nullable: true },
                     type: { type: 'string', nullable: true, enum: ['casa', 'academia', 'ambos'] },
                     description: { type: 'string', nullable: true },
-                    level: {
-                      type: 'string',
-                      nullable: true,
-                      enum: ['iniciante', 'intermediário', 'avançado'],
-                    },
+                    level: { allOf: [{ $ref: '#/components/schemas/ExerciseLevel' }], nullable: true },
                     created_at: { type: 'string', format: 'date-time' },
                   },
                 },
@@ -5904,6 +6055,144 @@ export const swaggerDocument = {
         },
       },
     },
+    '/methods': {
+      get: {
+        tags: ['Métodos'],
+        summary: 'Listar métodos',
+        description:
+          'Paginação `page`, `pageSize`. Filtro opcional `methodProgramId`. Aluna e treinadora autenticadas.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+          { name: 'methodProgramId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'items, total, page, pageSize',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['items', 'total', 'page', 'pageSize'],
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/MethodItem' },
+                    },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    pageSize: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Filtro inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+        },
+      },
+      post: {
+        tags: ['Métodos'],
+        summary: 'Criar método',
+        description: 'Somente treinadora. `method_program_id` deve existir em `methodprograms`.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/MethodCreateBody' },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Método criado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/MethodItem' },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido ou FK inexistente' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Programa de método não encontrado' },
+        },
+      },
+    },
+    '/methods/{id}': {
+      get: {
+        tags: ['Métodos'],
+        summary: 'Obter método por id',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Método',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/MethodItem' },
+              },
+            },
+          },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+          '404': { description: 'Método não encontrado' },
+        },
+      },
+      patch: {
+        tags: ['Métodos'],
+        summary: 'Atualizar método',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/MethodPatchBody' },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Método atualizado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/MethodItem' },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido ou FK inexistente' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Método ou programa não encontrado' },
+        },
+      },
+      delete: {
+        tags: ['Métodos'],
+        summary: 'Excluir método',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Método excluído' },
+          '400': { description: 'ID inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Método não encontrado' },
+        },
+      },
+    },
     '/points': {
       get: {
         summary: 'Listar registros de treino (points)',
@@ -6700,7 +6989,7 @@ export const swaggerDocument = {
         tags: ['Wells'],
         summary: 'Criar well',
         description:
-          'Somente treinadora. Campo `wellbeing_id` obrigatório. Campo `photo`: URL ou multipart → S3 em `wells/{trainerId}/photo/...`. Campo `video_link` é URL externa (YouTube etc.), não vai ao S3.',
+          'Somente treinadora. Campo `wellbeing_id` obrigatório. Campo `photo`: URL ou multipart → S3 em `wells/{trainerId}/photo/...`. Campo `pdf`: URL ou multipart → S3 em `wells/{trainerId}/pdf/...` (PDF, DOC, DOCX ou TXT). Campo `video_link` é URL externa (YouTube etc.), não vai ao S3.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -6714,6 +7003,7 @@ export const swaggerDocument = {
                   status: { type: 'boolean', nullable: true },
                   photo: { type: 'string', nullable: true },
                   video_link: { type: 'string', nullable: true },
+                  pdf: { type: 'string', nullable: true },
                   tittle: { type: 'string', nullable: true },
                   description: { type: 'string', nullable: true },
                 },
@@ -6727,6 +7017,7 @@ export const swaggerDocument = {
                   wellbeing_id: { type: 'string' },
                   status: { type: 'string' },
                   photo: { type: 'string', format: 'binary' },
+                  pdf: { type: 'string', format: 'binary' },
                   video_link: { type: 'string' },
                   tittle: { type: 'string' },
                   description: { type: 'string' },
@@ -6756,7 +7047,7 @@ export const swaggerDocument = {
         tags: ['Wells'],
         summary: 'Atualizar well',
         description:
-          'Somente treinadora. Campo `photo`: URL ou multipart → S3 (`wells/*`). Campo `video_link` é URL externa.',
+          'Somente treinadora. Campo `photo`: URL ou multipart → S3 (`wells/*/photo/...`). Campo `pdf`: URL ou multipart → S3 (`wells/*/pdf/...`, PDF/DOC/DOCX/TXT). Campo `video_link` é URL externa.',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'wellId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
         requestBody: {
@@ -6771,6 +7062,7 @@ export const swaggerDocument = {
                   status: { type: 'boolean', nullable: true },
                   photo: { type: 'string', nullable: true },
                   video_link: { type: 'string', nullable: true },
+                  pdf: { type: 'string', nullable: true },
                   tittle: { type: 'string', nullable: true },
                   description: { type: 'string', nullable: true },
                 },
@@ -6784,6 +7076,7 @@ export const swaggerDocument = {
                   wellbeing_id: { type: 'string' },
                   status: { type: 'string' },
                   photo: { type: 'string', format: 'binary' },
+                  pdf: { type: 'string', format: 'binary' },
                   video_link: { type: 'string' },
                   tittle: { type: 'string' },
                   description: { type: 'string' },
@@ -6806,6 +7099,424 @@ export const swaggerDocument = {
         responses: {
           '204': { description: 'Excluído' },
           '404': { description: 'Well não encontrado' },
+        },
+      },
+    },
+    '/playlists': {
+      get: {
+        tags: ['Playlists'],
+        summary: 'Listar playlists',
+        description:
+          'Paginação `page`, `pageSize`. **Aluna:** somente `status: true`. **Treinadora:** todos.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+        ],
+        responses: {
+          '200': { description: 'Lista paginada' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+        },
+      },
+      post: {
+        tags: ['Playlists'],
+        summary: 'Criar playlist',
+        description:
+          'Somente treinadora. Campo `photo`: URL ou multipart → S3 em `playlists/{trainerId}/photo/...`. Campo `playlist_link` é URL externa da playlist.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'boolean', nullable: true },
+                  photo: { type: 'string', nullable: true },
+                  playlist_link: { type: 'string', nullable: true },
+                  tittle: { type: 'string', nullable: true },
+                  description: { type: 'string', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string' },
+                  photo: { type: 'string', format: 'binary' },
+                  playlist_link: { type: 'string' },
+                  tittle: { type: 'string' },
+                  description: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Playlist criada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Playlist' },
+              },
+            },
+          },
+          '403': { description: 'Somente treinadora' },
+        },
+      },
+    },
+    '/playlists/{playlistId}': {
+      get: {
+        tags: ['Playlists'],
+        summary: 'Obter playlist',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'playlistId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Playlist',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Playlist' },
+              },
+            },
+          },
+          '404': { description: 'Não encontrado ou inativo (aluna)' },
+        },
+      },
+      patch: {
+        tags: ['Playlists'],
+        summary: 'Atualizar playlist',
+        description: 'Somente treinadora. Campo `photo`: URL ou multipart → S3 (`playlists/*`).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'playlistId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  status: { type: 'boolean', nullable: true },
+                  photo: { type: 'string', nullable: true },
+                  playlist_link: { type: 'string', nullable: true },
+                  tittle: { type: 'string', nullable: true },
+                  description: { type: 'string', nullable: true },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  status: { type: 'string' },
+                  photo: { type: 'string', format: 'binary' },
+                  playlist_link: { type: 'string' },
+                  tittle: { type: 'string' },
+                  description: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Playlist atualizada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Playlist' },
+              },
+            },
+          },
+          '404': { description: 'Playlist não encontrada' },
+        },
+      },
+      delete: {
+        tags: ['Playlists'],
+        summary: 'Excluir playlist',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'playlistId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Excluído' },
+          '404': { description: 'Playlist não encontrada' },
+        },
+      },
+    },
+    '/introductions': {
+      get: {
+        tags: ['Introduções'],
+        summary: 'Listar introduções',
+        description:
+          'Paginação `page`, `pageSize`. Filtro opcional `programId`. **Aluna:** somente programas com `status: true`. **Treinadora:** todas.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+          { name: 'programId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': { description: 'Lista paginada' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+        },
+      },
+      post: {
+        tags: ['Introduções'],
+        summary: 'Criar introdução',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['program_id', 'title'],
+                properties: {
+                  program_id: { type: 'integer', minimum: 1 },
+                  title: { type: 'string' },
+                  description: { type: 'string', nullable: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Introdução criada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Introduction' },
+              },
+            },
+          },
+          '404': { description: 'Programa não encontrado' },
+        },
+      },
+    },
+    '/introductions/{introductionId}': {
+      get: {
+        tags: ['Introduções'],
+        summary: 'Obter introdução',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'introductionId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Introdução',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Introduction' },
+              },
+            },
+          },
+          '404': { description: 'Não encontrado ou programa inativo (aluna)' },
+        },
+      },
+      patch: {
+        tags: ['Introduções'],
+        summary: 'Atualizar introdução',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'introductionId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  program_id: { type: 'integer', minimum: 1 },
+                  title: { type: 'string' },
+                  description: { type: 'string', nullable: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Introdução atualizada',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Introduction' },
+              },
+            },
+          },
+          '404': { description: 'Introdução ou programa não encontrado' },
+        },
+      },
+      delete: {
+        tags: ['Introduções'],
+        summary: 'Excluir introdução',
+        description: 'Somente treinadora. Conteúdos filhos são removidos em cascata.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'introductionId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Excluído' },
+          '404': { description: 'Introdução não encontrada' },
+        },
+      },
+    },
+    '/contents': {
+      get: {
+        tags: ['Conteúdos de introdução'],
+        summary: 'Listar conteúdos de introdução',
+        description:
+          'Paginação `page`, `pageSize`. Filtro opcional `introductionId`. **Aluna:** somente introduções de programas ativos. **Treinadora:** todos.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+          { name: 'introductionId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': { description: 'Lista paginada' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+        },
+      },
+      post: {
+        tags: ['Conteúdos de introdução'],
+        summary: 'Criar conteúdo de introdução',
+        description:
+          'Somente treinadora. Campo `type` identifica a mídia (ex.: `foto`, `pdf`, `video`, `audio`). Campo `link`: URL externa (JSON) ou arquivo multipart (JPEG/PNG/WebP/GIF/HEIC, PDF/DOC/DOCX/TXT, MP4/MOV/WebM/AVI, MP3/M4A/WAV/OGG/AAC) até 100 MB → S3 `introduction-contents/{trainerId}/link/...`.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['introduction_id', 'link', 'type'],
+                properties: {
+                  introduction_id: { type: 'integer', minimum: 1 },
+                  link: { type: 'string' },
+                  type: { type: 'string' },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['introduction_id', 'type'],
+                properties: {
+                  introduction_id: { type: 'string' },
+                  type: { type: 'string' },
+                  link: { type: 'string', format: 'binary' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Conteúdo criado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/IntroductionContent' },
+              },
+            },
+          },
+          '404': { description: 'Introdução não encontrada' },
+        },
+      },
+    },
+    '/contents/{contentId}': {
+      get: {
+        tags: ['Conteúdos de introdução'],
+        summary: 'Obter conteúdo de introdução',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'contentId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Conteúdo',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/IntroductionContent' },
+              },
+            },
+          },
+          '404': { description: 'Não encontrado ou programa inativo (aluna)' },
+        },
+      },
+      patch: {
+        tags: ['Conteúdos de introdução'],
+        summary: 'Atualizar conteúdo de introdução',
+        description:
+          'Somente treinadora. Novo arquivo em `link` (multipart) substitui a URL; ou envie `link` como string (URL).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'contentId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  introduction_id: { type: 'integer', minimum: 1 },
+                  link: { type: 'string' },
+                  type: { type: 'string' },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  introduction_id: { type: 'string' },
+                  type: { type: 'string' },
+                  link: { type: 'string', format: 'binary' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Conteúdo atualizado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/IntroductionContent' },
+              },
+            },
+          },
+          '404': { description: 'Conteúdo ou introdução não encontrado' },
+        },
+      },
+      delete: {
+        tags: ['Conteúdos de introdução'],
+        summary: 'Excluir conteúdo de introdução',
+        description: 'Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'contentId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Excluído' },
+          '404': { description: 'Conteúdo não encontrado' },
         },
       },
     },

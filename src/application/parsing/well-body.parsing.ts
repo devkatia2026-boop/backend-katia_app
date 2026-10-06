@@ -24,6 +24,7 @@ export function parseWellCreateBody(body: unknown): CreateWellInput {
     status: 'status' in body ? expectNullableBoolean(body.status ?? null, 'status') : null,
     photo: 'photo' in body ? expectNullableTrimmed(body.photo ?? null, 'photo') : null,
     video_link: 'video_link' in body ? expectNullableTrimmed(body.video_link ?? null, 'video_link') : null,
+    pdf: 'pdf' in body ? expectNullableTrimmed(body.pdf ?? null, 'pdf') : null,
     tittle: 'tittle' in body ? expectNullableTrimmed(body.tittle ?? null, 'tittle') : null,
     description:
       'description' in body ? expectNullableTrimmed(body.description ?? null, 'description') : null,
@@ -54,6 +55,10 @@ export function parseWellPatchBody(body: unknown): PatchWellInput {
   }
   if ('video_link' in body) {
     patch.video_link = expectNullableTrimmed(body.video_link, 'video_link');
+    n++;
+  }
+  if ('pdf' in body) {
+    patch.pdf = expectNullableTrimmed(body.pdf, 'pdf');
     n++;
   }
   if ('tittle' in body) {

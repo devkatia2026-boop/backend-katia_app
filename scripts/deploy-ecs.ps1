@@ -1,6 +1,6 @@
 param(
   [string]$AwsAccountId = "609941781976",
-  [string]$AwsRegion = "sa-east-1",
+  [string]$AwsRegion = "us-east-1",
   [string]$EcrRepository = "katia-backend",
   [string]$EcsCluster = "katia-cluster",
   [string]$EcsService = "katia-backend-service",

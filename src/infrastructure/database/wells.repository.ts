@@ -15,6 +15,7 @@ const ATTR = [
   'status',
   'photo',
   'video_link',
+  'pdf',
   'tittle',
   'description',
   'created_at',

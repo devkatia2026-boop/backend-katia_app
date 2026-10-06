@@ -6,6 +6,7 @@ export type WellDTO = {
   status: boolean | null;
   photo: string | null;
   video_link: string | null;
+  pdf: string | null;
   tittle: string | null;
   description: string | null;
   created_at: Date;
@@ -16,6 +17,7 @@ export type CreateWellInput = {
   status: boolean | null;
   photo: string | null;
   video_link: string | null;
+  pdf: string | null;
   tittle: string | null;
   description: string | null;
 };

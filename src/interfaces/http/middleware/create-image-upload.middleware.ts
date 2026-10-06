@@ -4,12 +4,15 @@ import {
   IMAGE_UPLOAD_MAX_BYTES,
 } from '../../../application/media/image-upload.config';
 
-export function createImageUploadMiddleware(fieldNames: string[]): RequestHandler {
+export function createImageUploadMiddleware(
+  fieldNames: string[],
+  maxBytes: number = IMAGE_UPLOAD_MAX_BYTES
+): RequestHandler {
   const fields = fieldNames.map((name) => ({ name, maxCount: 1 }));
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
-      fileSize: IMAGE_UPLOAD_MAX_BYTES,
+      fileSize: maxBytes,
       files: fieldNames.length,
     },
   }).fields(fields);
@@ -24,7 +27,7 @@ export function createImageUploadMiddleware(fieldNames: string[]): RequestHandle
         console.warn('[image-upload] multer:', err.code, err.message, { fields: fieldNames });
         const message =
           err.code === 'LIMIT_FILE_SIZE'
-            ? `Arquivo excede o limite de ${IMAGE_UPLOAD_MAX_BYTES / (1024 * 1024)} MB.`
+            ? `Arquivo excede o limite de ${maxBytes / (1024 * 1024)} MB.`
             : err.code === 'LIMIT_FILE_COUNT'
               ? `Número máximo de arquivos excedido (${fieldNames.length}).`
               : err.message;

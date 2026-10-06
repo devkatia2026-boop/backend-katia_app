@@ -49,7 +49,8 @@ export class UploadImageFilesUseCase {
       }
 
       const file = list[0]!;
-      this.assertImageMime(file);
+      const mimeTypes = allowedFields[field]?.mimeTypes ?? IMAGE_UPLOAD_MIME_TYPES;
+      this.assertAllowedMime(file, mimeTypes);
       const key = this.buildObjectKey(storagePrefix, scopeId, field, file.originalName);
       try {
         const url = await this.storage.putObject({
@@ -100,11 +101,11 @@ export class UploadImageFilesUseCase {
     return grouped;
   }
 
-  private assertImageMime(file: UploadedImageFile): void {
+  private assertAllowedMime(file: UploadedImageFile, allowed: ReadonlySet<string>): void {
     const mime = file.mimeType?.toLowerCase() ?? '';
-    if (!IMAGE_UPLOAD_MIME_TYPES.has(mime)) {
+    if (!allowed.has(mime)) {
       const err = new Error(
-        `Arquivo "${file.field}" deve ser imagem (${[...IMAGE_UPLOAD_MIME_TYPES].join(', ')}).`
+        `Arquivo "${file.field}" deve ser um dos tipos: ${[...allowed].join(', ')}.`
       );
       err.name = VALIDATION;
       throw err;

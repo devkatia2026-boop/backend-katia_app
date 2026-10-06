@@ -1,9 +1,9 @@
+import { normalizeProgramLevel, PROGRAM_LEVELS } from '../domain/program-levels';
 import type { CreateProgramInput, PatchProgramInput } from '../ports/programs.port';
 
 const VALIDATION = 'ValidationException';
 
 const PROGRAM_TYPES = new Set(['casa', 'academia', 'ambos']);
-const PROGRAM_LEVELS = new Set(['iniciante', 'intermediário', 'avançado']);
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -67,14 +67,16 @@ function expectNullableProgramLevel(value: unknown, field: string): string | nul
     err.name = VALIDATION;
     throw err;
   }
-  const t = value.trim().toLocaleLowerCase('pt-BR');
-  if (t.length === 0) return null;
-  if (!PROGRAM_LEVELS.has(t)) {
-    const err = new Error(`Campo "${field}" deve ser "iniciante", "intermediário" ou "avançado".`);
+  const normalized = normalizeProgramLevel(value);
+  if (normalized.length === 0) return null;
+  if (!PROGRAM_LEVELS.has(normalized)) {
+    const err = new Error(
+      `Campo "${field}" deve ser "iniciante", "intermediário", "avançado" ou "todos os níveis".`
+    );
     err.name = VALIDATION;
     throw err;
   }
-  return t;
+  return normalized;
 }
 
 export function parseProgramCreateBody(body: unknown): CreateProgramInput {

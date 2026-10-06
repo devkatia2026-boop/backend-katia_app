@@ -6,6 +6,7 @@ export class Well extends Model {
   declare status: boolean | null;
   declare photo: string | null;
   declare video_link: string | null;
+  declare pdf: string | null;
   declare tittle: string | null;
   declare description: string | null;
   declare readonly created_at: Date;
@@ -26,6 +27,7 @@ export function initWell(sequelize: Sequelize): typeof Well {
       status: DataTypes.BOOLEAN,
       photo: DataTypes.TEXT,
       video_link: DataTypes.TEXT,
+      pdf: DataTypes.TEXT,
       tittle: DataTypes.STRING,
       description: DataTypes.TEXT,
     },

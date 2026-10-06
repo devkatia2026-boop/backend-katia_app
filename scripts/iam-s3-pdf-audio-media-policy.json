@@ -1,0 +1,28 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "KatiaUploadsWellsPdf",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::katia-app-uploads/wells/*/pdf/*"
+    },
+    {
+      "Sid": "KatiaUploadsIntroductionContentsMedia",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::katia-app-uploads/introduction-contents/*/link/*"
+    },
+    {
+      "Sid": "KatiaUploadsListBucketForMediaPrefixes",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::katia-app-uploads",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": ["wells/*/pdf/*", "introduction-contents/*/link/*"]
+        }
+      }
+    }
+  ]
+}

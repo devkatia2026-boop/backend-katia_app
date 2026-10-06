@@ -1,15 +1,15 @@
 import { evaluateProgramAnamnesisMatch } from '../../matching/program-anamnesis-match';
+import { resolveProgramMatchStudentId } from '../../matching/program-match-student-id';
+import {
+  loadStudentMatchProfile,
+  type ProgramMatchAuth,
+} from '../../matching/student-match-profile';
 import type { IProgramsRepository, ProgramDTO } from '../../ports/programs.port';
-import type { AnamnesisDTO, IStudentAnamnesisRepository } from '../../ports/student-anamnesis.port';
-import { parseOptionalUuid } from '../../parsing/program-to-student-body.parsing';
+import type { IStudentAnamnesisRepository } from '../../ports/student-anamnesis.port';
 
-const FORBIDDEN = 'ForbiddenException';
 const NOT_FOUND = 'NotFoundException';
 
-export type ProgramMatchAuth = {
-  role: 'student' | 'trainer';
-  sub: string;
-};
+export type { ProgramMatchAuth };
 
 export type GetProgramMatchForStudentResult = {
   student_id: string;
@@ -26,49 +26,6 @@ export type GetProgramMatchForStudentResult = {
   };
 };
 
-function sameStudentId(a: string, b: string): boolean {
-  return a.toLowerCase() === b.toLowerCase();
-}
-
-function resolveStudentId(rawStudentId: unknown, auth: ProgramMatchAuth): string {
-  if (auth.role === 'student') {
-    const studentId = parseOptionalUuid(rawStudentId, 'studentId');
-    if (studentId !== undefined && !sameStudentId(studentId, auth.sub)) {
-      const err = new Error('Você só pode consultar programas para a própria aluna.');
-      err.name = FORBIDDEN;
-      throw err;
-    }
-    return auth.sub;
-  }
-
-  const studentId = parseOptionalUuid(rawStudentId, 'studentId');
-  if (studentId === undefined) {
-    const err = new Error('Informe studentId.');
-    err.name = FORBIDDEN;
-    throw err;
-  }
-  return studentId;
-}
-
-async function loadLatestAnamnesis(
-  repo: IStudentAnamnesisRepository,
-  studentId: string,
-  auth: ProgramMatchAuth
-): Promise<AnamnesisDTO> {
-  const row =
-    auth.role === 'trainer'
-      ? await repo.findLatestForTrainerStudent(auth.sub, studentId)
-      : await repo.findLatestByStudentId(studentId);
-
-  if (!row) {
-    const err = new Error('Anamnese não encontrada.');
-    err.name = NOT_FOUND;
-    throw err;
-  }
-
-  return row;
-}
-
 export class GetProgramMatchForStudentUseCase {
   constructor(
     private readonly programs: IProgramsRepository,
@@ -80,8 +37,8 @@ export class GetProgramMatchForStudentUseCase {
     rawStudentId: unknown,
     auth: ProgramMatchAuth
   ): Promise<GetProgramMatchForStudentResult> {
-    const studentId = resolveStudentId(rawStudentId, auth);
-    const latestAnamnesis = await loadLatestAnamnesis(this.anamnesis, studentId, auth);
+    const studentId = resolveProgramMatchStudentId(rawStudentId, auth);
+    const profile = await loadStudentMatchProfile(studentId, auth, this.anamnesis);
     const program = await this.programs.findById(programId);
 
     if (!program) {
@@ -90,11 +47,11 @@ export class GetProgramMatchForStudentUseCase {
       throw err;
     }
 
-    const evaluation = evaluateProgramAnamnesisMatch(program, latestAnamnesis);
+    const evaluation = evaluateProgramAnamnesisMatch(program, profile.comparable);
 
     return {
       student_id: studentId,
-      anamnesis_id: latestAnamnesis.id,
+      anamnesis_id: profile.anamnesis_id,
       program_id: program.id,
       program,
       match_count: evaluation.match_count,

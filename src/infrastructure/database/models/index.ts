@@ -35,6 +35,11 @@ import { initNotice, Notice } from './notice.model';
 import { initAppVersion, AppVersion } from './app-version.model';
 import { initFolder, Folder } from './folder.model';
 import { initFoldersToType, FoldersToType } from './folders-to-type.model';
+import { initMethodProgram, MethodProgram } from './method-program.model';
+import { initMethod, Method } from './method.model';
+import { initPlaylist, Playlist } from './playlist.model';
+import { initIntroduction, Introduction } from './introduction.model';
+import { initContent, Content } from './content.model';
 
 export type DatabaseModels = {
   Trainer: typeof Trainer;
@@ -73,6 +78,11 @@ export type DatabaseModels = {
   AppVersion: typeof AppVersion;
   Folder: typeof Folder;
   FoldersToType: typeof FoldersToType;
+  MethodProgram: typeof MethodProgram;
+  Method: typeof Method;
+  Playlist: typeof Playlist;
+  Introduction: typeof Introduction;
+  Content: typeof Content;
 };
 
 function associate(models: DatabaseModels): void {
@@ -111,6 +121,11 @@ function associate(models: DatabaseModels): void {
     Notice,
     Folder,
     FoldersToType,
+    MethodProgram,
+    Method,
+    Playlist,
+    Introduction,
+    Content,
   } = models;
 
   Trainer.hasMany(Student, { foreignKey: 'trainer_id', as: 'students' });
@@ -264,6 +279,14 @@ function associate(models: DatabaseModels): void {
   FoldersToType.belongsTo(Exercise, { foreignKey: 'exercise_id', as: 'exercise' });
   Set.hasMany(FoldersToType, { foreignKey: 'set_id', as: 'folders_to_type' });
   FoldersToType.belongsTo(Set, { foreignKey: 'set_id', as: 'set' });
+
+  MethodProgram.hasMany(Method, { foreignKey: 'method_program_id', as: 'methods' });
+  Method.belongsTo(MethodProgram, { foreignKey: 'method_program_id', as: 'method_program' });
+
+  Program.hasMany(Introduction, { foreignKey: 'program_id', as: 'introductions' });
+  Introduction.belongsTo(Program, { foreignKey: 'program_id', as: 'program' });
+  Introduction.hasMany(Content, { foreignKey: 'introduction_id', as: 'contents' });
+  Content.belongsTo(Introduction, { foreignKey: 'introduction_id', as: 'introduction' });
 }
 
 export function initModels(sequelize: Sequelize): DatabaseModels {
@@ -303,6 +326,11 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const AppVersionModel = initAppVersion(sequelize);
   const FolderModel = initFolder(sequelize);
   const FoldersToTypeModel = initFoldersToType(sequelize);
+  const MethodProgramModel = initMethodProgram(sequelize);
+  const MethodModel = initMethod(sequelize);
+  const PlaylistModel = initPlaylist(sequelize);
+  const IntroductionModel = initIntroduction(sequelize);
+  const ContentModel = initContent(sequelize);
 
   const models: DatabaseModels = {
     Trainer: TrainerModel,
@@ -341,6 +369,11 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     AppVersion: AppVersionModel,
     Folder: FolderModel,
     FoldersToType: FoldersToTypeModel,
+    MethodProgram: MethodProgramModel,
+    Method: MethodModel,
+    Playlist: PlaylistModel,
+    Introduction: IntroductionModel,
+    Content: ContentModel,
   };
 
   associate(models);
@@ -385,4 +418,9 @@ export {
   AppVersion,
   Folder,
   FoldersToType,
+  MethodProgram,
+  Method,
+  Playlist,
+  Introduction,
+  Content,
 };

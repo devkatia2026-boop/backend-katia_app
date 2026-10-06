@@ -66,6 +66,7 @@ import { AnamnesisExclusiveController } from './interfaces/http/controllers/anam
 import { createAnamnesisExclusiveRoutes } from './interfaces/http/routes/anamnesis-exclusive.routes';
 import { createAnamnesisExclusiveUploadMiddleware } from './interfaces/http/middleware/anamnesis-exclusive-upload.middleware';
 import { createImageUploadMiddleware } from './interfaces/http/middleware/create-image-upload.middleware';
+import { INTRODUCTION_CONTENT_UPLOAD_MAX_BYTES } from './application/media/image-upload.config';
 import type { IObjectStorage } from './application/ports/object-storage.port';
 import { S3ObjectStorageAdapter } from './infrastructure/storage/s3-object-storage.adapter';
 import { SequelizeStudentPhysicalsRepository } from './infrastructure/database/student-physicals.repository';
@@ -259,6 +260,30 @@ import { createCouponsRoutes } from './interfaces/http/routes/coupons.routes';
 import { createNoticesRoutes } from './interfaces/http/routes/notices.routes';
 import { createWellbeingRoutes } from './interfaces/http/routes/wellbeing.routes';
 import { createWellsRoutes } from './interfaces/http/routes/wells.routes';
+import { SequelizePlaylistsRepository } from './infrastructure/database/playlists.repository';
+import { ListPlaylistsUseCase } from './application/use-cases/playlists/list-playlists.use-case';
+import { GetPlaylistUseCase } from './application/use-cases/playlists/get-playlist.use-case';
+import { CreatePlaylistUseCase } from './application/use-cases/playlists/create-playlist.use-case';
+import { UpdatePlaylistUseCase } from './application/use-cases/playlists/update-playlist.use-case';
+import { DeletePlaylistUseCase } from './application/use-cases/playlists/delete-playlist.use-case';
+import { PlaylistsController } from './interfaces/http/controllers/playlists.controller';
+import { createPlaylistsRoutes } from './interfaces/http/routes/playlists.routes';
+import { SequelizeIntroductionsRepository } from './infrastructure/database/introductions.repository';
+import { SequelizeContentsRepository } from './infrastructure/database/contents.repository';
+import { ListIntroductionsUseCase } from './application/use-cases/introductions/list-introductions.use-case';
+import { GetIntroductionUseCase } from './application/use-cases/introductions/get-introduction.use-case';
+import { CreateIntroductionUseCase } from './application/use-cases/introductions/create-introduction.use-case';
+import { UpdateIntroductionUseCase } from './application/use-cases/introductions/update-introduction.use-case';
+import { DeleteIntroductionUseCase } from './application/use-cases/introductions/delete-introduction.use-case';
+import { ListContentsUseCase } from './application/use-cases/contents/list-contents.use-case';
+import { GetContentUseCase } from './application/use-cases/contents/get-content.use-case';
+import { CreateContentUseCase } from './application/use-cases/contents/create-content.use-case';
+import { UpdateContentUseCase } from './application/use-cases/contents/update-content.use-case';
+import { DeleteContentUseCase } from './application/use-cases/contents/delete-content.use-case';
+import { IntroductionsController } from './interfaces/http/controllers/introductions.controller';
+import { ContentsController } from './interfaces/http/controllers/contents.controller';
+import { createIntroductionsRoutes } from './interfaces/http/routes/introductions.routes';
+import { createContentsRoutes } from './interfaces/http/routes/contents.routes';
 import { SequelizeContentStudentsNotifier } from './infrastructure/database/content-students-notifier';
 import { SequelizeNoticesRepository } from './infrastructure/database/notices.repository';
 import { SequelizeNoticesNotifier } from './infrastructure/database/notices.notifier';
@@ -358,6 +383,19 @@ import { FoldersController } from './interfaces/http/controllers/folders.control
 import { FoldersToTypeController } from './interfaces/http/controllers/folders-to-type.controller';
 import { createFoldersRoutes } from './interfaces/http/routes/folders.routes';
 import { createFoldersToTypeRoutes } from './interfaces/http/routes/folders-to-type.routes';
+import { SequelizeMethodsRepository } from './infrastructure/database/methods.repository';
+import { ListMethodsUseCase } from './application/use-cases/methods/list-methods.use-case';
+import { GetMethodUseCase } from './application/use-cases/methods/get-method.use-case';
+import { CreateMethodUseCase } from './application/use-cases/trainer/create-method.use-case';
+import { UpdateMethodUseCase } from './application/use-cases/trainer/update-method.use-case';
+import { DeleteMethodUseCase } from './application/use-cases/trainer/delete-method.use-case';
+import { MethodsController } from './interfaces/http/controllers/methods.controller';
+import { createMethodsRoutes } from './interfaces/http/routes/methods.routes';
+import { SequelizeMethodProgramsRepository } from './infrastructure/database/method-programs.repository';
+import { GetMethodProgramUseCase } from './application/use-cases/method-programs/get-method-program.use-case';
+import { UpdateMethodProgramUseCase } from './application/use-cases/trainer/update-method-program.use-case';
+import { MethodProgramsController } from './interfaces/http/controllers/method-programs.controller';
+import { createMethodProgramsRoutes } from './interfaces/http/routes/method-programs.routes';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -378,7 +416,12 @@ const postImageUploadMiddleware = createImageUploadMiddleware(['image']);
 const programImageUploadMiddleware = createImageUploadMiddleware(['photo']);
 const couponImageUploadMiddleware = createImageUploadMiddleware(['photo']);
 const wellbeingImageUploadMiddleware = createImageUploadMiddleware(['photo']);
-const wellImageUploadMiddleware = createImageUploadMiddleware(['photo']);
+const wellImageUploadMiddleware = createImageUploadMiddleware(['photo', 'pdf']);
+const playlistImageUploadMiddleware = createImageUploadMiddleware(['photo']);
+const introductionContentUploadMiddleware = createImageUploadMiddleware(
+  ['link'],
+  INTRODUCTION_CONTENT_UPLOAD_MAX_BYTES
+);
 const evolutionImageUploadMiddleware = createImageUploadMiddleware([
   'original_photo',
   'current_photo',
@@ -771,6 +814,44 @@ app.use(
   createFoldersToTypeRoutes(foldersToTypeController, requireAuth, requireTrainer)
 );
 
+const methodsRepository = new SequelizeMethodsRepository({
+  Method: models.Method,
+  MethodProgram: models.MethodProgram,
+});
+const methodsController = new MethodsController(
+  new ListMethodsUseCase(methodsRepository),
+  new GetMethodUseCase(methodsRepository),
+  new CreateMethodUseCase(methodsRepository),
+  new UpdateMethodUseCase(methodsRepository),
+  new DeleteMethodUseCase(methodsRepository)
+);
+app.use(
+  '/methods',
+  createMethodsRoutes(
+    methodsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer
+  )
+);
+
+const methodProgramsRepository = new SequelizeMethodProgramsRepository({
+  MethodProgram: models.MethodProgram,
+});
+const methodProgramsController = new MethodProgramsController(
+  new GetMethodProgramUseCase(methodProgramsRepository),
+  new UpdateMethodProgramUseCase(methodProgramsRepository)
+);
+app.use(
+  '/method-programs',
+  createMethodProgramsRoutes(
+    methodProgramsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer
+  )
+);
+
 const studentPhysicalsRepository = new SequelizeStudentPhysicalsRepository({
   Physical: models.Physical,
   Student: models.Student,
@@ -1158,6 +1239,71 @@ app.use(
     requireStudentOrTrainer,
     requireTrainer,
     wellImageUploadMiddleware
+  )
+);
+
+const playlistsRepository = new SequelizePlaylistsRepository({ Playlist: models.Playlist });
+const playlistsController = new PlaylistsController(
+  new ListPlaylistsUseCase(playlistsRepository),
+  new GetPlaylistUseCase(playlistsRepository),
+  new CreatePlaylistUseCase(playlistsRepository),
+  new UpdatePlaylistUseCase(playlistsRepository),
+  new DeletePlaylistUseCase(playlistsRepository),
+  uploadImageFilesUseCase
+);
+app.use(
+  '/playlists',
+  createPlaylistsRoutes(
+    playlistsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer,
+    playlistImageUploadMiddleware
+  )
+);
+
+const introductionsRepository = new SequelizeIntroductionsRepository({
+  Introduction: models.Introduction,
+  Program: models.Program,
+});
+const introductionsController = new IntroductionsController(
+  new ListIntroductionsUseCase(introductionsRepository),
+  new GetIntroductionUseCase(introductionsRepository, programsRepository),
+  new CreateIntroductionUseCase(introductionsRepository, programsRepository),
+  new UpdateIntroductionUseCase(introductionsRepository, programsRepository),
+  new DeleteIntroductionUseCase(introductionsRepository)
+);
+app.use(
+  '/introductions',
+  createIntroductionsRoutes(
+    introductionsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer
+  )
+);
+
+const contentsRepository = new SequelizeContentsRepository({
+  Content: models.Content,
+  Introduction: models.Introduction,
+  Program: models.Program,
+});
+const contentsController = new ContentsController(
+  new ListContentsUseCase(contentsRepository),
+  new GetContentUseCase(contentsRepository, introductionsRepository, programsRepository),
+  new CreateContentUseCase(contentsRepository, introductionsRepository),
+  new UpdateContentUseCase(contentsRepository, introductionsRepository),
+  new DeleteContentUseCase(contentsRepository),
+  uploadImageFilesUseCase
+);
+app.use(
+  '/contents',
+  createContentsRoutes(
+    contentsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer,
+    introductionContentUploadMiddleware
   )
 );
 
