@@ -8,6 +8,7 @@ import type {
   TrainingToProgramTraining,
 } from '../../application/ports/trainings-to-programs.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
+import { sortByTrainingOrderIds } from '../../application/parsing/training-order.parsing';
 
 const ATTR = ['id', 'program_id', 'training_id', 'created_at'] as const;
 const PROGRAM_ATTR = [
@@ -20,6 +21,7 @@ const PROGRAM_ATTR = [
   'level',
   'objective',
   'bother',
+  'order',
   'created_at',
 ] as const;
 const TRAINING_ATTR = ['id', 'lyric', 'description', 'time', 'type', 'muscles', 'created_at'] as const;
@@ -79,9 +81,9 @@ export class SequelizeTrainingsToProgramsRepository implements ITrainingsToProgr
     page: number,
     pageSize: number
   ): Promise<PagedList<TrainingToProgramTraining>> {
-    const offset = (page - 1) * pageSize;
     const where = { program_id: programId };
-    const [total, rows] = await Promise.all([
+    const [programRow, total, rows] = await Promise.all([
+      this.models.Program.findByPk(programId, { attributes: ['order'] }),
       this.models.TrainingsToPrograms.count({ where }),
       this.models.TrainingsToPrograms.findAll({
         attributes: [],
@@ -98,13 +100,25 @@ export class SequelizeTrainingsToProgramsRepository implements ITrainingsToProgr
           ['created_at', 'DESC'],
           ['id', 'DESC'],
         ],
-        limit: pageSize,
-        offset,
         raw: true,
         nest: true,
       }) as unknown as Promise<Array<{ training: TrainingToProgramTraining }>>,
     ]);
-    return { items: rows.map((r) => r.training), total, page, pageSize };
+
+    const orderRaw = (programRow?.get('order') as string | null | undefined) ?? null;
+    const sorted = sortByTrainingOrderIds(
+      rows.map((row) => row.training),
+      (training) => training.id,
+      orderRaw,
+    );
+    const offset = (page - 1) * pageSize;
+
+    return {
+      items: sorted.slice(offset, offset + pageSize),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async listProgramsByTraining(

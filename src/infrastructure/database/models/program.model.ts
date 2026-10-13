@@ -13,6 +13,7 @@ export class Program extends Model {
   declare level: string | null;
   declare objective: string | null;
   declare bother: string | null;
+  declare order: string | null;
   declare readonly created_at: Date;
 }
 
@@ -32,6 +33,7 @@ export function initProgram(sequelize: Sequelize): typeof Program {
       level: DataTypes.STRING,
       objective: DataTypes.STRING,
       bother: DataTypes.STRING,
+      order: DataTypes.STRING,
     },
     {
       sequelize,

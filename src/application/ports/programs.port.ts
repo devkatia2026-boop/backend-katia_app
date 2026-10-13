@@ -10,6 +10,7 @@ export type ProgramDTO = {
   level: string | null;
   objective: string | null;
   bother: string | null;
+  order: string | null;
   created_at: Date;
 };
 
@@ -22,6 +23,7 @@ export type CreateProgramInput = {
   level: string | null;
   objective: string | null;
   bother: string | null;
+  order: string | null;
 };
 
 export type PatchProgramInput = Partial<{
@@ -33,6 +35,7 @@ export type PatchProgramInput = Partial<{
   level: string | null;
   objective: string | null;
   bother: string | null;
+  order: string | null;
 }>;
 
 export type ProgramListFilters = {

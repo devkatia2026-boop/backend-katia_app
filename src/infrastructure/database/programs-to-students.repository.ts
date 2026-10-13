@@ -22,6 +22,7 @@ const PROGRAM_ATTR = [
   'level',
   'objective',
   'bother',
+  'order',
   'created_at',
 ] as const;
 

@@ -27,6 +27,7 @@ const ATTR = [
   'level',
   'objective',
   'bother',
+  'order',
   'created_at',
 ] as const;
 

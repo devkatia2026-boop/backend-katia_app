@@ -1,4 +1,5 @@
 import type { CreateSetInput, PatchSetInput } from '../ports/sets.port';
+import { parseTrainingOrderIds } from './training-order.parsing';
 
 const VALIDATION = 'ValidationException';
 
@@ -17,23 +18,10 @@ function expectNullableTrimmed(value: unknown, field: string): string | null {
   return t.length === 0 ? null : t;
 }
 
-function parseSetTrainingOrder(raw: string | null): number[] {
-  if (!raw?.trim()) {
-    return [];
-  }
-
-  return raw
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => Number.parseInt(part, 10))
-    .filter((value) => Number.isFinite(value) && value >= 1);
-}
-
 function expectOrderWithTrainings(value: unknown, field: string): string {
   const order = expectNullableTrimmed(value, field);
 
-  if (order === null || parseSetTrainingOrder(order).length === 0) {
+  if (order === null || parseTrainingOrderIds(order).length === 0) {
     const err = new Error(`Campo "${field}" deve conter ao menos um treino.`);
     err.name = VALIDATION;
     throw err;
