@@ -338,6 +338,18 @@ import { ListPostCommentsUseCase } from './application/use-cases/social/list-pos
 import { ListPostLikesUseCase } from './application/use-cases/social/list-post-likes.use-case';
 import { ListPostsUseCase } from './application/use-cases/social/list-posts.use-case';
 import { GetPostUseCase } from './application/use-cases/social/get-post.use-case';
+import { SequelizeRestrictionsRepository } from './infrastructure/database/restrictions.repository';
+import { SequelizeRestrictionTargetsLookup } from './infrastructure/database/restriction-targets.lookup';
+import { CreateRestrictionUseCase } from './application/use-cases/restrictions/create-restriction.use-case';
+import { ListRestrictionsUseCase } from './application/use-cases/restrictions/list-restrictions.use-case';
+import { DeleteRestrictionUseCase } from './application/use-cases/restrictions/delete-restriction.use-case';
+import { ClearRestrictionsUseCase } from './application/use-cases/restrictions/clear-restrictions.use-case';
+import { CreateSocialReportUseCase } from './application/use-cases/social/create-social-report.use-case';
+import { SequelizeSocialReportNotifier } from './infrastructure/database/social-report-notifier';
+import { SesTransactionalEmailAdapter } from './infrastructure/email/ses-transactional-email.adapter';
+import type { ITransactionalEmailSender } from './application/ports/transactional-email.port';
+import { RestrictionsController } from './interfaces/http/controllers/restrictions.controller';
+import { createRestrictionsRoutes } from './interfaces/http/routes/restrictions.routes';
 import { SequelizeProgramsRepository } from './infrastructure/database/programs.repository';
 import { ListProgramsUseCase } from './application/use-cases/program/list-programs.use-case';
 import { SearchProgramsUseCase } from './application/use-cases/program/search-programs.use-case';
@@ -527,8 +539,29 @@ const feedNotificationPublisher = new SequelizeFeedNotificationPublisher({
   Student: models.Student,
   Trainer: models.Trainer,
 });
+const restrictionsRepository = new SequelizeRestrictionsRepository({
+  Restriction: models.Restriction,
+});
+const restrictionTargetsLookup = new SequelizeRestrictionTargetsLookup({
+  Student: models.Student,
+  Trainer: models.Trainer,
+});
+function createTransactionalEmailSender(): ITransactionalEmailSender | null {
+  const fromEmail = process.env.SES_FROM_EMAIL?.trim();
+  if (!fromEmail) return null;
+  const region =
+    process.env.SES_REGION?.trim() || process.env.AWS_REGION?.trim() || 'sa-east-1';
+  return new SesTransactionalEmailAdapter({ fromEmail, region });
+}
+const transactionalEmailSender = createTransactionalEmailSender();
+const reportEmailTo =
+  process.env.REPORT_EMAIL_TO?.trim() || 'devkatia2026@gmail.com';
+const socialReportNotifier = new SequelizeSocialReportNotifier({
+  Notification: models.Notification,
+  Trainer: models.Trainer,
+});
 const socialFeedController = new SocialFeedController(
-  new ListPostsUseCase(socialFeedRepository),
+  new ListPostsUseCase(socialFeedRepository, restrictionsRepository),
   new CreatePostUseCase(socialFeedRepository, feedNotificationPublisher),
   new UpdatePostUseCase(socialFeedRepository),
   new DeletePostUseCase(socialFeedRepository),
@@ -537,10 +570,36 @@ const socialFeedController = new SocialFeedController(
   new DeleteCommentUseCase(socialFeedRepository),
   new LikePostUseCase(socialFeedRepository, feedNotificationPublisher),
   new UnlikePostUseCase(socialFeedRepository),
-  new ListPostCommentsUseCase(socialFeedRepository),
-  new ListPostLikesUseCase(socialFeedRepository),
+  new ListPostCommentsUseCase(socialFeedRepository, restrictionsRepository),
+  new ListPostLikesUseCase(socialFeedRepository, restrictionsRepository),
   uploadImageFilesUseCase,
-  new GetPostUseCase(socialFeedRepository)
+  new GetPostUseCase(socialFeedRepository, restrictionsRepository)
+);
+const restrictionsController = new RestrictionsController(
+  new CreateRestrictionUseCase(
+    restrictionsRepository,
+    socialFeedRepository,
+    restrictionTargetsLookup
+  ),
+  new ListRestrictionsUseCase(restrictionsRepository, socialFeedRepository, restrictionTargetsLookup),
+  new DeleteRestrictionUseCase(restrictionsRepository),
+  new ClearRestrictionsUseCase(restrictionsRepository),
+  new CreateSocialReportUseCase(
+    socialFeedRepository,
+    restrictionTargetsLookup,
+    transactionalEmailSender,
+    socialReportNotifier,
+    reportEmailTo,
+    async (studentId) => {
+      const row = await models.Student.findByPk(studentId, {
+        attributes: ['full_name', 'trainer_id'],
+        raw: true,
+      });
+      return row
+        ? { full_name: row.full_name, trainer_id: row.trainer_id }
+        : null;
+    }
+  )
 );
 app.use(
   '/posts',
@@ -1020,6 +1079,15 @@ app.use(
 
 const requireStudent = createRequireStudent((sub) =>
   models.Student.findByPk(sub).then((row) => row !== null)
+);
+app.use(
+  '/restrictions',
+  createRestrictionsRoutes(
+    restrictionsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireStudent
+  )
 );
 const programsToStudentsController = new ProgramsToStudentsController(
   listProgramsToStudentsUseCase,

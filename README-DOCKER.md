@@ -42,7 +42,7 @@ Runtime da app (`getDatabaseConfig`) usa apenas **`ENVIRONMENT`**, não o `NODE_
 2. Autenticação CLI e tags: por exemplo  
    `docker tag katia-backend:local YOUR_ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/katia-backend:latest`  
    `docker push ...`
-3. **ECS/Fargate** (ou parecido): defina porta do container **3000**, comando/entrypoint padrão da imagem, variáveis/segredos para Cognito e `DB_*_PROD`, `ENVIRONMENT=production` – ou o valor não `local|development` que utilizar nos ambientes staging/prod conforme [.env.template](.env.template).
+3. **ECS/Fargate** (ou parecido): porta do container **3000**, entrypoint padrão da imagem. **`npm run deploy:ecs`** faz build, push ECR e, por padrão, **sincroniza do `.env` local** para a task definition do serviço as chaves listadas em [scripts/ecs-env-sync-keys.txt](scripts/ecs-env-sync-keys.txt) (inclui `DB_*_PROD`, Cognito, AWS, S3, SES). Use `ENVIRONMENT=production` (ou staging) no `.env` antes do deploy. Para pular a sync: `powershell -File scripts/deploy-ecs.ps1 -SkipEnvSync`.
 4. WebSocket **`/ws/conversations`** com **Application Load Balancer**: ative suporte HTTP/1.1 com upgrade ou use recurso recomendado para WebSockets (sticky sessions/target group adequado conforme AWS).
 
 ## Scripts npm

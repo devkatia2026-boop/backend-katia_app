@@ -1,5 +1,22 @@
 const VALIDATION = 'ValidationException';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function expectUuidString(value: unknown, field: string): string {
+  if (typeof value !== 'string') {
+    const err = new Error(`Campo "${field}" deve ser UUID string.`);
+    err.name = VALIDATION;
+    throw err;
+  }
+  const t = value.trim();
+  if (!UUID_RE.test(t)) {
+    const err = new Error(`Campo "${field}" deve ser UUID válido.`);
+    err.name = VALIDATION;
+    throw err;
+  }
+  return t.toLowerCase();
+}
+
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

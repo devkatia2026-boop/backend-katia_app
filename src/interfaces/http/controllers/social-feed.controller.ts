@@ -160,11 +160,13 @@ export class SocialFeedController {
 
   async commentList(req: Request, res: Response): Promise<void> {
     try {
+      const a = actor(req);
       const postId = parsePositiveInt(firstParam(req.params.postId), 'postId');
       const result = await this.listPostComments.execute(
         postId,
         firstQuery(req.query.page),
-        firstQuery(req.query.pageSize)
+        firstQuery(req.query.pageSize),
+        { id: a.id, type: a.role }
       );
       res.status(200).json(result);
     } catch (err) {
@@ -174,11 +176,13 @@ export class SocialFeedController {
 
   async likeList(req: Request, res: Response): Promise<void> {
     try {
+      const a = actor(req);
       const postId = parsePositiveInt(firstParam(req.params.postId), 'postId');
       const result = await this.listPostLikes.execute(
         postId,
         firstQuery(req.query.page),
-        firstQuery(req.query.pageSize)
+        firstQuery(req.query.pageSize),
+        { id: a.id, type: a.role }
       );
       res.status(200).json(result);
     } catch (err) {

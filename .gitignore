@@ -1,3 +1,4 @@
 .env
 node_modules
 dist
+scripts/.ecs-register-task-def.pending.json

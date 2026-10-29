@@ -70,6 +70,11 @@ export const swaggerDocument = {
       description:
         'Links/mídia vinculados a uma introdução (`contents.introduction_id`). **Treinadora:** CRUD completo; envio de arquivo multipart no campo `link` (foto, PDF, vídeo ou áudio) → S3 em `introduction-contents/{trainerId}/link/...`, ou URL externa em JSON. **Aluna e treinadora:** leitura; a aluna só vê conteúdos cuja introdução pertence a programa ativo. Filtro opcional `introductionId` na listagem.',
     },
+    {
+      name: 'Bloqueios e denúncias',
+      description:
+        'Bloqueios pessoais (`restrictions`) por aluna ou treinadora autenticada. O feed social (`GET /posts`, `GET /posts/{postId}`, comentários e likes) filtra automaticamente posts, comentários e autores bloqueados com base no token, sem parâmetros extras. **Denúncia:** apenas aluna, via `POST /restrictions/reports`; não permite denunciar treinadora nem conteúdo de treinadora; envia e-mail para a equipe (SES) e notifica a treinadora (`SOCIAL_REPORT`).',
+    },
   ],
   info: {
     title: 'API Backend Reta AI',
@@ -108,6 +113,116 @@ export const swaggerDocument = {
           level_experience: { type: 'string', nullable: true },
           bother: { type: 'string', nullable: true },
           created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      Restriction: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          author_id: { type: 'string', format: 'uuid' },
+          author_type: { type: 'string', enum: ['student', 'trainer'] },
+          restriction_type: {
+            type: 'string',
+            enum: ['student', 'trainer', 'post', 'comment'],
+          },
+          target_id: { type: 'string', format: 'uuid', nullable: true },
+          target_type: { type: 'string', enum: ['student', 'trainer'], nullable: true },
+          post_id: { type: 'integer', nullable: true },
+          comment_id: { type: 'integer', nullable: true },
+          content_type: { type: 'string', nullable: true },
+          blocked_user_id: {
+            type: 'string',
+            format: 'uuid',
+            nullable: true,
+            description: 'UUID da aluna ou treinadora bloqueada (autor do post/comentário ou alvo do bloqueio).',
+          },
+          blocked_user_type: {
+            type: 'string',
+            enum: ['student', 'trainer'],
+            nullable: true,
+          },
+          blocked_name: {
+            type: 'string',
+            nullable: true,
+            description: 'Nome (`full_name`) da pessoa bloqueada.',
+          },
+          post_content: {
+            type: 'string',
+            nullable: true,
+            description: 'Texto do post quando `restriction_type` é `post`.',
+          },
+          post_image: {
+            type: 'string',
+            nullable: true,
+            description: 'URL da imagem do post quando `restriction_type` é `post`.',
+          },
+          comment_content: {
+            type: 'string',
+            nullable: true,
+            description: 'Texto do comentário quando `restriction_type` é `comment`.',
+          },
+          subject_author_name: {
+            type: 'string',
+            nullable: true,
+            description: 'Igual a `blocked_name` (compatibilidade).',
+          },
+          subject_author_type: {
+            type: 'string',
+            enum: ['student', 'trainer'],
+            nullable: true,
+          },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      RestrictionCreate: {
+        type: 'object',
+        required: ['restriction_type'],
+        properties: {
+          restriction_type: {
+            type: 'string',
+            enum: ['student', 'trainer', 'post', 'comment'],
+          },
+          target_id: {
+            type: 'string',
+            format: 'uuid',
+            description:
+              'UUID da aluna ou treinadora (formato 8-4-4-4-12 hex; aceita identificadores de perfil como no Cognito).',
+          },
+          post_id: { type: 'integer', minimum: 1 },
+          comment_id: { type: 'integer', minimum: 1 },
+          content_type: { type: 'string', nullable: true },
+        },
+      },
+      SocialReportCreate: {
+        type: 'object',
+        required: ['report_type'],
+        properties: {
+          report_type: { type: 'string', enum: ['post', 'comment', 'student'] },
+          post_id: { type: 'integer', minimum: 1 },
+          comment_id: { type: 'integer', minimum: 1 },
+          target_id: {
+            type: 'string',
+            format: 'uuid',
+            description:
+              'Obrigatório quando `report_type` é `student`. UUID da aluna denunciada (8-4-4-4-12 hex).',
+          },
+          reason: { type: 'string', nullable: true },
+        },
+      },
+      SocialReportNotificationData: {
+        type: 'object',
+        description: 'Payload em `Notification.data` para tipo `SOCIAL_REPORT`.',
+        properties: {
+          reportType: { type: 'string', enum: ['post', 'comment', 'student'] },
+          reporterStudentId: { type: 'string', format: 'uuid' },
+          reporterName: { type: 'string' },
+          reportedName: { type: 'string' },
+          contentPreview: { type: 'string', nullable: true },
+          reason: { type: 'string', nullable: true },
+          summary: { type: 'string' },
+          postId: { type: 'integer', nullable: true },
+          commentId: { type: 'integer', nullable: true },
+          targetStudentId: { type: 'string', format: 'uuid', nullable: true },
         },
       },
       Revaluation: {
@@ -3130,11 +3245,152 @@ export const swaggerDocument = {
         },
       },
     },
+    '/restrictions': {
+      get: {
+        tags: ['Bloqueios e denúncias'],
+        summary: 'Listar meus bloqueios',
+        description:
+          'Retorna todos os registros em `restrictions` cujo `author_id` e `author_type` correspondem ao usuário autenticado (token).',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Lista de bloqueios',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['items', 'total'],
+                  properties: {
+                    total: { type: 'integer' },
+                    items: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Restriction' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+        },
+      },
+      post: {
+        tags: ['Bloqueios e denúncias'],
+        summary: 'Criar bloqueio',
+        description:
+          'Aluna ou treinadora bloqueia post, comentário, outra aluna ou outra treinadora. Duplicata idempotente retorna o registro existente (201). `restriction_type`: `post` exige `post_id`; `comment` exige `comment_id`; `student` ou `trainer` exige `target_id` (UUID). Campo opcional `content_type` (texto livre).',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/RestrictionCreate' },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Bloqueio criado ou já existente',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Restriction' },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+          '404': { description: 'Alvo não encontrado' },
+        },
+      },
+    },
+    '/restrictions/all': {
+      delete: {
+        tags: ['Bloqueios e denúncias'],
+        summary: 'Remover todos os meus bloqueios',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Quantidade removida',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['removed'],
+                  properties: { removed: { type: 'integer', minimum: 0 } },
+                },
+              },
+            },
+          },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+        },
+      },
+    },
+    '/restrictions/{restrictionId}': {
+      delete: {
+        tags: ['Bloqueios e denúncias'],
+        summary: 'Remover um bloqueio',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'restrictionId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '204': { description: 'Removido' },
+          '400': { description: 'restrictionId inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Usuário não é aluna nem treinadora' },
+          '404': { description: 'Bloqueio não encontrado' },
+        },
+      },
+    },
+    '/restrictions/reports': {
+      post: {
+        tags: ['Bloqueios e denúncias'],
+        summary: 'Denunciar conteúdo ou aluna (somente aluna)',
+        description:
+          'Registra denúncia de post, comentário ou outra aluna (`report_type`: `post` + `post_id`, `comment` + `comment_id`, ou `student` + `target_id`). Não é permitido denunciar treinadora, posts/comentários de treinadora ou o próprio conteúdo. Envia e-mail HTML para `REPORT_EMAIL_TO` quando `SES_FROM_EMAIL` está configurado; cria notificação `SOCIAL_REPORT` para a treinadora com mensagem contendo nome da denunciante, nome da denunciada e trecho do post/comentário quando aplicável (`SocialReportNotificationData`).',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/SocialReportCreate' },
+            },
+          },
+        },
+        responses: {
+          '202': {
+            description: 'Denúncia aceita',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['ok'],
+                  properties: { ok: { type: 'boolean', enum: [true] } },
+                },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Somente alunas ou alvo não denunciável' },
+          '404': { description: 'Alvo não encontrado' },
+          '503': { description: 'Falha ao enviar e-mail (SES)' },
+        },
+      },
+    },
     '/posts': {
       get: {
         summary: 'Listar posts (feed)',
         description:
-          'Feed global, posts mais recentes primeiro (`created_at` desc). Paginação `page` e `pageSize` (máx. 100; padrão página 1 e 10 itens).',
+          'Feed global, posts mais recentes primeiro (`created_at` desc). Paginação `page` e `pageSize` (máx. 100; padrão página 1 e 10 itens). **Filtro de bloqueios:** exclui posts bloqueados pelo usuário autenticado, posts de alunas/treinadoras bloqueadas e ajusta contagens de comentários visíveis — inferido do token, sem parâmetros extras.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -3222,7 +3478,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Obter um post por id (enriquecido)',
         description:
-          'Retorna o post com autor, `likes_count`, `comments_count` e `liked_by_me` para o usuário autenticado. Usado para abrir um post específico vindo de uma notificação.',
+          'Retorna o post com autor, `likes_count`, `comments_count` e `liked_by_me` para o usuário autenticado. Usado para abrir um post específico vindo de uma notificação. Retorna 404 se o post estiver bloqueado ou o autor estiver bloqueado pelo viewer (token).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'postId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
@@ -3295,7 +3551,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar comentários do post',
         description:
-          'Comentários ordenados por `created_at` crescente. Paginação `page` e `pageSize` (máx. 100), padrão página 1 e 10 itens.',
+          'Comentários ordenados por `created_at` crescente. Paginação `page` e `pageSize` (máx. 100), padrão página 1 e 10 itens. Exclui comentários bloqueados e de autores bloqueados pelo usuário autenticado (token).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'postId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
@@ -3419,7 +3675,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar curtidas do post',
         description:
-          'Likes ordenados por `created_at` crescente. Paginação `page` e `pageSize` (máx. 100). Ações de curtir/descurtir usam o singular `/posts/{postId}/like`.',
+          'Likes ordenados por `created_at` crescente. Paginação `page` e `pageSize` (máx. 100). Ações de curtir/descurtir usam o singular `/posts/{postId}/like`. Exclui curtidas de alunas/treinadoras bloqueadas pelo usuário autenticado (token).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'postId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
@@ -7540,7 +7796,7 @@ export const swaggerDocument = {
       get: {
         summary: 'Listar minhas notificações',
         description:
-          'Aluna: notificações com `student_id` igual ao usuário autenticado, exceto tipos exclusivos da treinadora (`STUDENT_TRAINING_FEEDBACK_CREATED`, `STUDENT_POINT_CREATED`, `NEW_STUDENT_REGISTRATION`, `REVALUATION_COMPLETED`, `REVALUATION_PENDING_INSPECTIONS`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`). Treinadora: notificações com `trainer_id` igual ao usuário autenticado e `student_id` nulo, ou tipos com contexto de aluna (`STUDENT_TRAINING_FEEDBACK_CREATED`, `STUDENT_POINT_CREATED`, `NEW_STUDENT_REGISTRATION`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`); tipos exclusivos da aluna (`REVALUATION_STARTED`, `REVALUATION_COMPLETE_REMINDER`, `FEEDBACK_RESPONSE_CREATED`, `NOTICE_CREATED`, `SET_ASSIGNED_TO_STUDENT`, `COUPON_CREATED`, `WELLBEING_CREATED`, `PROGRAM_CREATED`) não aparecem na inbox da treinadora. Tipos compartilhados (`FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`) usam linhas separadas por destinatário (`student_id` preenchido para aluna, nulo para treinadora). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `REVALUATION_STARTED`, `REVALUATION_COMPLETED`, `REVALUATION_PENDING_INSPECTIONS`, `NOTICE_CREATED`, `SET_ASSIGNED_TO_STUDENT`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`, `COUPON_CREATED`, `WELLBEING_CREATED`, `PROGRAM_CREATED`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; reavaliação concluída usa `studentId` e `revaluationId`; validade de fase usa `studentId`, `setToStudentId`, `setsId`, `validity` e `milestone`; cupom usa `couponId`; wellbeing usa `wellbeingId`; conversa usa `studentId` e `messageId` (`title` = nome de quem enviou, `message` = texto da mensagem).',
+          'Aluna: notificações com `student_id` igual ao usuário autenticado, exceto tipos exclusivos da treinadora (`STUDENT_TRAINING_FEEDBACK_CREATED`, `STUDENT_POINT_CREATED`, `NEW_STUDENT_REGISTRATION`, `REVALUATION_COMPLETED`, `REVALUATION_PENDING_INSPECTIONS`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`). Treinadora: notificações com `trainer_id` igual ao usuário autenticado e `student_id` nulo, ou tipos com contexto de aluna (`STUDENT_TRAINING_FEEDBACK_CREATED`, `STUDENT_POINT_CREATED`, `NEW_STUDENT_REGISTRATION`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`); tipos exclusivos da aluna (`REVALUATION_STARTED`, `REVALUATION_COMPLETE_REMINDER`, `FEEDBACK_RESPONSE_CREATED`, `NOTICE_CREATED`, `SET_ASSIGNED_TO_STUDENT`, `COUPON_CREATED`, `WELLBEING_CREATED`, `PROGRAM_CREATED`) não aparecem na inbox da treinadora. Tipos compartilhados (`FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`) usam linhas separadas por destinatário (`student_id` preenchido para aluna, nulo para treinadora). **Treinadora:** `SOCIAL_REPORT` quando uma aluna denuncia post/comentário/outra aluna no feed (`data` inclui `reportType`, `reporterStudentId`, `postId` ou `commentId` ou `targetStudentId` quando aplicável). Tipos comuns: `FEED_NEW_POST`, `FEED_NEW_COMMENT`, `FEED_NEW_LIKE`, `SOCIAL_REPORT`, `STUDENT_POINT_CREATED`, `STUDENT_TRAINING_FEEDBACK_CREATED`, `FEEDBACK_RESPONSE_CREATED`, `REVALUATION_STARTED`, `REVALUATION_COMPLETED`, `REVALUATION_PENDING_INSPECTIONS`, `NOTICE_CREATED`, `SET_ASSIGNED_TO_STUDENT`, `SET_VALIDITY_REMINDER_7D`, `SET_VALIDITY_REMINDER_3D`, `SET_VALIDITY_REMINDER_TODAY`, `SET_VALIDITY_PAST`, `COUPON_CREATED`, `WELLBEING_CREATED`, `PROGRAM_CREATED`, `CONVERSATION_NEW_MESSAGE`, `RANKING_LAST_MONTH:{plan}:{ano}-{mês}`. Campo `data`: feed usa `postId`; resposta a feedback usa `feedbackId`; reavaliação concluída usa `studentId` e `revaluationId`; validade de fase usa `studentId`, `setToStudentId`, `setsId`, `validity` e `milestone`; cupom usa `couponId`; wellbeing usa `wellbeingId`; conversa usa `studentId` e `messageId` (`title` = nome de quem enviou, `message` = texto da mensagem).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },

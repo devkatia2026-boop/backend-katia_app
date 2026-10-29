@@ -8,6 +8,7 @@ import type {
   CreatePostInput,
   FeedAuthor,
   FeedCommentDTO,
+  FeedExclusions,
   FeedLikeDTO,
   FeedPostDTO,
   FeedViewer,
@@ -18,6 +19,13 @@ import type {
   PatchPostInput,
   PostDTO,
 } from '../../application/ports/social-feed.port';
+import {
+  buildCommentFeedWhere,
+  buildCommentsCountWhereForPosts,
+  buildLikesFeedWhere,
+  buildPostFeedWhere,
+  isPostExcludedByViewer,
+} from '../../application/matching/feed-restrictions.where';
 
 type AuthorRef = { author_id: string | null; author_type: string | null };
 
@@ -127,13 +135,16 @@ export class SequelizeSocialFeedRepository implements ISocialFeedRepository {
   async listPosts(
     page: number,
     pageSize: number,
-    viewer: FeedViewer
+    viewer: FeedViewer,
+    exclusions: FeedExclusions
   ): Promise<PagedList<FeedPostDTO>> {
     const offset = (page - 1) * pageSize;
+    const postWhere = buildPostFeedWhere(exclusions);
     const [total, rows] = await Promise.all([
-      this.models.Post.count(),
+      this.models.Post.count({ where: postWhere }),
       this.models.Post.findAll({
         attributes: ['id', 'author_id', 'author_type', 'image', 'content', 'created_at'],
+        where: postWhere,
         order: [['created_at', 'DESC']],
         limit: pageSize,
         offset,
@@ -157,7 +168,7 @@ export class SequelizeSocialFeedRepository implements ISocialFeedRepository {
       }) as unknown as Promise<{ post_id: number; count: string | number }[]>,
       this.models.Comment.findAll({
         attributes: ['post_id', [fn('COUNT', col('id')), 'count']],
-        where: { post_id: postIds },
+        where: buildCommentsCountWhereForPosts(postIds, exclusions),
         group: ['post_id'],
         raw: true,
       }) as unknown as Promise<{ post_id: number; count: string | number }[]>,
@@ -192,7 +203,11 @@ export class SequelizeSocialFeedRepository implements ISocialFeedRepository {
     return row ? (row.toJSON() as PostDTO) : null;
   }
 
-  async findFeedPostById(postId: number, viewer: FeedViewer): Promise<FeedPostDTO | null> {
+  async findFeedPostById(
+    postId: number,
+    viewer: FeedViewer,
+    exclusions: FeedExclusions
+  ): Promise<FeedPostDTO | null> {
     const row = (await this.models.Post.findByPk(postId, {
       attributes: ['id', 'author_id', 'author_type', 'image', 'content', 'created_at'],
       raw: true,
@@ -202,10 +217,16 @@ export class SequelizeSocialFeedRepository implements ISocialFeedRepository {
       return null;
     }
 
+    if (isPostExcludedByViewer(row, exclusions)) {
+      return null;
+    }
+
     const [authorMap, likesCount, commentsCount, myLike] = await Promise.all([
       this.buildAuthorMap([row]),
-      this.models.Like.count({ where: { post_id: postId } }),
-      this.models.Comment.count({ where: { post_id: postId } }),
+      this.models.Like.count({ where: buildLikesFeedWhere(postId, exclusions) }),
+      this.models.Comment.count({
+        where: buildCommentFeedWhere(postId, exclusions),
+      }),
       this.models.Like.findOne({
         where: { post_id: postId, author_id: viewer.id, author_type: viewer.type },
         raw: true,
@@ -246,13 +267,15 @@ export class SequelizeSocialFeedRepository implements ISocialFeedRepository {
   async listCommentsByPostId(
     postId: number,
     page: number,
-    pageSize: number
+    pageSize: number,
+    exclusions: FeedExclusions
   ): Promise<PagedList<FeedCommentDTO>> {
     const offset = (page - 1) * pageSize;
+    const commentWhere = buildCommentFeedWhere(postId, exclusions);
     const [total, rows] = await Promise.all([
-      this.models.Comment.count({ where: { post_id: postId } }),
+      this.models.Comment.count({ where: commentWhere }),
       this.models.Comment.findAll({
-        where: { post_id: postId },
+        where: commentWhere,
         attributes: ['id', 'post_id', 'author_id', 'author_type', 'content', 'created_at'],
         order: [['created_at', 'ASC']],
         limit: pageSize,
@@ -277,13 +300,15 @@ export class SequelizeSocialFeedRepository implements ISocialFeedRepository {
   async listLikesByPostId(
     postId: number,
     page: number,
-    pageSize: number
+    pageSize: number,
+    exclusions: FeedExclusions
   ): Promise<PagedList<FeedLikeDTO>> {
     const offset = (page - 1) * pageSize;
+    const likeWhere = buildLikesFeedWhere(postId, exclusions);
     const [total, rows] = await Promise.all([
-      this.models.Like.count({ where: { post_id: postId } }),
+      this.models.Like.count({ where: likeWhere }),
       this.models.Like.findAll({
-        where: { post_id: postId },
+        where: likeWhere,
         attributes: ['id', 'post_id', 'author_id', 'author_type', 'created_at'],
         order: [['created_at', 'DESC']],
         limit: pageSize,

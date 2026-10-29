@@ -40,6 +40,7 @@ import { initMethod, Method } from './method.model';
 import { initPlaylist, Playlist } from './playlist.model';
 import { initIntroduction, Introduction } from './introduction.model';
 import { initContent, Content } from './content.model';
+import { initRestriction, Restriction } from './restriction.model';
 
 export type DatabaseModels = {
   Trainer: typeof Trainer;
@@ -83,6 +84,7 @@ export type DatabaseModels = {
   Playlist: typeof Playlist;
   Introduction: typeof Introduction;
   Content: typeof Content;
+  Restriction: typeof Restriction;
 };
 
 function associate(models: DatabaseModels): void {
@@ -126,6 +128,7 @@ function associate(models: DatabaseModels): void {
     Playlist,
     Introduction,
     Content,
+    Restriction,
   } = models;
 
   Trainer.hasMany(Student, { foreignKey: 'trainer_id', as: 'students' });
@@ -287,6 +290,11 @@ function associate(models: DatabaseModels): void {
   Introduction.belongsTo(Program, { foreignKey: 'program_id', as: 'program' });
   Introduction.hasMany(Content, { foreignKey: 'introduction_id', as: 'contents' });
   Content.belongsTo(Introduction, { foreignKey: 'introduction_id', as: 'introduction' });
+
+  Post.hasMany(Restriction, { foreignKey: 'post_id', as: 'restrictions' });
+  Restriction.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
+  Comment.hasMany(Restriction, { foreignKey: 'comment_id', as: 'restrictions' });
+  Restriction.belongsTo(Comment, { foreignKey: 'comment_id', as: 'comment' });
 }
 
 export function initModels(sequelize: Sequelize): DatabaseModels {
@@ -331,6 +339,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const PlaylistModel = initPlaylist(sequelize);
   const IntroductionModel = initIntroduction(sequelize);
   const ContentModel = initContent(sequelize);
+  const RestrictionModel = initRestriction(sequelize);
 
   const models: DatabaseModels = {
     Trainer: TrainerModel,
@@ -374,6 +383,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     Playlist: PlaylistModel,
     Introduction: IntroductionModel,
     Content: ContentModel,
+    Restriction: RestrictionModel,
   };
 
   associate(models);
@@ -423,4 +433,5 @@ export {
   Playlist,
   Introduction,
   Content,
+  Restriction,
 };

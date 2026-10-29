@@ -1,4 +1,7 @@
+import type { FeedExclusions } from './restrictions.port';
+
 export type AuthorRole = 'student' | 'trainer';
+export type { FeedExclusions };
 
 export type PostDTO = {
   id: number;
@@ -90,11 +93,16 @@ export interface ISocialFeedRepository {
   listPosts(
     page: number,
     pageSize: number,
-    viewer: FeedViewer
+    viewer: FeedViewer,
+    exclusions: FeedExclusions
   ): Promise<PagedList<FeedPostDTO>>;
   findPostById(postId: number): Promise<PostDTO | null>;
   /** Post único enriquecido com autor, métricas e `liked_by_me` para o viewer. */
-  findFeedPostById(postId: number, viewer: FeedViewer): Promise<FeedPostDTO | null>;
+  findFeedPostById(
+    postId: number,
+    viewer: FeedViewer,
+    exclusions: FeedExclusions
+  ): Promise<FeedPostDTO | null>;
   updatePostByOwner(
     postId: number,
     authorId: string,
@@ -106,12 +114,14 @@ export interface ISocialFeedRepository {
   listCommentsByPostId(
     postId: number,
     page: number,
-    pageSize: number
+    pageSize: number,
+    exclusions: FeedExclusions
   ): Promise<PagedList<FeedCommentDTO>>;
   listLikesByPostId(
     postId: number,
     page: number,
-    pageSize: number
+    pageSize: number,
+    exclusions: FeedExclusions
   ): Promise<PagedList<FeedLikeDTO>>;
   createComment(input: CreateCommentInput): Promise<CommentDTO>;
   findCommentById(commentId: number): Promise<CommentDTO | null>;
