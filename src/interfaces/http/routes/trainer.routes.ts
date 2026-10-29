@@ -15,7 +15,8 @@ export function createTrainerRoutes(
   setsToTrainingsController: SetsToTrainingsController,
   semesterPromotionController: SemesterPromotionController,
   requireAuth: RequestHandler,
-  requireTrainer: RequestHandler
+  requireTrainer: RequestHandler,
+  exerciseImageUpload: RequestHandler
 ): Router {
   const router = Router();
   const asTrainer: RequestHandler[] = [requireAuth, requireTrainer];
@@ -71,10 +72,10 @@ export function createTrainerRoutes(
   router.get('/exercises/:exerciseId', ...asTrainer, (req: Request, res: Response) =>
     exercisesController.getById(req, res)
   );
-  router.post('/exercises', ...asTrainer, (req: Request, res: Response) =>
+  router.post('/exercises', [...asTrainer, exerciseImageUpload], (req: Request, res: Response) =>
     exercisesController.create(req, res)
   );
-  router.patch('/exercises/:exerciseId', ...asTrainer, (req: Request, res: Response) =>
+  router.patch('/exercises/:exerciseId', [...asTrainer, exerciseImageUpload], (req: Request, res: Response) =>
     exercisesController.patch(req, res)
   );
   router.delete('/exercises/:exerciseId', ...asTrainer, (req: Request, res: Response) =>

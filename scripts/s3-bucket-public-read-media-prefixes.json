@@ -2,18 +2,24 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "PublicReadIntroductionContents",
+      "Sid": "PublicReadAppUploads",
       "Effect": "Allow",
       "Principal": "*",
       "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::katia-app-uploads/introduction-contents/*"
-    },
-    {
-      "Sid": "PublicReadWellsMedia",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::katia-app-uploads/wells/*"
+      "Resource": [
+        "arn:aws:s3:::katia-app-uploads/programs/*",
+        "arn:aws:s3:::katia-app-uploads/posts/*",
+        "arn:aws:s3:::katia-app-uploads/profiles/*",
+        "arn:aws:s3:::katia-app-uploads/exercises/*",
+        "arn:aws:s3:::katia-app-uploads/evolutions/*",
+        "arn:aws:s3:::katia-app-uploads/anamnesis-exclusive/*",
+        "arn:aws:s3:::katia-app-uploads/revaluations/*",
+        "arn:aws:s3:::katia-app-uploads/coupons/*",
+        "arn:aws:s3:::katia-app-uploads/wellbeing/*",
+        "arn:aws:s3:::katia-app-uploads/wells/*",
+        "arn:aws:s3:::katia-app-uploads/playlists/*",
+        "arn:aws:s3:::katia-app-uploads/introduction-contents/*"
+      ]
     }
   ]
 }

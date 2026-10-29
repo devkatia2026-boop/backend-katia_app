@@ -73,6 +73,10 @@ export const PLAYLIST_IMAGE_FIELDS: ImageUploadFieldConfig = {
   photo: { maxCount: 1 },
 };
 
+export const EXERCISE_IMAGE_FIELDS: ImageUploadFieldConfig = {
+  image: { maxCount: 1 },
+};
+
 export const WELL_IMAGE_FIELDS: ImageUploadFieldConfig = {
   photo: { maxCount: 1 },
   pdf: { maxCount: 1, mimeTypes: DOCUMENT_UPLOAD_MIME_TYPES },
@@ -98,6 +102,7 @@ export const S3_PREFIX_COUPON = 'coupons';
 export const S3_PREFIX_WELLBEING = 'wellbeing';
 export const S3_PREFIX_WELL = 'wells';
 export const S3_PREFIX_PLAYLIST = 'playlists';
+export const S3_PREFIX_EXERCISE = 'exercises';
 
 export const INTRODUCTION_CONTENT_UPLOAD_FIELDS: ImageUploadFieldConfig = {
   link: { maxCount: 1, mimeTypes: INTRODUCTION_CONTENT_UPLOAD_MIME_TYPES },

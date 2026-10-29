@@ -4384,6 +4384,8 @@ export const swaggerDocument = {
       },
       post: {
         summary: 'Criar exercício',
+        description:
+          'Campo `video`: URL externa de vídeo (JSON ou multipart). **Ou** envie arquivo de imagem no multipart (`image`) → S3 em `exercises/{trainerId}/image/...`; a URL pública é gravada em `video` na resposta. Não envie `video` (link) e `image` (arquivo) na mesma requisição.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -4393,20 +4395,45 @@ export const swaggerDocument = {
                 type: 'object',
                 properties: {
                   name: { type: 'string', nullable: true },
-                  video: { type: 'string', nullable: true },
+                  video: {
+                    type: 'string',
+                    nullable: true,
+                    description: 'Link de vídeo (YouTube, etc.).',
+                  },
                   type: { type: 'string', nullable: true, enum: ['casa', 'academia', 'ambos'] },
                   description: { type: 'string', nullable: true },
                   level: { allOf: [{ $ref: '#/components/schemas/ExerciseLevel' }], nullable: true },
                 },
               },
             },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  video: {
+                    type: 'string',
+                    description: 'Link de vídeo (alternativa ao campo image).',
+                  },
+                  image: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'Imagem do exercício (alternativa ao link em video).',
+                  },
+                  type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
+                  description: { type: 'string' },
+                  level: { allOf: [{ $ref: '#/components/schemas/ExerciseLevel' }] },
+                },
+              },
+            },
           },
         },
         responses: {
-          '201': { description: 'Criado' },
-          '400': { description: 'Corpo inválido' },
+          '201': { description: 'Criado; `video` contém link externo ou URL S3 da imagem.' },
+          '400': { description: 'Corpo inválido ou video + image juntos' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
+          '503': { description: 'S3 não configurado ao enviar imagem' },
         },
       },
     },
@@ -4459,6 +4486,8 @@ export const swaggerDocument = {
       },
       patch: {
         summary: 'Atualizar exercício',
+        description:
+          'Mesmas regras de mídia do POST: `video` (link) **ou** multipart `image` (S3 → URL em `video`).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'exerciseId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
@@ -4479,14 +4508,29 @@ export const swaggerDocument = {
                 },
               },
             },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  name: { type: 'string' },
+                  video: { type: 'string' },
+                  image: { type: 'string', format: 'binary' },
+                  type: { type: 'string', enum: ['casa', 'academia', 'ambos'] },
+                  description: { type: 'string' },
+                  level: { allOf: [{ $ref: '#/components/schemas/ExerciseLevel' }] },
+                },
+              },
+            },
           },
         },
         responses: {
           '200': { description: 'Atualizado' },
-          '400': { description: 'Corpo inválido' },
+          '400': { description: 'Corpo inválido ou video + image juntos' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
           '404': { description: 'Não encontrado' },
+          '503': { description: 'S3 não configurado ao enviar imagem' },
         },
       },
       delete: {

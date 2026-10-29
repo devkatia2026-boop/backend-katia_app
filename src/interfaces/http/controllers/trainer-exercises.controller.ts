@@ -5,6 +5,15 @@ import type { CreateExerciseUseCase } from '../../../application/use-cases/train
 import type { UpdateExerciseUseCase } from '../../../application/use-cases/trainer/update-exercise.use-case';
 import type { DeleteExerciseUseCase } from '../../../application/use-cases/trainer/delete-exercise.use-case';
 import type { SearchExercisesUseCase } from '../../../application/use-cases/trainer/search-exercises.use-case';
+import {
+  OBJECT_STORAGE_EXCEPTION,
+  type UploadImageFilesUseCase,
+} from '../../../application/use-cases/media/upload-image-files.use-case';
+import {
+  EXERCISE_IMAGE_FIELDS,
+  S3_PREFIX_EXERCISE,
+} from '../../../application/media/image-upload.config';
+import { mergeExerciseCreateOrPatchBody } from '../helpers/merge-exercise-body';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -37,7 +46,8 @@ export class TrainerExercisesController {
     private readonly createExercise: CreateExerciseUseCase,
     private readonly updateExercise: UpdateExerciseUseCase,
     private readonly deleteExercise: DeleteExerciseUseCase,
-    private readonly searchExercises: SearchExercisesUseCase
+    private readonly searchExercises: SearchExercisesUseCase,
+    private readonly uploadImages: UploadImageFilesUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -79,20 +89,36 @@ export class TrainerExercisesController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const created = await this.createExercise.execute(req.body);
+      const trainerId = req.authUser!.sub;
+      const body = await mergeExerciseCreateOrPatchBody(
+        req,
+        this.uploadImages,
+        trainerId,
+        S3_PREFIX_EXERCISE,
+        EXERCISE_IMAGE_FIELDS
+      );
+      const created = await this.createExercise.execute(body);
       res.status(201).json(created);
     } catch (err) {
-      this.handle(err, res, 'Erro ao criar exercício.');
+      this.handleWrite(err, res, 'Erro ao criar exercício.');
     }
   }
 
   async patch(req: Request, res: Response): Promise<void> {
     try {
       const id = parseExerciseId(firstParam(req.params.exerciseId));
-      const updated = await this.updateExercise.execute(id, req.body);
+      const trainerId = req.authUser!.sub;
+      const body = await mergeExerciseCreateOrPatchBody(
+        req,
+        this.uploadImages,
+        trainerId,
+        S3_PREFIX_EXERCISE,
+        EXERCISE_IMAGE_FIELDS
+      );
+      const updated = await this.updateExercise.execute(id, body);
       res.status(200).json(updated);
     } catch (err) {
-      this.handle(err, res, 'Erro ao atualizar exercício.');
+      this.handleWrite(err, res, 'Erro ao atualizar exercício.');
     }
   }
 
@@ -117,6 +143,15 @@ export class TrainerExercisesController {
       return;
     }
     res.status(500).json({ message: fallback });
+  }
+
+  private handleWrite(err: unknown, res: Response, fallback: string): void {
+    const error = err as { name?: string; message?: string };
+    if (error.name === OBJECT_STORAGE_EXCEPTION) {
+      res.status(503).json({ message: error.message ?? 'Armazenamento indisponível.' });
+      return;
+    }
+    this.handle(err, res, fallback);
   }
 }
 

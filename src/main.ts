@@ -426,6 +426,7 @@ const uploadImageFilesUseCase = new UploadImageFilesUseCase(objectStorage);
 const profileImageUploadMiddleware = createImageUploadMiddleware(['photo_perfil']);
 const postImageUploadMiddleware = createImageUploadMiddleware(['image']);
 const programImageUploadMiddleware = createImageUploadMiddleware(['photo']);
+const exerciseImageUploadMiddleware = createImageUploadMiddleware(['image']);
 const couponImageUploadMiddleware = createImageUploadMiddleware(['photo']);
 const wellbeingImageUploadMiddleware = createImageUploadMiddleware(['photo']);
 const wellImageUploadMiddleware = createImageUploadMiddleware(['photo', 'pdf']);
@@ -986,7 +987,8 @@ const trainerExercisesController = new TrainerExercisesController(
   new CreateExerciseUseCase(exercisesRepository),
   new UpdateExerciseUseCase(exercisesRepository),
   new DeleteExerciseUseCase(exercisesRepository),
-  new SearchExercisesUseCase(exercisesRepository)
+  new SearchExercisesUseCase(exercisesRepository),
+  uploadImageFilesUseCase
 );
 const exercisesController = new ExercisesController(new GetExerciseUseCase(exercisesRepository));
 app.use(
@@ -1073,7 +1075,8 @@ app.use(
     setsToTrainingsController,
     semesterPromotionController,
     requireAuth,
-    requireTrainer
+    requireTrainer,
+    exerciseImageUploadMiddleware
   )
 );
 

@@ -37,6 +37,26 @@ function expectNullableExerciseType(value: unknown, field: string): string | nul
   return t;
 }
 
+export function normalizeExerciseRequestBody(body: Record<string, unknown>): Record<string, unknown> {
+  const imageUrl =
+    typeof body.image === 'string' && body.image.trim().length > 0 ? body.image.trim() : null;
+  const videoLink =
+    typeof body.video === 'string' && body.video.trim().length > 0 ? body.video.trim() : null;
+
+  if (imageUrl && videoLink) {
+    const err = new Error('Envie link de vídeo (`video`) ou imagem (`image`), não os dois.');
+    err.name = VALIDATION;
+    throw err;
+  }
+
+  const next: Record<string, unknown> = { ...body };
+  if (imageUrl) {
+    next.video = imageUrl;
+  }
+  delete next.image;
+  return next;
+}
+
 function expectNullableExerciseLevel(value: unknown, field: string): string | null {
   if (value === null) return null;
   if (typeof value !== 'string') {
