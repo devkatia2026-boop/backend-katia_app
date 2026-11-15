@@ -77,10 +77,11 @@ export const EXERCISE_IMAGE_FIELDS: ImageUploadFieldConfig = {
   image: { maxCount: 1 },
 };
 
-export const WELL_IMAGE_FIELDS: ImageUploadFieldConfig = {
-  photo: { maxCount: 1 },
-  pdf: { maxCount: 1, mimeTypes: DOCUMENT_UPLOAD_MIME_TYPES },
+export const SUBJECT_WELL_UPLOAD_FIELDS: ImageUploadFieldConfig = {
+  midia: { maxCount: 1, mimeTypes: INTRODUCTION_CONTENT_UPLOAD_MIME_TYPES },
 };
+
+export const S3_PREFIX_SUBJECT_WELL = 'subject-wells';
 
 export const EVOLUTION_IMAGE_FIELDS: ImageUploadFieldConfig = {
   original_photo: { maxCount: 1 },

@@ -1,5 +1,6 @@
 import { parseWellPatchBody } from '../../parsing/well-body.parsing';
 import type { IWellbeingRepository } from '../../ports/wellbeing.port';
+import type { ISubjectWellsRepository } from '../../ports/subject-wells.port';
 import type { IWellsRepository, WellDTO } from '../../ports/wells.port';
 
 const NOT_FOUND = 'NotFoundException';
@@ -7,7 +8,8 @@ const NOT_FOUND = 'NotFoundException';
 export class UpdateWellUseCase {
   constructor(
     private readonly wells: IWellsRepository,
-    private readonly wellbeing: IWellbeingRepository
+    private readonly wellbeing: IWellbeingRepository,
+    private readonly subjectWells: ISubjectWellsRepository
   ) {}
 
   async execute(wellId: number, body: unknown): Promise<WellDTO> {
@@ -20,6 +22,8 @@ export class UpdateWellUseCase {
         throw err;
       }
     }
-    return this.wells.update(wellId, patch);
+    const row = await this.wells.update(wellId, patch);
+    const subjects = await this.subjectWells.findByWellIds([wellId]);
+    return { ...row, subjects };
   }
 }

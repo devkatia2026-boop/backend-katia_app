@@ -1,6 +1,7 @@
 import { assertActiveForStudent } from '../../parsing/content-viewer.parsing';
 import type { ContentViewerRole } from '../../parsing/content-viewer.parsing';
 import type { IWellbeingRepository } from '../../ports/wellbeing.port';
+import type { ISubjectWellsRepository } from '../../ports/subject-wells.port';
 import type { IWellsRepository, WellDTO } from '../../ports/wells.port';
 
 const NOT_FOUND = 'NotFoundException';
@@ -8,7 +9,8 @@ const NOT_FOUND = 'NotFoundException';
 export class GetWellUseCase {
   constructor(
     private readonly wells: IWellsRepository,
-    private readonly wellbeing: IWellbeingRepository
+    private readonly wellbeing: IWellbeingRepository,
+    private readonly subjectWells: ISubjectWellsRepository
   ) {}
 
   async execute(wellId: number, role: ContentViewerRole): Promise<WellDTO> {
@@ -28,6 +30,8 @@ export class GetWellUseCase {
       }
       assertActiveForStudent(parent.status, 'Well não encontrado.');
     }
-    return row;
+
+    const subjects = await this.subjectWells.findByWellIds([wellId]);
+    return { ...row, subjects };
   }
 }

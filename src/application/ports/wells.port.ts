@@ -1,23 +1,19 @@
 import type { PagedList } from './social-feed.port';
+import type { SubjectWellDTO } from './subject-wells.port';
 
 export type WellDTO = {
   id: number;
   wellbeing_id: number;
   status: boolean | null;
-  photo: string | null;
-  video_link: string | null;
-  pdf: string | null;
   tittle: string | null;
   description: string | null;
   created_at: Date;
+  subjects: SubjectWellDTO[];
 };
 
 export type CreateWellInput = {
   wellbeing_id: number;
   status: boolean | null;
-  photo: string | null;
-  video_link: string | null;
-  pdf: string | null;
   tittle: string | null;
   description: string | null;
 };
@@ -31,11 +27,13 @@ export type WellListFilters = {
   wellbeingId?: number;
 };
 
+export type WellRowDTO = Omit<WellDTO, 'subjects'>;
+
 export interface IWellsRepository {
-  listPaged(page: number, pageSize: number, filters?: WellListFilters): Promise<PagedList<WellDTO>>;
-  findById(wellId: number): Promise<WellDTO | null>;
-  create(input: CreateWellInput): Promise<WellDTO>;
-  update(wellId: number, patch: PatchWellInput): Promise<WellDTO>;
+  listPaged(page: number, pageSize: number, filters?: WellListFilters): Promise<PagedList<WellRowDTO>>;
+  findById(wellId: number): Promise<WellRowDTO | null>;
+  create(input: CreateWellInput): Promise<WellRowDTO>;
+  update(wellId: number, patch: PatchWellInput): Promise<WellRowDTO>;
   deleteById(wellId: number): Promise<boolean>;
   countByWellbeingId(wellbeingId: number): Promise<number>;
 }

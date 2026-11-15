@@ -116,6 +116,8 @@ Gera `function.zip` para upload manual em Lambda → **Upload from** → **.zip 
 
 Quando o e-mail já existe, a Lambda **vincula** o Google e **interrompe** o OAuth da 1ª tentativa (comportamento esperado do Cognito).
 
+No CloudWatch aparece **`Invoke Error` + `GoogleAccountLinkedRetry`** — isso **não** é bug: o vínculo já foi feito; a falha é intencional para não criar usuário `google_*` duplicado. Linha de log **`[OK] Vínculo Google→conta nativa concluído`** confirma sucesso.
+
 O app **refaz o Google OAuth automaticamente** na 2ª tentativa e aí entra na conta original.
 
 No CloudWatch você verá:
@@ -168,6 +170,7 @@ Usuário → Google OAuth → Cognito Pre Sign-up (Lambda)
 
 | Sintoma | Solução |
 |---------|---------|
+| **`SourceProviderName must match a Provider...`** | Lambda usou `google` minúsculo; atualize `index.mjs` (usa `Google` igual ao Cognito) e **Deploy** |
 | Ainda cria `google_...` | Lambda não associada ao trigger Pre sign-up |
 | Erro na Lambda | Ver CloudWatch; conferir IAM e User Pool ID |
 | "E-mail já cadastrado" no app | Usou **Cadastrar com Google**; use **Login** |

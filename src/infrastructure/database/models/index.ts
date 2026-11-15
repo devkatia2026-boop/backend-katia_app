@@ -30,6 +30,7 @@ import { initNotification, Notification } from './notification.model';
 import { initCoupon, Coupon } from './coupon.model';
 import { initWellbeing, Wellbeing } from './wellbeing.model';
 import { initWell, Well } from './well.model';
+import { initSubjectWell, SubjectWell } from './subject-well.model';
 import { initRevaluation, Revaluation } from './revaluation.model';
 import { initNotice, Notice } from './notice.model';
 import { initAppVersion, AppVersion } from './app-version.model';
@@ -74,6 +75,7 @@ export type DatabaseModels = {
   Coupon: typeof Coupon;
   Wellbeing: typeof Wellbeing;
   Well: typeof Well;
+  SubjectWell: typeof SubjectWell;
   Revaluation: typeof Revaluation;
   Notice: typeof Notice;
   AppVersion: typeof AppVersion;
@@ -119,6 +121,7 @@ function associate(models: DatabaseModels): void {
     Notification,
     Wellbeing,
     Well,
+    SubjectWell,
     Revaluation,
     Notice,
     Folder,
@@ -273,6 +276,8 @@ function associate(models: DatabaseModels): void {
 
   Wellbeing.hasMany(Well, { foreignKey: 'wellbeing_id', as: 'wells' });
   Well.belongsTo(Wellbeing, { foreignKey: 'wellbeing_id', as: 'wellbeing' });
+  Well.hasMany(SubjectWell, { foreignKey: 'well_id', as: 'subjectwells' });
+  SubjectWell.belongsTo(Well, { foreignKey: 'well_id', as: 'well' });
 
   Folder.hasMany(FoldersToType, { foreignKey: 'folder_id', as: 'folders_to_type' });
   FoldersToType.belongsTo(Folder, { foreignKey: 'folder_id', as: 'folder' });
@@ -329,6 +334,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
   const CouponModel = initCoupon(sequelize);
   const WellbeingModel = initWellbeing(sequelize);
   const WellModel = initWell(sequelize);
+  const SubjectWellModel = initSubjectWell(sequelize);
   const RevaluationModel = initRevaluation(sequelize);
   const NoticeModel = initNotice(sequelize);
   const AppVersionModel = initAppVersion(sequelize);
@@ -373,6 +379,7 @@ export function initModels(sequelize: Sequelize): DatabaseModels {
     Coupon: CouponModel,
     Wellbeing: WellbeingModel,
     Well: WellModel,
+    SubjectWell: SubjectWellModel,
     Revaluation: RevaluationModel,
     Notice: NoticeModel,
     AppVersion: AppVersionModel,
@@ -423,6 +430,7 @@ export {
   Coupon,
   Wellbeing,
   Well,
+  SubjectWell,
   Revaluation,
   Notice,
   AppVersion,

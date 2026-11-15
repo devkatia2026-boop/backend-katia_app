@@ -18,6 +18,7 @@ export class CreateWellUseCase {
       err.name = NOT_FOUND;
       throw err;
     }
-    return this.wells.create(input);
+    const row = await this.wells.create(input);
+    return { ...row, subjects: [] };
   }
 }

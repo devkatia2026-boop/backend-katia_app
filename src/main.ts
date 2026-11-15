@@ -231,6 +231,14 @@ import { GetWellUseCase } from './application/use-cases/wells/get-well.use-case'
 import { CreateWellUseCase } from './application/use-cases/wells/create-well.use-case';
 import { UpdateWellUseCase } from './application/use-cases/wells/update-well.use-case';
 import { DeleteWellUseCase } from './application/use-cases/wells/delete-well.use-case';
+import { ListSubjectWellsUseCase } from './application/use-cases/subject-wells/list-subject-wells.use-case';
+import { GetSubjectWellUseCase } from './application/use-cases/subject-wells/get-subject-well.use-case';
+import { CreateSubjectWellUseCase } from './application/use-cases/subject-wells/create-subject-well.use-case';
+import { UpdateSubjectWellUseCase } from './application/use-cases/subject-wells/update-subject-well.use-case';
+import { DeleteSubjectWellUseCase } from './application/use-cases/subject-wells/delete-subject-well.use-case';
+import { SequelizeSubjectWellsRepository } from './infrastructure/database/subject-wells.repository';
+import { SubjectWellsController } from './interfaces/http/controllers/subject-wells.controller';
+import { createSubjectWellsRoutes } from './interfaces/http/routes/subject-wells.routes';
 import { CouponsController } from './interfaces/http/controllers/coupons.controller';
 import { NoticesController } from './interfaces/http/controllers/notices.controller';
 import { StudentSharedController } from './interfaces/http/controllers/student-shared.controller';
@@ -429,7 +437,10 @@ const programImageUploadMiddleware = createImageUploadMiddleware(['photo']);
 const exerciseImageUploadMiddleware = createImageUploadMiddleware(['image']);
 const couponImageUploadMiddleware = createImageUploadMiddleware(['photo']);
 const wellbeingImageUploadMiddleware = createImageUploadMiddleware(['photo']);
-const wellImageUploadMiddleware = createImageUploadMiddleware(['photo', 'pdf']);
+const subjectWellUploadMiddleware = createImageUploadMiddleware(
+  ['midia'],
+  INTRODUCTION_CONTENT_UPLOAD_MAX_BYTES
+);
 const playlistImageUploadMiddleware = createImageUploadMiddleware(['photo']);
 const introductionContentUploadMiddleware = createImageUploadMiddleware(
   ['link'],
@@ -1234,6 +1245,9 @@ const wellsRepository = new SequelizeWellsRepository({
   Well: models.Well,
   Wellbeing: models.Wellbeing,
 });
+const subjectWellsRepository = new SequelizeSubjectWellsRepository({
+  SubjectWell: models.SubjectWell,
+});
 
 const couponsController = new CouponsController(
   new ListCouponsUseCase(couponsRepository),
@@ -1295,21 +1309,33 @@ app.use(
 );
 
 const wellsController = new WellsController(
-  new ListWellsUseCase(wellsRepository),
-  new GetWellUseCase(wellsRepository, wellbeingRepository),
+  new ListWellsUseCase(wellsRepository, subjectWellsRepository),
+  new GetWellUseCase(wellsRepository, wellbeingRepository, subjectWellsRepository),
   new CreateWellUseCase(wellsRepository, wellbeingRepository),
-  new UpdateWellUseCase(wellsRepository, wellbeingRepository),
-  new DeleteWellUseCase(wellsRepository),
-  uploadImageFilesUseCase
+  new UpdateWellUseCase(wellsRepository, wellbeingRepository, subjectWellsRepository),
+  new DeleteWellUseCase(wellsRepository)
 );
 app.use(
   '/wells',
-  createWellsRoutes(
-    wellsController,
+  createWellsRoutes(wellsController, requireAuth, requireStudentOrTrainer, requireTrainer)
+);
+
+const subjectWellsController = new SubjectWellsController(
+  new ListSubjectWellsUseCase(subjectWellsRepository, wellsRepository, wellbeingRepository),
+  new GetSubjectWellUseCase(subjectWellsRepository, wellsRepository, wellbeingRepository),
+  new CreateSubjectWellUseCase(subjectWellsRepository, wellsRepository),
+  new UpdateSubjectWellUseCase(subjectWellsRepository, wellsRepository),
+  new DeleteSubjectWellUseCase(subjectWellsRepository),
+  uploadImageFilesUseCase
+);
+app.use(
+  '/subject-wells',
+  createSubjectWellsRoutes(
+    subjectWellsController,
     requireAuth,
     requireStudentOrTrainer,
     requireTrainer,
-    wellImageUploadMiddleware
+    subjectWellUploadMiddleware
   )
 );
 

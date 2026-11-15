@@ -6,8 +6,7 @@ export function createWellsRoutes(
   controller: WellsController,
   requireAuth: RequestHandler,
   requireStudentOrTrainer: RequestHandler,
-  requireTrainer: RequestHandler,
-  wellImageUpload: RequestHandler
+  requireTrainer: RequestHandler
 ): Router {
   const router = Router();
   const readChain: RequestHandler[] = [requireAuth, requireStudentOrTrainer];
@@ -15,10 +14,10 @@ export function createWellsRoutes(
   router.get('/', ...readChain, (req: Request, res: Response) => controller.list(req, res));
   router.get('/:wellId', ...readChain, (req: Request, res: Response) => controller.getById(req, res));
 
-  router.post('/', [requireAuth, requireTrainer, wellImageUpload], (req: Request, res: Response) =>
+  router.post('/', [requireAuth, requireTrainer], (req: Request, res: Response) =>
     controller.create(req, res)
   );
-  router.patch('/:wellId', [requireAuth, requireTrainer, wellImageUpload], (req: Request, res: Response) =>
+  router.patch('/:wellId', [requireAuth, requireTrainer], (req: Request, res: Response) =>
     controller.patch(req, res)
   );
   router.delete('/:wellId', [requireAuth, requireTrainer], (req: Request, res: Response) =>

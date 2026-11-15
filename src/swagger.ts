@@ -28,7 +28,12 @@ export const swaggerDocument = {
     {
       name: 'Wells',
       description:
-        'Itens vinculados a um wellbeing (`wellbeing_id`). **Treinadora:** CRUD completo. **Aluna:** vê apenas wells ativos cujo wellbeing pai também está ativo. Filtro opcional `wellbeingId` na listagem.',
+        'Itens vinculados a um wellbeing (`wellbeing_id`). Metadados (título, descrição, status). Mídias ficam em `subject-wells`. Resposta inclui `subjects` ordenado por `created_at`. **Treinadora:** CRUD completo. **Aluna:** vê apenas wells ativos cujo wellbeing pai também está ativo. Filtro opcional `wellbeingId` na listagem.',
+    },
+    {
+      name: 'SubjectWells',
+      description:
+        'Mídias de um well (`well_id`): `foto`, `video_link` (URL externa), `video` (arquivo) ou `pdf`. Campo `midia`: URL JSON ou multipart → S3 em `subject-wells/{trainerId}/midia/...` (exceto `video_link`, que persiste a URL informada). **Treinadora:** CRUD. **Aluna e treinadora:** leitura quando o well e o wellbeing pai estão ativos.',
     },
     {
       name: 'Playlists',
@@ -80,7 +85,7 @@ export const swaggerDocument = {
     title: 'API Backend Reta AI',
     version: '1.0.0',
     description:
-      'Documentação da API de autenticação e recursos do backend. Chat treinadora–aluna com WebSocket está documentado na tag **Conversas**. **Execução containerizada:** ver `README-DOCKER.md`; em ambiente local típico via Docker Compose a API fica em **http://localhost:8080** (porta configurável). **AWS:** use a URL pública do load balancer ou API Gateway; WebSockets em `/ws/conversations` exigem LB com suporte a upgrade (e configuração compatível de sticky sessions/target group).',
+      'Documentação da API de autenticação e recursos do backend. Chat treinadora–aluna com WebSocket está documentado na tag **Conversas**. **Execução containerizada:** ver `README-DOCKER.md`; em ambiente local típico via Docker Compose a API fica em **http://localhost:8080** (porta configurável). **AWS:** use a URL pública do load balancer ou API Gateway; WebSockets em `/ws/conversations` exigem LB com suporte a upgrade (e configuração compatível de sticky sessions/target group). **Importação em lote de alunas (planilha):** script operacional `npm run db:import:students` — lê `alunas/alunas.xlsx`, cria usuários no Cognito (admin) e registros em `students` com `validation`, `validation_plan` e `type_plan`; linha `RENOVAR` usa `validation_plan` fixo `2026-11-01` e `validation: nao`; datas futuras usam `validation: sim`. Requer `IMPORT_APPLY=1` e `ENVIRONMENT=production`.',
   },
   servers: [
     {
@@ -582,22 +587,32 @@ export const swaggerDocument = {
           created_at: { type: 'string', format: 'date-time' },
         },
       },
+      SubjectWell: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          well_id: { type: 'integer' },
+          midia: { type: 'string' },
+          type: {
+            type: 'string',
+            enum: ['foto', 'video_link', 'video', 'pdf'],
+          },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
       Well: {
         type: 'object',
         properties: {
           id: { type: 'integer' },
           wellbeing_id: { type: 'integer' },
           status: { type: 'boolean', nullable: true },
-          photo: { type: 'string', nullable: true },
-          video_link: { type: 'string', nullable: true },
-          pdf: {
-            type: 'string',
-            nullable: true,
-            description: 'URL pública do documento (PDF, DOC, DOCX ou TXT) no S3',
-          },
           tittle: { type: 'string', nullable: true },
           description: { type: 'string', nullable: true },
           created_at: { type: 'string', format: 'date-time' },
+          subjects: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/SubjectWell' },
+          },
         },
       },
       AnamnesisExclusive: {
@@ -7305,7 +7320,7 @@ export const swaggerDocument = {
         tags: ['Wells'],
         summary: 'Criar well',
         description:
-          'Somente treinadora. Campo `wellbeing_id` obrigatório. Campo `photo`: URL ou multipart → S3 em `wells/{trainerId}/photo/...`. Campo `pdf`: URL ou multipart → S3 em `wells/{trainerId}/pdf/...` (PDF, DOC, DOCX ou TXT). Campo `video_link` é URL externa (YouTube etc.), não vai ao S3.',
+          'Somente treinadora. Campo `wellbeing_id` obrigatório. Mídias são criadas via `POST /subject-wells`.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -7317,26 +7332,8 @@ export const swaggerDocument = {
                 properties: {
                   wellbeing_id: { type: 'integer', minimum: 1 },
                   status: { type: 'boolean', nullable: true },
-                  photo: { type: 'string', nullable: true },
-                  video_link: { type: 'string', nullable: true },
-                  pdf: { type: 'string', nullable: true },
                   tittle: { type: 'string', nullable: true },
                   description: { type: 'string', nullable: true },
-                },
-              },
-            },
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                required: ['wellbeing_id'],
-                properties: {
-                  wellbeing_id: { type: 'string' },
-                  status: { type: 'string' },
-                  photo: { type: 'string', format: 'binary' },
-                  pdf: { type: 'string', format: 'binary' },
-                  video_link: { type: 'string' },
-                  tittle: { type: 'string' },
-                  description: { type: 'string' },
                 },
               },
             },
@@ -7362,8 +7359,7 @@ export const swaggerDocument = {
       patch: {
         tags: ['Wells'],
         summary: 'Atualizar well',
-        description:
-          'Somente treinadora. Campo `photo`: URL ou multipart → S3 (`wells/*/photo/...`). Campo `pdf`: URL ou multipart → S3 (`wells/*/pdf/...`, PDF/DOC/DOCX/TXT). Campo `video_link` é URL externa.',
+        description: 'Somente treinadora. Metadados do conteúdo; mídias via `PATCH /subject-wells/{subjectWellId}`.',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'wellId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }],
         requestBody: {
@@ -7376,26 +7372,8 @@ export const swaggerDocument = {
                 properties: {
                   wellbeing_id: { type: 'integer', minimum: 1 },
                   status: { type: 'boolean', nullable: true },
-                  photo: { type: 'string', nullable: true },
-                  video_link: { type: 'string', nullable: true },
-                  pdf: { type: 'string', nullable: true },
                   tittle: { type: 'string', nullable: true },
                   description: { type: 'string', nullable: true },
-                },
-              },
-            },
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                minProperties: 1,
-                properties: {
-                  wellbeing_id: { type: 'string' },
-                  status: { type: 'string' },
-                  photo: { type: 'string', format: 'binary' },
-                  pdf: { type: 'string', format: 'binary' },
-                  video_link: { type: 'string' },
-                  tittle: { type: 'string' },
-                  description: { type: 'string' },
                 },
               },
             },
@@ -7415,6 +7393,133 @@ export const swaggerDocument = {
         responses: {
           '204': { description: 'Excluído' },
           '404': { description: 'Well não encontrado' },
+        },
+      },
+    },
+    '/subject-wells': {
+      get: {
+        tags: ['SubjectWells'],
+        summary: 'Listar mídias de wells',
+        description: 'Paginação `page`, `pageSize`. Filtro opcional `wellId`.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 } },
+          { name: 'wellId', in: 'query', schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': { description: 'Lista paginada' },
+          '400': { description: 'wellId inválido' },
+        },
+      },
+      post: {
+        tags: ['SubjectWells'],
+        summary: 'Criar mídia do well',
+        description:
+          'Somente treinadora. Campos obrigatórios: `well_id`, `type` (`foto`, `video_link`, `video`, `pdf`), `midia` (URL ou arquivo multipart no campo homônimo → S3, exceto `video_link`).',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['well_id', 'type', 'midia'],
+                properties: {
+                  well_id: { type: 'integer', minimum: 1 },
+                  type: { type: 'string', enum: ['foto', 'video_link', 'video', 'pdf'] },
+                  midia: { type: 'string' },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['well_id', 'type'],
+                properties: {
+                  well_id: { type: 'string' },
+                  type: { type: 'string' },
+                  midia: { type: 'string', format: 'binary' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Mídia criada',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/SubjectWell' } } },
+          },
+          '404': { description: 'Well não encontrado' },
+        },
+      },
+    },
+    '/subject-wells/{subjectWellId}': {
+      get: {
+        tags: ['SubjectWells'],
+        summary: 'Obter mídia',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'subjectWellId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Mídia',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/SubjectWell' } } },
+          },
+          '404': { description: 'Não encontrado' },
+        },
+      },
+      patch: {
+        tags: ['SubjectWells'],
+        summary: 'Atualizar mídia',
+        description: 'Somente treinadora. `midia` aceita URL ou arquivo multipart (S3).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'subjectWellId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  well_id: { type: 'integer', minimum: 1 },
+                  type: { type: 'string', enum: ['foto', 'video_link', 'video', 'pdf'] },
+                  midia: { type: 'string' },
+                },
+              },
+            },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                minProperties: 1,
+                properties: {
+                  well_id: { type: 'string' },
+                  type: { type: 'string' },
+                  midia: { type: 'string', format: 'binary' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Mídia atualizada' },
+          '404': { description: 'Não encontrado' },
+        },
+      },
+      delete: {
+        tags: ['SubjectWells'],
+        summary: 'Excluir mídia',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'subjectWellId', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        responses: {
+          '204': { description: 'Excluído' },
+          '404': { description: 'Não encontrado' },
         },
       },
     },

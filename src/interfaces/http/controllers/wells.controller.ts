@@ -4,14 +4,8 @@ import type { GetWellUseCase } from '../../../application/use-cases/wells/get-we
 import type { CreateWellUseCase } from '../../../application/use-cases/wells/create-well.use-case';
 import type { UpdateWellUseCase } from '../../../application/use-cases/wells/update-well.use-case';
 import type { DeleteWellUseCase } from '../../../application/use-cases/wells/delete-well.use-case';
-import {
-  OBJECT_STORAGE_EXCEPTION,
-  type UploadImageFilesUseCase,
-} from '../../../application/use-cases/media/upload-image-files.use-case';
-import { S3_PREFIX_WELL, WELL_IMAGE_FIELDS } from '../../../application/media/image-upload.config';
 import { parseResourceId } from '../../../application/parsing/content-body.parsing';
 import type { ContentViewerRole } from '../../../application/parsing/content-viewer.parsing';
-import { mergeImageUploadsIntoBody } from '../helpers/merge-image-uploads';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -36,8 +30,7 @@ export class WellsController {
     private readonly getWell: GetWellUseCase,
     private readonly createWell: CreateWellUseCase,
     private readonly updateWell: UpdateWellUseCase,
-    private readonly deleteWell: DeleteWellUseCase,
-    private readonly uploadImages: UploadImageFilesUseCase
+    private readonly deleteWell: DeleteWellUseCase
   ) {}
 
   async list(req: Request, res: Response): Promise<void> {
@@ -66,15 +59,7 @@ export class WellsController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const trainerId = req.authUser!.sub;
-      const body = await mergeImageUploadsIntoBody(
-        req,
-        this.uploadImages,
-        trainerId,
-        S3_PREFIX_WELL,
-        WELL_IMAGE_FIELDS
-      );
-      const created = await this.createWell.execute(body);
+      const created = await this.createWell.execute(req.body);
       res.status(201).json(created);
     } catch (err) {
       this.handleWrite(err, res);
@@ -84,15 +69,7 @@ export class WellsController {
   async patch(req: Request, res: Response): Promise<void> {
     try {
       const id = parseResourceId(firstParam(req.params.wellId), 'wellId');
-      const trainerId = req.authUser!.sub;
-      const body = await mergeImageUploadsIntoBody(
-        req,
-        this.uploadImages,
-        trainerId,
-        S3_PREFIX_WELL,
-        WELL_IMAGE_FIELDS
-      );
-      const updated = await this.updateWell.execute(id, body);
+      const updated = await this.updateWell.execute(id, req.body);
       res.status(200).json(updated);
     } catch (err) {
       this.handleWrite(err, res);
@@ -139,10 +116,6 @@ export class WellsController {
     }
     if (error.name === NOT_FOUND) {
       res.status(404).json({ message: error.message ?? 'Well não encontrado.' });
-      return;
-    }
-    if (error.name === OBJECT_STORAGE_EXCEPTION) {
-      res.status(503).json({ message: error.message ?? 'Armazenamento indisponível.' });
       return;
     }
     res.status(500).json({ message: 'Erro ao salvar well.' });

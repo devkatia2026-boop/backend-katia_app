@@ -4,22 +4,12 @@ import type {
   CreateWellInput,
   IWellsRepository,
   PatchWellInput,
-  WellDTO,
   WellListFilters,
+  WellRowDTO,
 } from '../../application/ports/wells.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = [
-  'id',
-  'wellbeing_id',
-  'status',
-  'photo',
-  'video_link',
-  'pdf',
-  'tittle',
-  'description',
-  'created_at',
-] as const;
+const ATTR = ['id', 'wellbeing_id', 'status', 'tittle', 'description', 'created_at'] as const;
 
 function buildWhere(filters?: WellListFilters): WhereOptions {
   const where: WhereOptions = {};
@@ -39,7 +29,7 @@ export class SequelizeWellsRepository implements IWellsRepository {
     page: number,
     pageSize: number,
     filters?: WellListFilters
-  ): Promise<PagedList<WellDTO>> {
+  ): Promise<PagedList<WellRowDTO>> {
     const offset = (page - 1) * pageSize;
     const where = buildWhere(filters);
     const include = filters?.activeOnly
@@ -61,28 +51,28 @@ export class SequelizeWellsRepository implements IWellsRepository {
         where,
         include,
         order: [
-          ['created_at', 'DESC'],
-          ['id', 'DESC'],
+          ['created_at', 'ASC'],
+          ['id', 'ASC'],
         ],
         limit: pageSize,
         offset,
         raw: true,
-      }) as Promise<WellDTO[]>,
+      }) as Promise<WellRowDTO[]>,
     ]);
     return { items: rows, total, page, pageSize };
   }
 
-  async findById(wellId: number): Promise<WellDTO | null> {
+  async findById(wellId: number): Promise<WellRowDTO | null> {
     const row = await this.models.Well.findByPk(wellId, { attributes: [...ATTR], raw: true });
-    return row ? (row as WellDTO) : null;
+    return row ? (row as WellRowDTO) : null;
   }
 
-  async create(input: CreateWellInput): Promise<WellDTO> {
+  async create(input: CreateWellInput): Promise<WellRowDTO> {
     const row = await this.models.Well.create(input);
-    return row.get({ plain: true }) as WellDTO;
+    return row.get({ plain: true }) as WellRowDTO;
   }
 
-  async update(wellId: number, patch: PatchWellInput): Promise<WellDTO> {
+  async update(wellId: number, patch: PatchWellInput): Promise<WellRowDTO> {
     const [n] = await this.models.Well.update(patch, { where: { id: wellId } });
     if (n === 0) {
       const err = new Error('Well não encontrado.');
@@ -90,7 +80,7 @@ export class SequelizeWellsRepository implements IWellsRepository {
       throw err;
     }
     const row = await this.models.Well.findByPk(wellId, { attributes: [...ATTR] });
-    return row!.get({ plain: true }) as WellDTO;
+    return row!.get({ plain: true }) as WellRowDTO;
   }
 
   async deleteById(wellId: number): Promise<boolean> {

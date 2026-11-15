@@ -17,6 +17,7 @@
         "arn:aws:s3:::katia-app-uploads/coupons/*",
         "arn:aws:s3:::katia-app-uploads/wellbeing/*",
         "arn:aws:s3:::katia-app-uploads/wells/*",
+        "arn:aws:s3:::katia-app-uploads/subject-wells/*",
         "arn:aws:s3:::katia-app-uploads/playlists/*",
         "arn:aws:s3:::katia-app-uploads/introduction-contents/*"
       ]
