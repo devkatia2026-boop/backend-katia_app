@@ -4,6 +4,7 @@ export class RepsToTrainings extends Model {
   declare id: number;
   declare exercise_id: number;
   declare training_id: number;
+  declare exercise_to_training_id: number | null;
   declare reps: string | null;
   declare obs: string | null;
   declare methodology: string | null;
@@ -26,6 +27,10 @@ export function initRepsToTrainings(sequelize: Sequelize): typeof RepsToTraining
       training_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
+      },
+      exercise_to_training_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
       },
       reps: DataTypes.TEXT,
       obs: DataTypes.TEXT,

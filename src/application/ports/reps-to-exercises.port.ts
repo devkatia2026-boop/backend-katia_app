@@ -9,6 +9,7 @@ export type RepsToExerciseDTO = {
   id: number;
   exercise_id: number;
   training_id: number;
+  exercise_to_training_id: number | null;
   student_id: string;
   reps: string | null;
   obs: string | null;
@@ -21,6 +22,7 @@ export type RepsToExerciseDTO = {
 export type CreateRepsToExerciseInput = {
   exercise_id: number;
   training_id: number;
+  exercise_to_training_id?: number | null;
   student_id: string;
   reps: string | null;
   obs: string | null;
@@ -31,6 +33,7 @@ export type CreateRepsToExerciseInput = {
 export type PatchRepsToExerciseInput = Partial<{
   exercise_id: number;
   training_id: number;
+  exercise_to_training_id: number | null;
   student_id: string;
   reps: string | null;
   obs: string | null;
@@ -53,6 +56,11 @@ export interface IRepsToExercisesRepository {
     exerciseId: number,
     trainingId: number
   ): Promise<RepsToExerciseDTO | null>;
+  findByStudentExerciseToTrainingId(
+    studentId: string,
+    linkId: number
+  ): Promise<RepsToExerciseDTO | null>;
+  listByStudentAndTraining(studentId: string, trainingId: number): Promise<RepsToExerciseDTO[]>;
   getTrainerIdForRowStudent(studentId: string): Promise<string | null>;
   create(input: CreateRepsToExerciseInput): Promise<RepsToExerciseDTO>;
   update(id: number, patch: PatchRepsToExerciseInput): Promise<RepsToExerciseDTO>;

@@ -7,8 +7,11 @@ export type WellbeingDTO = {
   tittle: string | null;
   tags: string | null;
   description: string | null;
+  sort_order: number;
   created_at: Date;
 };
+
+export type WellbeingReorderDirection = 'up' | 'down';
 
 export type CreateWellbeingInput = {
   status: boolean | null;
@@ -34,4 +37,6 @@ export interface IWellbeingRepository {
   create(input: CreateWellbeingInput): Promise<WellbeingDTO>;
   update(wellbeingId: number, patch: PatchWellbeingInput): Promise<WellbeingDTO>;
   deleteById(wellbeingId: number): Promise<boolean>;
+  reorderByDirection(wellbeingId: number, direction: WellbeingReorderDirection): Promise<void>;
+  resolveNextSortOrderForCreate(): Promise<number>;
 }

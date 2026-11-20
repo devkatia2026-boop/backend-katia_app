@@ -4,6 +4,7 @@ export class RepsToExercises extends Model {
   declare id: number;
   declare exercise_id: number;
   declare training_id: number;
+  declare exercise_to_training_id: number | null;
   declare student_id: string;
   declare reps: string | null;
   declare obs: string | null;
@@ -27,6 +28,10 @@ export function initRepsToExercises(sequelize: Sequelize): typeof RepsToExercise
       training_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
+      },
+      exercise_to_training_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
       },
       student_id: {
         type: DataTypes.UUID,

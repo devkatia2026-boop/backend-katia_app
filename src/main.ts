@@ -151,6 +151,7 @@ import { GetExerciseToTrainingUseCase } from './application/use-cases/exercises-
 import { CreateExerciseToTrainingUseCase } from './application/use-cases/trainer/create-exercise-to-training.use-case';
 import { UpdateExerciseToTrainingUseCase } from './application/use-cases/trainer/update-exercise-to-training.use-case';
 import { DeleteExerciseToTrainingUseCase } from './application/use-cases/trainer/delete-exercise-to-training.use-case';
+import { ReorderExerciseToTrainingUseCase } from './application/use-cases/exercises-to-trainings/reorder-exercise-to-training.use-case';
 import { ExercisesToTrainingsController } from './interfaces/http/controllers/exercises-to-trainings.controller';
 import { createExercisesToTrainingsRoutes } from './interfaces/http/routes/exercises-to-trainings.routes';
 import { SequelizeSetsToStudentsRepository } from './infrastructure/database/sets-to-students.repository';
@@ -226,6 +227,7 @@ import { GetWellbeingUseCase } from './application/use-cases/wellbeing/get-wellb
 import { CreateWellbeingUseCase } from './application/use-cases/wellbeing/create-wellbeing.use-case';
 import { UpdateWellbeingUseCase } from './application/use-cases/wellbeing/update-wellbeing.use-case';
 import { DeleteWellbeingUseCase } from './application/use-cases/wellbeing/delete-wellbeing.use-case';
+import { ReorderWellbeingUseCase } from './application/use-cases/wellbeing/reorder-wellbeing.use-case';
 import { ListWellsUseCase } from './application/use-cases/wells/list-wells.use-case';
 import { GetWellUseCase } from './application/use-cases/wells/get-well.use-case';
 import { CreateWellUseCase } from './application/use-cases/wells/create-well.use-case';
@@ -320,6 +322,7 @@ import { attachConversationWebSocket } from './infrastructure/realtime/attach-co
 import { AppendConversationTurnUseCase } from './application/use-cases/conversations/append-conversation-turn.use-case';
 import { GetConversationPartnerUseCase } from './application/use-cases/conversations/get-conversation-partner.use-case';
 import { ListConversationMessagesUseCase } from './application/use-cases/conversations/list-conversation-messages.use-case';
+import { BroadcastConversationMessagesUseCase } from './application/use-cases/conversations/broadcast-conversation-messages.use-case';
 import { ConversationsController } from './interfaces/http/controllers/conversations.controller';
 import { createConversationsRoutes } from './interfaces/http/routes/conversations.routes';
 import { StudentPhysicalsController } from './interfaces/http/controllers/student-physicals.controller';
@@ -739,7 +742,8 @@ const exercisesToTrainingsController = new ExercisesToTrainingsController(
   new GetExerciseToTrainingUseCase(exercisesToTrainingsRepository),
   new CreateExerciseToTrainingUseCase(exercisesToTrainingsRepository),
   new UpdateExerciseToTrainingUseCase(exercisesToTrainingsRepository),
-  new DeleteExerciseToTrainingUseCase(exercisesToTrainingsRepository)
+  new DeleteExerciseToTrainingUseCase(exercisesToTrainingsRepository),
+  new ReorderExerciseToTrainingUseCase(exercisesToTrainingsRepository)
 );
 app.use(
   '/exercises-to-trainings',
@@ -1295,6 +1299,7 @@ const wellbeingController = new WellbeingController(
   new CreateWellbeingUseCase(wellbeingRepository, contentStudentsNotifier),
   new UpdateWellbeingUseCase(wellbeingRepository),
   new DeleteWellbeingUseCase(wellbeingRepository, wellsRepository),
+  new ReorderWellbeingUseCase(wellbeingRepository),
   uploadImageFilesUseCase
 );
 app.use(
@@ -1491,8 +1496,7 @@ const conversationMessageNotifier = new SequelizeConversationMessageNotifier({
 const appendConversationTurnUseCase = new AppendConversationTurnUseCase(
   conversationsRepository,
   conversationRealtimeHub,
-  conversationMessageNotifier,
-  conversationRealtimeHub
+  conversationMessageNotifier
 );
 const listConversationMessagesUseCase = new ListConversationMessagesUseCase(
   conversationsRepository
@@ -1500,13 +1504,23 @@ const listConversationMessagesUseCase = new ListConversationMessagesUseCase(
 const getConversationPartnerUseCase = new GetConversationPartnerUseCase(
   conversationsRepository
 );
+const broadcastConversationMessagesUseCase = new BroadcastConversationMessagesUseCase(
+  trainerStudentsRepository,
+  appendConversationTurnUseCase
+);
 const conversationsController = new ConversationsController(
   listConversationMessagesUseCase,
-  getConversationPartnerUseCase
+  getConversationPartnerUseCase,
+  broadcastConversationMessagesUseCase
 );
 app.use(
   '/conversations',
-  createConversationsRoutes(conversationsController, requireAuth, requireStudentOrTrainer)
+  createConversationsRoutes(
+    conversationsController,
+    requireAuth,
+    requireStudentOrTrainer,
+    requireTrainer
+  )
 );
 
 const studentSharedController = new StudentSharedController(

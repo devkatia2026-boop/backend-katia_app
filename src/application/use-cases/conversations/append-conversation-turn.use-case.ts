@@ -3,7 +3,6 @@ import type {
   ConversationMessageDTO,
   ConversationSenderRole,
   IConversationBroadcastPublisher,
-  IConversationPresenceReader,
   IConversationsRepository,
 } from '../../ports/conversations.port';
 
@@ -29,8 +28,7 @@ export class AppendConversationTurnUseCase {
   constructor(
     private readonly repo: IConversationsRepository,
     private readonly broadcast: IConversationBroadcastPublisher,
-    private readonly notifier: IConversationMessageNotifier,
-    private readonly presence: IConversationPresenceReader
+    private readonly notifier: IConversationMessageNotifier
   ) {}
 
   async execute(
@@ -76,16 +74,14 @@ export class AppendConversationTurnUseCase {
       const recipientRole: ConversationSenderRole =
         senderRole === 'trainer' ? 'student' : 'trainer';
 
-      if (!this.presence.isOnline(sid, recipientRole)) {
-        void this.notifier.notifyNewMessage({
-          senderRole,
-          recipientRole,
-          studentId: sid,
-          trainerId,
-          body: bodyText,
-          messageId: created.id,
-        });
-      }
+      await this.notifier.notifyNewMessage({
+        senderRole,
+        recipientRole,
+        studentId: sid,
+        trainerId,
+        body: bodyText,
+        messageId: created.id,
+      });
     }
 
     return created;

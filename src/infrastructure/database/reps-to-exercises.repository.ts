@@ -9,7 +9,18 @@ import type {
 } from '../../application/ports/reps-to-exercises.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = ['id', 'exercise_id', 'training_id', 'student_id', 'reps', 'obs', 'methodology', 'rest', 'created_at'] as const;
+const ATTR = [
+  'id',
+  'exercise_id',
+  'training_id',
+  'exercise_to_training_id',
+  'student_id',
+  'reps',
+  'obs',
+  'methodology',
+  'rest',
+  'created_at',
+] as const;
 const STUDENT_LIST_ATTR = ['id', 'full_name'] as const;
 
 function mapRowWithStudent(
@@ -29,6 +40,7 @@ function toDto(
     id: raw.id,
     exercise_id: raw.exercise_id,
     training_id: raw.training_id,
+    exercise_to_training_id: raw.exercise_to_training_id,
     student_id: raw.student_id,
     reps: raw.reps,
     obs: raw.obs,
@@ -140,6 +152,39 @@ export class SequelizeRepsToExercisesRepository implements IRepsToExercisesRepos
     const row = await this.models.RepsToExercises.findOne({
       attributes: [...ATTR],
       where: { student_id: studentId, exercise_id: exerciseId, training_id: trainingId },
+      raw: true,
+    });
+
+    if (!row) {
+      return null;
+    }
+
+    return toDto({ ...(row as unknown as RepsToExerciseDTO), student: null });
+  }
+
+  async listByStudentAndTraining(
+    studentId: string,
+    trainingId: number
+  ): Promise<RepsToExerciseDTO[]> {
+    const rows = await this.models.RepsToExercises.findAll({
+      attributes: [...ATTR],
+      where: { student_id: studentId, training_id: trainingId },
+      order: [['id', 'ASC']],
+      raw: true,
+    });
+
+    return (rows as unknown as RepsToExerciseDTO[]).map((row) =>
+      toDto({ ...row, student: null })
+    );
+  }
+
+  async findByStudentExerciseToTrainingId(
+    studentId: string,
+    linkId: number
+  ): Promise<RepsToExerciseDTO | null> {
+    const row = await this.models.RepsToExercises.findOne({
+      attributes: [...ATTR],
+      where: { student_id: studentId, exercise_to_training_id: linkId },
       raw: true,
     });
 

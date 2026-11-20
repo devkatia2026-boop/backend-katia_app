@@ -54,10 +54,11 @@ export class SequelizeConversationMessageNotifier implements IConversationMessag
           to: token,
           title,
           body: message,
+          sound: 'default',
           data: {
             type: NOTIFICATION_TYPE,
-            studentId: input.studentId,
-            messageId: input.messageId,
+            studentId: String(input.studentId),
+            messageId: String(input.messageId),
           },
         },
       ]);

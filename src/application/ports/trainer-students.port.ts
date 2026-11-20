@@ -58,6 +58,10 @@ export interface ITrainerStudentsRepository {
     validation?: TrainerStudentValidationFilter,
     plan?: TrainerStudentPlanFilter
   ): Promise<PaginatedTrainerStudents>;
+  listIdsByTrainer(
+    trainerId: string,
+    validation?: TrainerStudentValidationFilter
+  ): Promise<string[]>;
   findOneForTrainer(trainerId: string, studentId: string): Promise<TrainerStudentPublic | null>;
   updateStudentForTrainer(
     trainerId: string,

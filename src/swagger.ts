@@ -8,7 +8,7 @@ export const swaggerDocument = {
     {
       name: 'Conversas',
       description:
-        '**Histórico (REST):** `GET /conversations/messages`. **Parceiro da conversa:** `GET /conversations/partner`. Aluna só vê a própria thread; treinadora envia obrigatoriamente `studentId`. **Ao vivo:** WebSocket upgrade em `/ws/conversations?token=<access JWT Cognito>`. Fluxo cliente: ligar WebSocket → evento servidor `connected` → treinadora envia `{ "type":"join", "studentId":"<uuid aluna>" }` e recebe `joined` → qualquer lado envia `{ "type":"message", "text":"..." }` ou `{ "type":"typing", "active": true|false }`; broadcast: `conversation:message`, `conversation:typing`, `conversation:presence`. Aluna já entra na sala da própria conversa ao conectar. Push `CONVERSATION_NEW_MESSAGE` quando o destinatário está offline (`title` = nome de quem enviou, `message` = texto; `data.studentId` e `data.messageId`).',
+        '**Histórico (REST):** `GET /conversations/messages`. **Parceiro da conversa:** `GET /conversations/partner`. Aluna só vê a própria thread; treinadora envia obrigatoriamente `studentId`. **Ao vivo:** WebSocket upgrade em `/ws/conversations?token=<access JWT Cognito>`. Fluxo cliente: ligar WebSocket → evento servidor `connected` → treinadora envia `{ "type":"join", "studentId":"<uuid aluna>" }` e recebe `joined` → qualquer lado envia `{ "type":"message", "text":"..." }` ou `{ "type":"typing", "active": true|false }`; broadcast: `conversation:message`, `conversation:typing`, `conversation:presence`. Aluna já entra na sala da própria conversa ao conectar. Push `CONVERSATION_NEW_MESSAGE` a cada mensagem gravada (`title` = nome de quem enviou, `message` = texto; `data.type`, `data.studentId` e `data.messageId` como string). Requer `expo_push_token` válido no destinatário.',
     },
     {
       name: 'Rankings',
@@ -23,7 +23,7 @@ export const swaggerDocument = {
     {
       name: 'Wellbeing',
       description:
-        'Conteúdos de wellbeing. **Treinadora:** CRUD completo; listagem inclui ativos e inativos. **Aluna e treinadora:** leitura de registros com `status: true`.',
+        'Conteúdos de wellbeing. Listagem ordenada por `sort_order` ascendente (treinadora define ordem via `POST /wellbeing/reorder`). **Treinadora:** CRUD completo; listagem inclui ativos e inativos. **Aluna e treinadora:** leitura de registros com `status: true`.',
     },
     {
       name: 'Wells',
@@ -524,7 +524,20 @@ export const swaggerDocument = {
           tittle: { type: 'string', nullable: true },
           tags: { type: 'string', nullable: true },
           description: { type: 'string', nullable: true },
+          sort_order: { type: 'integer', description: 'Ordem de exibição (menor = mais acima).' },
           created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      WellbeingReorderBody: {
+        type: 'object',
+        required: ['wellbeingId', 'direction'],
+        properties: {
+          wellbeingId: { type: 'integer', minimum: 1 },
+          direction: {
+            type: 'string',
+            enum: ['up', 'down'],
+            description: 'up = subir na lista; down = descer.',
+          },
         },
       },
       MethodItem: {
@@ -5056,6 +5069,7 @@ export const swaggerDocument = {
                               id: { type: 'integer' },
                               training_id: { type: 'integer' },
                               exercise_id: { type: 'integer' },
+                              sort_order: { type: 'integer' },
                               created_at: { type: 'string', format: 'date-time' },
                               training: {
                                 type: 'object',
@@ -5090,6 +5104,8 @@ export const swaggerDocument = {
                             description: 'Exercício (quando filtra apenas por trainingId).',
                             properties: {
                               id: { type: 'integer' },
+                              link_id: { type: 'integer' },
+                              sort_order: { type: 'integer' },
                               name: { type: 'string', nullable: true },
                               video: { type: 'string', nullable: true },
                               type: { type: 'string', nullable: true },
@@ -5151,7 +5167,36 @@ export const swaggerDocument = {
           '400': { description: 'Corpo inválido ou FK inexistente' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
-          '409': { description: 'Vínculo já existe (training_id, exercise_id)' },
+          '409': { description: 'Conflito ao salvar vínculo' },
+        },
+      },
+    },
+  '/exercises-to-trainings/reorder': {
+      post: {
+        summary: 'Reordenar exercício no treino',
+        description:
+          'Troca a posição do vínculo (link) com o vizinho dentro do mesmo treino. Somente treinadora.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['linkId', 'direction'],
+                properties: {
+                  linkId: { type: 'integer', minimum: 1 },
+                  direction: { type: 'string', enum: ['up', 'down'] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '204': { description: 'Reordenado' },
+          '400': { description: 'Corpo inválido' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras' },
         },
       },
     },
@@ -5204,17 +5249,17 @@ export const swaggerDocument = {
       },
       delete: {
         summary: 'Excluir vínculo',
-        description: 'Somente treinadora.',
+        description:
+          'Somente treinadora. Idempotente: se o vínculo já foi removido, responde 204.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
         ],
         responses: {
-          '204': { description: 'Excluído' },
+          '204': { description: 'Excluído ou já inexistente' },
           '400': { description: 'ID inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
-          '404': { description: 'Vínculo não encontrado' },
         },
       },
     },
@@ -5832,6 +5877,11 @@ export const swaggerDocument = {
                           id: { type: 'integer' },
                           exercise_id: { type: 'integer' },
                           training_id: { type: 'integer' },
+                          exercise_to_training_id: {
+                            type: 'integer',
+                            nullable: true,
+                            description: 'Vínculo (slot) exercício↔treino; único por orientação.',
+                          },
                           reps: { type: 'string', nullable: true },
                           obs: { type: 'string', nullable: true },
                           methodology: { type: 'string', nullable: true },
@@ -5854,7 +5904,8 @@ export const swaggerDocument = {
       },
       post: {
         summary: 'Criar orientação (reps) para exercício em um treino',
-        description: 'Somente treinadora. Ao menos um de `reps` ou `obs` com texto.',
+        description:
+          'Somente treinadora. Ao menos um de `reps` ou `obs` com texto. Com `exercise_to_training_id`, se já existir orientação para o slot, o registro é atualizado (evita duplicata por vínculo).',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -5866,6 +5917,7 @@ export const swaggerDocument = {
                 properties: {
                   exercise_id: { type: 'integer', minimum: 1 },
                   training_id: { type: 'integer', minimum: 1 },
+                  exercise_to_training_id: { type: 'integer', minimum: 1, nullable: true },
                   reps: { type: 'string', nullable: true },
                   obs: { type: 'string', nullable: true },
                   methodology: { type: 'string', nullable: true },
@@ -5876,7 +5928,7 @@ export const swaggerDocument = {
           },
         },
         responses: {
-          '201': { description: 'Criado' },
+          '201': { description: 'Criado ou atualizado (slot já existente)' },
           '400': { description: 'Corpo inválido ou FK' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
@@ -5915,6 +5967,7 @@ export const swaggerDocument = {
                 properties: {
                   exercise_id: { type: 'integer', minimum: 1 },
                   training_id: { type: 'integer', minimum: 1 },
+                  exercise_to_training_id: { type: 'integer', minimum: 1, nullable: true },
                   reps: { type: 'string', nullable: true },
                   obs: { type: 'string', nullable: true },
                   methodology: { type: 'string', nullable: true },
@@ -5934,17 +5987,17 @@ export const swaggerDocument = {
       },
       delete: {
         summary: 'Excluir orientação (reps/training)',
-        description: 'Somente treinadora.',
+        description:
+          'Somente treinadora. Idempotente: se o registro já foi removido, responde 204.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
         ],
         responses: {
-          '204': { description: 'Excluído' },
+          '204': { description: 'Excluído ou já inexistente' },
           '400': { description: 'ID inválido' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Apenas treinadoras' },
-          '404': { description: 'Não encontrado' },
         },
       },
     },
@@ -7230,6 +7283,29 @@ export const swaggerDocument = {
         },
       },
     },
+    '/wellbeing/reorder': {
+      post: {
+        tags: ['Wellbeing'],
+        summary: 'Reordenar wellbeing',
+        description:
+          'Somente treinadora. Troca a posição do item com o vizinho imediato na ordem global (`sort_order`). Novos registros entram no topo (menor `sort_order`).',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/WellbeingReorderBody' },
+            },
+          },
+        },
+        responses: {
+          '204': { description: 'Ordem atualizada (ou já no limite da lista)' },
+          '400': { description: 'Corpo inválido' },
+          '403': { description: 'Somente treinadora' },
+          '404': { description: 'Wellbeing não encontrado' },
+        },
+      },
+    },
     '/wellbeing/{wellbeingId}': {
       get: {
         tags: ['Wellbeing'],
@@ -8175,6 +8251,53 @@ export const swaggerDocument = {
           '400': { description: 'Treinadora sem studentId' },
           '401': { description: 'Token ausente ou inválido' },
           '403': { description: 'Sem permissão nesta conversa' },
+        },
+      },
+    },
+    '/conversations/broadcast': {
+      post: {
+        summary: 'Enviar mensagem para várias alunas',
+        description:
+          'Somente treinadora. Replica o mesmo texto em cada conversa individual (`audience`: `all` todas as alunas, `active` só com `validation=sim`, `selected` lista em `student_ids`). Para cada aluna: grava mensagem, notificação in-app, WebSocket (`conversation:message`) e push Expo (`CONVERSATION_NEW_MESSAGE`).',
+        tags: ['Conversas'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['text', 'audience'],
+                properties: {
+                  text: { type: 'string', minLength: 1 },
+                  audience: { type: 'string', enum: ['all', 'active', 'selected'] },
+                  student_ids: {
+                    type: 'array',
+                    items: { type: 'string', format: 'uuid' },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Mensagens enviadas',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['sent_count'],
+                  properties: {
+                    sent_count: { type: 'integer', minimum: 0 },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Corpo inválido ou nenhuma aluna' },
+          '401': { description: 'Token ausente ou inválido' },
+          '403': { description: 'Apenas treinadoras ou aluna fora da base' },
         },
       },
     },

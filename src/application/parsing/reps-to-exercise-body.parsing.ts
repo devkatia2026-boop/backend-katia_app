@@ -75,9 +75,15 @@ export function parseRepsToExerciseCreateBody(body: unknown): CreateRepsToExerci
     err.name = VALIDATION;
     throw err;
   }
+  const exerciseToTrainingId =
+    'exercise_to_training_id' in body && body.exercise_to_training_id != null
+      ? expectPositiveInt(body.exercise_to_training_id, 'exercise_to_training_id')
+      : null;
+
   return {
     exercise_id: expectPositiveInt(body.exercise_id, 'exercise_id'),
     training_id: expectPositiveInt(body.training_id, 'training_id'),
+    exercise_to_training_id: exerciseToTrainingId,
     student_id: expectUuid(body.student_id, 'student_id'),
     reps,
     obs,
@@ -120,6 +126,13 @@ export function parseRepsToExercisePatchBody(body: unknown): PatchRepsToExercise
   }
   if ('rest' in body) {
     patch.rest = expectNullableTrimmedStringOrNull(body.rest, 'rest');
+    n++;
+  }
+  if ('exercise_to_training_id' in body) {
+    patch.exercise_to_training_id =
+      body.exercise_to_training_id === null
+        ? null
+        : expectPositiveInt(body.exercise_to_training_id, 'exercise_to_training_id');
     n++;
   }
   if (n === 0) {

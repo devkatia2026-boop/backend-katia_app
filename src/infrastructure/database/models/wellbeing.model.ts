@@ -7,6 +7,7 @@ export class Wellbeing extends Model {
   declare tittle: string | null;
   declare tags: string | null;
   declare description: string | null;
+  declare sort_order: number;
   declare readonly created_at: Date;
 }
 
@@ -23,6 +24,11 @@ export function initWellbeing(sequelize: Sequelize): typeof Wellbeing {
       tittle: DataTypes.STRING,
       tags: DataTypes.STRING,
       description: DataTypes.TEXT,
+      sort_order: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
     },
     {
       sequelize,

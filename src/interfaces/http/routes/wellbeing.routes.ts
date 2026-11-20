@@ -13,6 +13,9 @@ export function createWellbeingRoutes(
   const readChain: RequestHandler[] = [requireAuth, requireStudentOrTrainer];
 
   router.get('/', ...readChain, (req: Request, res: Response) => controller.list(req, res));
+  router.post('/reorder', [requireAuth, requireTrainer], (req: Request, res: Response) =>
+    controller.reorder(req, res)
+  );
   router.get('/:wellbeingId', ...readChain, (req: Request, res: Response) =>
     controller.getById(req, res)
   );

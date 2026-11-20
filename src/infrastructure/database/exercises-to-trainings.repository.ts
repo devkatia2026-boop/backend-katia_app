@@ -5,12 +5,13 @@ import type {
   ExerciseToTrainingExercise,
   ExerciseToTrainingTraining,
   IExercisesToTrainingsRepository,
+  ExerciseToTrainingReorderDirection,
   ListExercisesToTrainingsFilters,
   PatchExerciseToTrainingInput,
 } from '../../application/ports/exercises-to-trainings.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = ['id', 'training_id', 'exercise_id', 'created_at'] as const;
+const ATTR = ['id', 'training_id', 'exercise_id', 'sort_order', 'created_at'] as const;
 const TRAINING_ATTR = ['id', 'lyric', 'description', 'time', 'type', 'muscles', 'created_at'] as const;
 const EXERCISE_ATTR = [
   'id',
@@ -31,7 +32,10 @@ function buildWhere(filters: ListExercisesToTrainingsFilters): Record<string, un
 
 function buildListOrder(filters: ListExercisesToTrainingsFilters): [string, string][] {
   if (filters.trainingId !== undefined) {
-    return [['id', 'ASC']];
+    return [
+      ['sort_order', 'ASC'],
+      ['id', 'ASC'],
+    ];
   }
 
   return [
@@ -95,7 +99,7 @@ export class SequelizeExercisesToTrainingsRepository implements IExercisesToTrai
     const [total, rows] = await Promise.all([
       this.models.ExercisesToTrainings.count({ where }),
       this.models.ExercisesToTrainings.findAll({
-        attributes: [],
+        attributes: ['id', 'sort_order'],
         where,
         include: [
           {
@@ -105,14 +109,28 @@ export class SequelizeExercisesToTrainingsRepository implements IExercisesToTrai
             required: true,
           },
         ],
-        order: [['id', 'ASC']],
+        order: [
+          ['sort_order', 'ASC'],
+          ['id', 'ASC'],
+        ],
         limit: pageSize,
         offset,
         raw: true,
         nest: true,
-      }) as unknown as Promise<Array<{ exercise: ExerciseToTrainingExercise }>>,
+      }) as unknown as Promise<
+        Array<{ id: number; sort_order: number; exercise: ExerciseToTrainingExercise }>
+      >,
     ]);
-    return { items: rows.map((r) => r.exercise), total, page, pageSize };
+    return {
+      items: rows.map((r) => ({
+        ...r.exercise,
+        link_id: r.id,
+        sort_order: r.sort_order,
+      })),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async listTrainingsByExercise(
@@ -157,10 +175,100 @@ export class SequelizeExercisesToTrainingsRepository implements IExercisesToTrai
     }) as unknown as Promise<ExerciseToTrainingDTO | null>;
   }
 
+  async resolveNextSortOrderForTraining(trainingId: number): Promise<number> {
+    const max = (await this.models.ExercisesToTrainings.max('sort_order', {
+      where: { training_id: trainingId },
+    })) as number | null;
+    if (max === null || max === undefined || !Number.isFinite(Number(max))) {
+      return 0;
+    }
+    return Number(max) + 1;
+  }
+
   async create(input: CreateExerciseToTrainingInput): Promise<ExerciseToTrainingDTO> {
-    const created = await this.models.ExercisesToTrainings.create(input as any);
+    const sortOrder = await this.resolveNextSortOrderForTraining(input.training_id);
+    const created = await this.models.ExercisesToTrainings.create({
+      ...input,
+      sort_order: sortOrder,
+    } as any);
     const row = await this.findById(created.get('id') as number);
     return row as ExerciseToTrainingDTO;
+  }
+
+  async applySortOrderForTraining(
+    trainingId: number,
+    orderedLinkIds: readonly number[]
+  ): Promise<void> {
+    const sequelize = this.models.ExercisesToTrainings.sequelize;
+    if (!sequelize) {
+      throw new Error('Sequelize indisponível.');
+    }
+
+    await sequelize.transaction(async (transaction) => {
+      for (let index = 0; index < orderedLinkIds.length; index += 1) {
+        await this.models.ExercisesToTrainings.update(
+          { sort_order: index },
+          {
+            where: { id: orderedLinkIds[index], training_id: trainingId },
+            transaction,
+          }
+        );
+      }
+    });
+  }
+
+  async reorderByDirection(
+    linkId: number,
+    direction: ExerciseToTrainingReorderDirection
+  ): Promise<void> {
+    const current = await this.findById(linkId);
+    if (!current) {
+      const err = new Error('Vínculo exercício↔treino não encontrado.');
+      err.name = 'NotFoundException';
+      throw err;
+    }
+
+    const sequelize = this.models.ExercisesToTrainings.sequelize;
+    if (!sequelize) {
+      throw new Error('Sequelize indisponível.');
+    }
+
+    await sequelize.transaction(async (transaction) => {
+      const rows = (await this.models.ExercisesToTrainings.findAll({
+        attributes: ['id', 'sort_order'],
+        where: { training_id: current.training_id },
+        order: [
+          ['sort_order', 'ASC'],
+          ['id', 'ASC'],
+        ],
+        transaction,
+        raw: true,
+      })) as Array<{ id: number; sort_order: number }>;
+
+      const index = rows.findIndex((row) => row.id === linkId);
+      if (index < 0) {
+        return;
+      }
+
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= rows.length) {
+        return;
+      }
+
+      const currentRow = rows[index];
+      const neighbor = rows[targetIndex];
+      const currentOrder = currentRow.sort_order;
+      const neighborOrder = neighbor.sort_order;
+
+      await this.models.ExercisesToTrainings.update(
+        { sort_order: neighborOrder },
+        { where: { id: currentRow.id }, transaction }
+      );
+      await this.models.ExercisesToTrainings.update(
+        { sort_order: currentOrder },
+        { where: { id: neighbor.id }, transaction }
+      );
+    });
   }
 
   async update(id: number, patch: PatchExerciseToTrainingInput): Promise<ExerciseToTrainingDTO> {

@@ -20,6 +20,9 @@ export function createExercisesToTrainingsRoutes(
   router.post('/', [requireAuth, requireTrainer], (req: Request, res: Response) =>
     controller.create(req, res)
   );
+  router.post('/reorder', [requireAuth, requireTrainer], (req: Request, res: Response) =>
+    controller.reorder(req, res)
+  );
   router.patch('/:id', [requireAuth, requireTrainer], (req: Request, res: Response) =>
     controller.patch(req, res)
   );

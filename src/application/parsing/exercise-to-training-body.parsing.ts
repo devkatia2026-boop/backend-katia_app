@@ -9,6 +9,25 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function expectNonNegativeInt(value: unknown, field: string): number {
+  let n: number;
+  if (typeof value === 'number') {
+    n = value;
+  } else if (typeof value === 'string') {
+    n = parseInt(value, 10);
+  } else {
+    const err = new Error(`Campo "${field}" deve ser um inteiro.`);
+    err.name = VALIDATION;
+    throw err;
+  }
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+    const err = new Error(`Campo "${field}" deve ser um inteiro maior ou igual a zero.`);
+    err.name = VALIDATION;
+    throw err;
+  }
+  return n;
+}
+
 function expectPositiveInt(value: unknown, field: string): number {
   let n: number;
   if (typeof value === 'number') {
@@ -59,6 +78,10 @@ export function parseExerciseToTrainingPatchBody(body: unknown): PatchExerciseTo
   }
   if ('exercise_id' in body) {
     patch.exercise_id = expectPositiveInt(body.exercise_id, 'exercise_id');
+    n++;
+  }
+  if ('sort_order' in body) {
+    patch.sort_order = expectNonNegativeInt(body.sort_order, 'sort_order');
     n++;
   }
   if (n === 0) {

@@ -10,12 +10,16 @@ export type ExerciseToTrainingTraining = Pick<
 export type ExerciseToTrainingExercise = Pick<
   ExerciseDTO,
   'id' | 'name' | 'video' | 'type' | 'description' | 'level' | 'created_at'
->;
+> & {
+  link_id: number;
+  sort_order: number;
+};
 
 export type ExerciseToTrainingDTO = {
   id: number;
   training_id: number;
   exercise_id: number;
+  sort_order: number;
   created_at: Date;
   training: ExerciseToTrainingTraining | null;
   exercise: ExerciseToTrainingExercise | null;
@@ -29,7 +33,10 @@ export type CreateExerciseToTrainingInput = {
 export type PatchExerciseToTrainingInput = Partial<{
   training_id: number;
   exercise_id: number;
+  sort_order: number;
 }>;
+
+export type ExerciseToTrainingReorderDirection = 'up' | 'down';
 
 export type ListExercisesToTrainingsFilters = {
   trainingId?: number;
@@ -56,4 +63,7 @@ export interface IExercisesToTrainingsRepository {
   create(input: CreateExerciseToTrainingInput): Promise<ExerciseToTrainingDTO>;
   update(id: number, patch: PatchExerciseToTrainingInput): Promise<ExerciseToTrainingDTO>;
   deleteById(id: number): Promise<boolean>;
+  resolveNextSortOrderForTraining(trainingId: number): Promise<number>;
+  applySortOrderForTraining(trainingId: number, orderedLinkIds: readonly number[]): Promise<void>;
+  reorderByDirection(linkId: number, direction: ExerciseToTrainingReorderDirection): Promise<void>;
 }

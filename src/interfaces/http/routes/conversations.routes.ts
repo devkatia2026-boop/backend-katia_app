@@ -5,7 +5,8 @@ import type { ConversationsController } from '../controllers/conversations.contr
 export function createConversationsRoutes(
   controller: ConversationsController,
   requireAuth: RequestHandler,
-  requireStudentOrTrainer: RequestHandler
+  requireStudentOrTrainer: RequestHandler,
+  requireTrainer: RequestHandler
 ): Router {
   const router = Router();
 
@@ -15,6 +16,10 @@ export function createConversationsRoutes(
 
   router.get('/messages', [requireAuth, requireStudentOrTrainer], (req: Request, res: Response) =>
     controller.listMessages(req, res)
+  );
+
+  router.post('/broadcast', [requireAuth, requireTrainer], (req: Request, res: Response) =>
+    controller.broadcast(req, res)
   );
 
   return router;

@@ -5,6 +5,7 @@ import type { GetExerciseToTrainingUseCase } from '../../../application/use-case
 import type { CreateExerciseToTrainingUseCase } from '../../../application/use-cases/trainer/create-exercise-to-training.use-case';
 import type { UpdateExerciseToTrainingUseCase } from '../../../application/use-cases/trainer/update-exercise-to-training.use-case';
 import type { DeleteExerciseToTrainingUseCase } from '../../../application/use-cases/trainer/delete-exercise-to-training.use-case';
+import type { ReorderExerciseToTrainingUseCase } from '../../../application/use-cases/exercises-to-trainings/reorder-exercise-to-training.use-case';
 
 const VALIDATION = 'ValidationException';
 const NOT_FOUND = 'NotFoundException';
@@ -36,8 +37,18 @@ export class ExercisesToTrainingsController {
     private readonly getLink: GetExerciseToTrainingUseCase,
     private readonly createLink: CreateExerciseToTrainingUseCase,
     private readonly updateLink: UpdateExerciseToTrainingUseCase,
-    private readonly deleteLink: DeleteExerciseToTrainingUseCase
+    private readonly deleteLink: DeleteExerciseToTrainingUseCase,
+    private readonly reorderLink: ReorderExerciseToTrainingUseCase
   ) {}
+
+  async reorder(req: Request, res: Response): Promise<void> {
+    try {
+      await this.reorderLink.execute(req.body);
+      res.status(204).end();
+    } catch (err) {
+      this.handleWrite(err, res, 'Erro ao reordenar exercício no treino.');
+    }
+  }
 
   async list(req: Request, res: Response): Promise<void> {
     try {
@@ -108,7 +119,7 @@ export class ExercisesToTrainingsController {
 
   private handleWrite(err: unknown, res: Response, fallback: string): void {
     if (err instanceof UniqueConstraintError) {
-      res.status(409).json({ message: 'Esse exercício já está vinculado a esse treino.' });
+      res.status(409).json({ message: 'Conflito ao salvar vínculo exercício↔treino.' });
       return;
     }
     if (err instanceof ForeignKeyConstraintError) {

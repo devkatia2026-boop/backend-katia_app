@@ -4,6 +4,7 @@ import type { GetWellbeingUseCase } from '../../../application/use-cases/wellbei
 import type { CreateWellbeingUseCase } from '../../../application/use-cases/wellbeing/create-wellbeing.use-case';
 import type { UpdateWellbeingUseCase } from '../../../application/use-cases/wellbeing/update-wellbeing.use-case';
 import type { DeleteWellbeingUseCase } from '../../../application/use-cases/wellbeing/delete-wellbeing.use-case';
+import type { ReorderWellbeingUseCase } from '../../../application/use-cases/wellbeing/reorder-wellbeing.use-case';
 import {
   OBJECT_STORAGE_EXCEPTION,
   type UploadImageFilesUseCase,
@@ -40,8 +41,18 @@ export class WellbeingController {
     private readonly createWellbeing: CreateWellbeingUseCase,
     private readonly updateWellbeing: UpdateWellbeingUseCase,
     private readonly deleteWellbeing: DeleteWellbeingUseCase,
+    private readonly reorderWellbeing: ReorderWellbeingUseCase,
     private readonly uploadImages: UploadImageFilesUseCase
   ) {}
+
+  async reorder(req: Request, res: Response): Promise<void> {
+    try {
+      await this.reorderWellbeing.execute(req.body);
+      res.status(204).end();
+    } catch (err) {
+      this.handleWrite(err, res);
+    }
+  }
 
   async list(req: Request, res: Response): Promise<void> {
     try {

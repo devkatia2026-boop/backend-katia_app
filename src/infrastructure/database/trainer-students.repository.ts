@@ -109,6 +109,19 @@ export class SequelizeTrainerStudentsRepository implements ITrainerStudentsRepos
     };
   }
 
+  async listIdsByTrainer(
+    trainerId: string,
+    validation?: TrainerStudentValidationFilter
+  ): Promise<string[]> {
+    const rows = await this.models.Student.findAll({
+      attributes: ['id'],
+      where: buildTrainerWhere(trainerId, validation),
+      order: [['id', 'ASC']],
+      raw: true,
+    });
+    return (rows as { id: string }[]).map((row) => row.id);
+  }
+
   async searchPaged(
     trainerId: string,
     field: TrainerStudentSearchField,

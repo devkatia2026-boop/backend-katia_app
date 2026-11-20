@@ -159,24 +159,34 @@ export class CopyStudentTrainingPhasesUseCase {
     let copied = 0;
 
     for (const trainingId of trainingIds) {
-      const exerciseIds = await this.fetchExerciseIdsForTraining(trainingId);
+      const exerciseLinks = await this.fetchExerciseLinksForTraining(trainingId);
 
-      for (const exerciseId of exerciseIds) {
-        const sourceRep = await this.repsToExercisesRepo.findByStudentExerciseAndTraining(
-          sourceStudentId,
-          exerciseId,
-          trainingId
-        );
+      for (const link of exerciseLinks) {
+        const sourceRep =
+          (await this.repsToExercisesRepo.findByStudentExerciseToTrainingId(
+            sourceStudentId,
+            link.linkId
+          )) ??
+          (await this.repsToExercisesRepo.findByStudentExerciseAndTraining(
+            sourceStudentId,
+            link.exerciseId,
+            trainingId
+          ));
 
         if (!sourceRep) {
           continue;
         }
 
-        const targetRep = await this.repsToExercisesRepo.findByStudentExerciseAndTraining(
-          targetStudentId,
-          exerciseId,
-          trainingId
-        );
+        const targetRep =
+          (await this.repsToExercisesRepo.findByStudentExerciseToTrainingId(
+            targetStudentId,
+            link.linkId
+          )) ??
+          (await this.repsToExercisesRepo.findByStudentExerciseAndTraining(
+            targetStudentId,
+            link.exerciseId,
+            trainingId
+          ));
 
         if (targetRep) {
           await this.repsToExercisesRepo.update(targetRep.id, {
@@ -184,11 +194,13 @@ export class CopyStudentTrainingPhasesUseCase {
             obs: sourceRep.obs,
             methodology: sourceRep.methodology,
             rest: sourceRep.rest,
+            exercise_to_training_id: link.linkId,
           });
         } else {
           await this.repsToExercisesRepo.create({
-            exercise_id: exerciseId,
+            exercise_id: link.exerciseId,
             training_id: trainingId,
+            exercise_to_training_id: link.linkId,
             student_id: targetStudentId,
             reps: sourceRep.reps,
             obs: sourceRep.obs,
@@ -204,8 +216,10 @@ export class CopyStudentTrainingPhasesUseCase {
     return copied;
   }
 
-  private async fetchExerciseIdsForTraining(trainingId: number): Promise<number[]> {
-    const ids: number[] = [];
+  private async fetchExerciseLinksForTraining(
+    trainingId: number
+  ): Promise<Array<{ linkId: number; exerciseId: number }>> {
+    const links: Array<{ linkId: number; exerciseId: number }> = [];
     let page = 1;
 
     while (true) {
@@ -215,7 +229,12 @@ export class CopyStudentTrainingPhasesUseCase {
         EXERCISE_PAGE_SIZE
       );
 
-      ids.push(...response.items.map((item) => item.id));
+      links.push(
+        ...response.items.map((item) => ({
+          linkId: item.link_id,
+          exerciseId: item.id,
+        }))
+      );
 
       if (response.page * response.pageSize >= response.total) {
         break;
@@ -224,6 +243,6 @@ export class CopyStudentTrainingPhasesUseCase {
       page += 1;
     }
 
-    return ids;
+    return links;
   }
 }

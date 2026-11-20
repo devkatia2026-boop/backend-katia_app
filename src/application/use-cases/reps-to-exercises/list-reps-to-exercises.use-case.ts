@@ -18,8 +18,42 @@ export class ListRepsToExercisesUseCase {
     auth: { role: 'student' | 'trainer'; sub: string }
   ): Promise<PagedList<RepsToExerciseDTO>> {
     const p = normalizePagination(page, pageSize);
-    const exerciseId = parseExerciseIdQuery(rawExerciseId, 'exerciseId');
+    const exerciseId =
+      rawExerciseId === undefined || rawExerciseId === null || rawExerciseId === ''
+        ? undefined
+        : parseExerciseIdQuery(rawExerciseId, 'exerciseId');
     const filterTrainingId = parseOptionalTrainingIdQuery(rawTrainingId, 'trainingId');
+    const filterStudentId = parseOptionalUuid(rawStudentId, 'studentId');
+
+  if (
+      exerciseId === undefined &&
+      filterTrainingId !== undefined
+    ) {
+      const resolvedStudentId =
+        auth.role === 'student' ? auth.sub : filterStudentId;
+      if (!resolvedStudentId) {
+        const err = new Error('Parâmetro "studentId" é obrigatório para treinadoras.');
+        err.name = 'ValidationException';
+        throw err;
+      }
+      const items = await this.repo.listByStudentAndTraining(
+        resolvedStudentId,
+        filterTrainingId
+      );
+      const offset = (p.page - 1) * p.pageSize;
+      return {
+        items: items.slice(offset, offset + p.pageSize),
+        total: items.length,
+        page: p.page,
+        pageSize: p.pageSize,
+      };
+    }
+
+    if (exerciseId === undefined) {
+      const err = new Error('Parâmetro "exerciseId" é obrigatório.');
+      err.name = 'ValidationException';
+      throw err;
+    }
 
     if (auth.role === 'student') {
       const sid = parseOptionalUuid(rawStudentId, 'studentId');
@@ -38,7 +72,6 @@ export class ListRepsToExercisesUseCase {
       );
     }
 
-    const filterStudentId = parseOptionalUuid(rawStudentId, 'studentId');
     return this.repo.listByExerciseForViewer(
       exerciseId,
       p.page,

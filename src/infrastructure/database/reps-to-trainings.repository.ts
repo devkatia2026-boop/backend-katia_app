@@ -7,13 +7,24 @@ import type {
 } from '../../application/ports/reps-to-trainings.port';
 import type { PagedList } from '../../application/ports/social-feed.port';
 
-const ATTR = ['id', 'exercise_id', 'training_id', 'reps', 'obs', 'methodology', 'rest', 'created_at'] as const;
+const ATTR = [
+  'id',
+  'exercise_id',
+  'training_id',
+  'exercise_to_training_id',
+  'reps',
+  'obs',
+  'methodology',
+  'rest',
+  'created_at',
+] as const;
 
 function toDto(raw: RepsToTrainingDTO): RepsToTrainingDTO {
   return {
     id: raw.id,
     exercise_id: raw.exercise_id,
     training_id: raw.training_id,
+    exercise_to_training_id: raw.exercise_to_training_id,
     reps: raw.reps,
     obs: raw.obs,
     methodology: raw.methodology,
@@ -55,6 +66,29 @@ export class SequelizeRepsToTrainingsRepository implements IRepsToTrainingsRepos
       page,
       pageSize,
     };
+  }
+
+  async listByTrainingId(trainingId: number): Promise<RepsToTrainingDTO[]> {
+    const rows = await this.models.RepsToTrainings.findAll({
+      attributes: [...ATTR],
+      where: { training_id: trainingId },
+      order: [
+        ['id', 'ASC'],
+      ],
+      raw: true,
+    }) as unknown as RepsToTrainingDTO[];
+
+    return rows.map(toDto);
+  }
+
+  async findByExerciseToTrainingId(linkId: number): Promise<RepsToTrainingDTO | null> {
+    const row = await this.models.RepsToTrainings.findOne({
+      attributes: [...ATTR],
+      where: { exercise_to_training_id: linkId },
+      raw: true,
+    });
+    if (!row) return null;
+    return toDto(row as unknown as RepsToTrainingDTO);
   }
 
   async findById(id: number): Promise<RepsToTrainingDTO | null> {

@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import type { GetConversationPartnerUseCase } from '../../../application/use-cases/conversations/get-conversation-partner.use-case';
 import type { ListConversationMessagesUseCase } from '../../../application/use-cases/conversations/list-conversation-messages.use-case';
+import type { BroadcastConversationMessagesUseCase } from '../../../application/use-cases/conversations/broadcast-conversation-messages.use-case';
 
 const VALIDATION = 'ValidationException';
 const FORBIDDEN = 'ForbiddenException';
@@ -18,8 +19,18 @@ function authFrom(req: Request): { role: 'student' | 'trainer'; sub: string } {
 export class ConversationsController {
   constructor(
     private readonly listMsgs: ListConversationMessagesUseCase,
-    private readonly getPartnerUseCase: GetConversationPartnerUseCase
+    private readonly getPartnerUseCase: GetConversationPartnerUseCase,
+    private readonly broadcastMessages: BroadcastConversationMessagesUseCase
   ) {}
+
+  async broadcast(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await this.broadcastMessages.execute(req.body, authFrom(req));
+      res.status(200).json(result);
+    } catch (err) {
+      this.handle(err, res, 'Erro ao enviar mensagens em lote.');
+    }
+  }
 
   async getPartner(req: Request, res: Response): Promise<void> {
     try {
